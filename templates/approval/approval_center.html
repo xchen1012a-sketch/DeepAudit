@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+{% block title %}审批管理工作台 - 深度审计{% endblock %}
+
+{% block head %}
+<meta name="page-debug" content="approval">
+<meta name="page-debug-route" content="{{ (page_debug or {}).get('route', '-') }}">
+<meta name="page-debug-template" content="{{ (page_debug or {}).get('template', '-') }}">
+<meta name="page-debug-api" content="{{ (page_debug or {}).get('api_version', '-') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tom-select/tom-select.css', v=static_version) }}">
+<style>
+/* ── Approval Workbench v4 ── */
+.aw { --aw-high: #dc2626; --aw-med: #d97706; --aw-low: #16a34a; --aw-card-r: 10px; --aw-gap: 12px; }
+
+/* metrics row */
+.aw-metrics { display: flex; gap: var(--aw-gap); flex-wrap: wrap; margin-bottom: 20px; }
+.aw-metric {
+  flex: 1 1 130px; max-width: 180px;
+  border-radius: var(--aw-card-r); padding: 14px 16px;
+  background: #fff; border: 1px solid #e5e7eb;
+  transition: box-shadow .2s ease, border-color .2s ease;
+  cursor: default;
+}
+.aw-metric:hover { border-color: #bfdbfe; box-shadow: 0 2px 8px rgba(37,99,235,.08); }
+.aw-metric .aw-metric-v { font-size: 24px; font-weight: 700; color: #0f172a; line-height: 1.2; }
+.aw-metric .aw-metric-k { font-size: 13px; color: #64748b; margin-top: 2px; }
+.aw-metric.is-danger .aw-metric-v { color: var(--aw-high); }
+.aw-metric.is-warn .aw-metric-v { color: var(--aw-med); }
+
+/* tab + filter bar */
+.aw-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.aw-tabs { display: flex; gap: 4px; background: #f1f5f9; border-radius: 8px; padding: 3px; }
+.aw-tab {
+  padding: 8px 18px; border-radius: 6px; font-size: 14px; font-weight: 600;
+  border: none; background: transparent; color: #475569; cursor: pointer;
+  transition: all .18s ease;
+}
+.aw-tab:hover { color: #1e293b; background: #e2e8f0; }
+.aw-tab.is-active { background: #fff; color: #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.aw-search {
+  flex: 1; min-width: 180px; max-width: 340px;
+  padding: 8px 12px 8px 34px; border: 1px solid #e2e8f0; border-radius: 8px;
+  font-size: 14px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 24 24'%3E%3Cpath d='M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/%3E%3C/svg%3E") 10px center no-repeat;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.aw-search:focus { outline: none; border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+.aw-filter-toggle {
+  padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
+  border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer;
+  transition: all .18s ease; display: flex; align-items: center; gap: 5px;
+}
+.aw-filter-toggle:hover { border-color: #cbd5e1; background: #f8fafc; }
+.aw-filter-toggle i { font-size: 15px; transition: transform .2s ease; }
+.aw-filter-toggle.is-open i { transform: rotate(180deg); }
+.aw-filters-panel {
+  display: none; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 16px;
+  background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb;
+}
+.aw-filters-panel.is-visible { display: flex; }
+.aw-filters-panel select {
+  padding: 7px 10px; border-radius: 6px; border: 1px solid #e2e8f0;
+  font-size: 14px; background: #fff; color: #334155; cursor: pointer;
+}
+
+/* card list */
+.aw-list { display: flex; flex-direction: column; gap: 8px; }
+.aw-empty { text-align: center; padding: 48px 20px; color: #94a3b8; font-size: 15px; }
+.aw-empty i { font-size: 38px; display: block; margin-bottom: 10px; color: #cbd5e1; }
+
+.aw-item {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: var(--aw-card-r);
+  border-left: 3px solid #e5e7eb;
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+.aw-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.05); border-color: #d1d5db; }
+.aw-item.risk-high { border-left-color: var(--aw-high); }
+.aw-item.risk-medium { border-left-color: var(--aw-med); }
+.aw-item.risk-low { border-left-color: var(--aw-low); }
+.aw-item.is-expanded { border-color: #bfdbfe; box-shadow: 0 2px 12px rgba(37,99,235,.08); }
+.aw-item.is-highlighted { border-color: #fbbf24; background: #fffbeb; }
+
+/* card header = primary info */
+.aw-item-head {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer;
+  flex-wrap: wrap;
+}
+.aw-item-head:hover { background: #f8fafc; border-radius: var(--aw-card-r); }
+.aw-ref {
+  font-weight: 700; font-size: 14px; color: #0f172a;
+  font-family: "SFMono-Regular", "Consolas", monospace;
+  min-width: 100px;
+}
+.aw-applicant { font-size: 14px; color: #334155; font-weight: 500; min-width: 60px; }
+.aw-amount { font-size: 14px; font-weight: 600; color: #0f172a; white-space: nowrap; }
+.aw-amount .aw-currency { font-weight: 400; color: #64748b; font-size: 12px; margin-left: 3px; }
+.aw-chip {
+  display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+.aw-chip.chip-high { background: #fef2f2; color: #991b1b; }
+.aw-chip.chip-medium { background: #fffbeb; color: #92400e; }
+.aw-chip.chip-low { background: #f0fdf4; color: #166534; }
+.aw-status-badge {
+  display: inline-flex; padding: 3px 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.aw-status-badge.st-pending { background: #eff6ff; color: #1d4ed8; }
+.aw-status-badge.st-approved { background: #f0fdf4; color: #15803d; }
+.aw-status-badge.st-rejected { background: #fef2f2; color: #b91c1c; }
+.aw-status-badge.st-returned { background: #fffbeb; color: #b45309; }
+.aw-time { font-size: 12px; color: #94a3b8; white-space: nowrap; }
+.aw-spacer { flex: 1; }
+.aw-expand-icon {
+  width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  color: #94a3b8; transition: transform .2s ease;
+}
+.aw-item.is-expanded .aw-expand-icon { transform: rotate(180deg); }
+.aw-action-quick {
+  padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 600;
+  border: none; color: #fff; cursor: pointer; white-space: nowrap;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 1px 4px rgba(37,99,235,.25);
+  transition: all .2s ease;
+}
+.aw-action-quick:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af); box-shadow: 0 2px 8px rgba(37,99,235,.35); }
+
+/* card detail = expanded secondary info */
+.aw-item-detail {
+  display: none; padding: 0 16px 14px 19px;
+  border-top: 1px dashed #e5e7eb; margin-top: 0;
+}
+.aw-item.is-expanded .aw-item-detail { display: block; }
+.aw-detail-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px 20px; padding-top: 12px;
+}
+.aw-detail-field .aw-dl { font-size: 12px; color: #94a3b8; margin-bottom: 1px; }
+.aw-detail-field .aw-dv { font-size: 14px; color: #1e293b; font-weight: 500; }
+.aw-detail-links {
+  display: flex; gap: 12px; margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid #f1f5f9; flex-wrap: wrap; align-items: center;
+}
+.aw-detail-links a {
+  font-size: 13px; color: #2563eb; text-decoration: none; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 4px;
+  transition: color .15s ease;
+}
+.aw-detail-links a:hover { color: #1d4ed8; text-decoration: underline; }
+.aw-detail-links a.is-disabled { color: #94a3b8; pointer-events: none; }
+
+/* feedback */
+.aw-feedback {
+  display: none; padding: 8px 14px; border-radius: 8px; font-size: 14px;
+  margin-bottom: 12px; align-items: center; gap: 8px;
+}
+.aw-feedback.is-visible { display: flex; }
+.aw-feedback.tone-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.aw-feedback.tone-danger { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.aw-feedback.tone-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+.aw-feedback.tone-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+
+/* modal refinements */
+#approvalActionModal .modal-content { border-radius: 12px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,.15); }
+#approvalActionModal .modal-header { border-bottom: 1px solid #f1f5f9; padding: 16px 20px; }
+#approvalActionModal .modal-header .modal-title { font-size: 18px; font-weight: 700; }
+#approvalActionModal .modal-body { padding: 20px; }
+#approvalActionModal .modal-footer { border-top: 1px solid #f1f5f9; padding: 14px 20px; }
+#approvalActionModal .trail-list { margin: 0; padding-left: 18px; }
+#approvalActionModal .trail-list li { margin-bottom: 8px; }
+#approvalActionModal .trail-line { font-size: 13px; color: #64748b; }
+#approvalActionModal .trail-main { font-weight: 600; color: #0f172a; font-size: 14px; }
+#approvalActionModal .invalid-feedback.d-block { display: block; }
+.aw-modal-context {
+  padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 14px;
+  background: #f8fafc; border: 1px solid #e5e7eb; color: #475569;
+}
+.aw-modal-trail { border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
+.aw-modal-trail .card-header { background: #f8fafc; padding: 10px 14px; font-size: 14px; }
+
+@media (max-width: 640px) {
+  .aw-metrics { gap: 8px; }
+  .aw-metric { flex: 1 1 calc(50% - 4px); max-width: none; padding: 10px 12px; }
+  .aw-item-head { gap: 8px; padding: 10px 12px; }
+  .aw-detail-grid { grid-template-columns: 1fr 1fr; }
+  .aw-bar { gap: 8px; }
+  .aw-tabs { width: 100%; justify-content: center; }
+  .aw-search { max-width: none; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% macro plain(v) -%}
+{% set t = (v|string).strip() if v is not none else '' %}
+{{ t if t else '-' }}
+{%- endmacro %}
+
+{% set current_operator = ((nav_user or {}).get('employee_name') or (nav_user or {}).get('username') or (nav_user or {}).get('employee_no') or '当前操作人') %}
+
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row mb-2">
+      <div class="col-sm-6"><h1 class="m-0">审批管理工作台</h1></div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-right">
+          <li class="breadcrumb-item"><a href="/dashboard">管理总览</a></li>
+          <li class="breadcrumb-item active">审批管理工作台</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="content aw">
+  <div id="approval-workbench" class="container-fluid" data-current-operator="{{ current_operator }}">
+
+    <div class="aw-metrics">
+      <div class="aw-metric">
+        <div class="aw-metric-v" id="kpiPending">{{ (approval_summary or {}).get('pending_total', 0) }}</div>
+        <div class="aw-metric-k">待审总数</div>
+      </div>
+      <div class="aw-metric is-danger">
+        <div class="aw-metric-v" id="kpiHigh">{{ (approval_summary or {}).get('high_pending', 0) }}</div>
+        <div class="aw-metric-k">高风险待审</div>
+      </div>
+      <div class="aw-metric is-warn">
+        <div class="aw-metric-v" id="kpiSla">{{ (approval_summary or {}).get('sla_lt_4h', 0) }}</div>
+        <div class="aw-metric-k">4小时内到期</div>
+      </div>
+      <div class="aw-metric">
+        <div class="aw-metric-v" id="kpiOver">{{ (approval_summary or {}).get('overdue', 0) }}</div>
+        <div class="aw-metric-k">已超时</div>
+      </div>
+    </div>
+
+    <div class="aw-bar">
+      <div class="aw-tabs">
+        <button type="button" class="aw-tab is-active js-inbox-tab" data-inbox="my_pending">待我处理</button>
+        <button type="button" class="aw-tab js-inbox-tab" data-inbox="all_pending">全部待审</button>
+        <button type="button" class="aw-tab js-inbox-tab" data-inbox="my_processed">我已处理</button>
+      </div>
+      <input id="keywordFilter" class="aw-search" placeholder="搜索单据号、申请人、部门或供应商…">
+      <button type="button" class="aw-filter-toggle" id="filterToggle">
+        <i class="ri-filter-3-line"></i> 筛选
+      </button>
+    </div>
+
+    <div class="aw-filters-panel" id="filtersPanel">
+      <select id="riskFilter">
+        <option value="">全部风险等级</option>
+        <option value="HIGH">高风险</option>
+        <option value="MEDIUM">中风险</option>
+        <option value="LOW">低风险</option>
+      </select>
+      <select id="statusFilter">
+        <option value="">全部状态</option>
+        <option value="PENDING">待处理</option>
+        <option value="APPROVED">已通过</option>
+        <option value="REJECTED">已驳回</option>
+        <option value="RETURNED">已退回</option>
+      </select>
+    </div>
+
+    <div id="approvalFeedback" class="aw-feedback"></div>
+
+    <div class="aw-list" id="approvalList">
+      {% for row in invoices %}
+      {% set st = (row.approval_status or row.status or 'PENDING')|upper %}
+      {% set sg = (row.approval_stage or ('L1' if st == 'PENDING' else 'DONE'))|upper %}
+      {% set rk = (row.risk_level or 'LOW')|upper %}
+      {% set ev = row.rule_evidence if row.rule_evidence is mapping else {} %}
+      {% set rule_hit_text = (ev.get('rule_hit_id') if ev else row.rule_hit_id) or '' %}
+      {% set rule_count = (rule_hit_text.split(',')|length) if rule_hit_text else 0 %}
+      {% set risk_cn = {'HIGH': '高风险', 'MEDIUM': '中风险', 'LOW': '低风险'}.get(rk, '低风险') %}
+      {% set stage_cn = {'L1': '一级审批', 'L2': '二级复核', 'DONE': '流程完成'}.get(sg, '待处理') %}
+      {% set status_cn = {'PENDING': '待处理', 'APPROVED': '已通过', 'REJECTED': '已驳回', 'RETURNED': '已退回'}.get(st, '待处理') %}
+      {% set owner_text = row.queue_owner_id or '-' %}
+      {% set submitted_text = row.created_at or row.invoice_date or '-' %}
+      {% set amount_text = plain(row.amount) %}
+      {% set currency_text = (row.currency or '')|upper %}
+      {% set risk_score_text = row.risk_score if row.risk_score is not none else '' %}
+      {% set wf_step = (row.workflow_step or ('C' if sg == 'L2' else ('B' if st == 'PENDING' else 'END')))|upper %}
+      {% set progress_text = (status_cn ~ ' · ' ~ submitted_text) if submitted_text != '-' else status_cn %}
+      <div class="aw-item risk-{{ rk|lower }}"
+        data-id="{{ row.id }}"
+        data-reference="{{ row.reference_no or row.id }}"
+        data-applicant="{{ row.applicant or '' }}"
+        data-dept="{{ row.department or '' }}"
+        data-vendor="{{ row.merchant_name or row.vendor or '' }}"
+        data-amount="{{ row.amount or '' }}"
+        data-currency="{{ currency_text }}"
+        data-submitted="{{ submitted_text }}"
+        data-stage="{{ sg }}"
+        data-status="{{ st }}"
+        data-owner="{{ owner_text }}"
+        data-risk="{{ rk }}"
+        data-risk-score="{{ risk_score_text }}"
+        data-step="{{ wf_step }}"
+        data-rule-count="{{ rule_count }}"
+        data-rule-hit="{{ rule_hit_text }}"
+        data-sla="{{ row.sla_remaining_minutes if row.sla_remaining_minutes is not none else 0 }}"
+        data-over="{{ 1 if row.is_overdue else 0 }}"
+        data-first="{{ row.first_approver_id or '' }}"
+        data-second="{{ row.second_approver_id or '' }}"
+        data-trace="{{ row.ai_trace_id or '' }}"
+        data-latest-progress="{{ progress_text }}"
+      >
+        <div class="aw-item-head js-toggle-detail">
+          <span class="aw-ref js-reference">{{ plain(row.reference_no or row.id) }}</span>
+          <span class="aw-applicant js-applicant">{{ plain(row.applicant) }}</span>
+          <span class="aw-amount js-amount">{{ amount_text }}<span class="aw-currency">{{ currency_text }}</span></span>
+          <span class="aw-chip chip-{{ rk|lower }}">{{ risk_cn }}{% if risk_score_text %} ({{ risk_score_text }}){% endif %}</span>
+          <span class="aw-status-badge st-{{ st|lower }} js-status-badge">{{ status_cn }}</span>
+          <span class="aw-time js-submitted">{{ submitted_text }}</span>
+          <span class="aw-spacer"></span>
+          {% if st == 'PENDING' %}
+          <button type="button" class="aw-action-quick js-open-workbench" title="审批操作">审批</button>
+          {% endif %}
+          <span class="aw-expand-icon"><i class="ri-arrow-down-s-line"></i></span>
+        </div>
+
+        <div class="aw-item-detail">
+          <div class="aw-detail-grid">
+            <div class="aw-detail-field">
+              <div class="aw-dl">部门</div>
+              <div class="aw-dv js-dept">{{ plain(row.department) }}</div>
+            </div>
+            <div class="aw-detail-field">
+              <div class="aw-dl">供应商</div>
+              <div class="aw-dv js-vendor">{{ plain(row.merchant_name or row.vendor) }}</div>
+            </div>
+            <div class="aw-detail-field">
+              <div class="aw-dl">当前环节</div>
+              <div class="aw-dv js-stage">{{ stage_cn }}</div>
+            </div>
+            <div class="aw-detail-field">
+              <div class="aw-dl">当前处理人</div>
+              <div class="aw-dv js-owner">{{ plain(owner_text) }}</div>
+            </div>
+            <div class="aw-detail-field">
+              <div class="aw-dl">命中规则数</div>
+              <div class="aw-dv js-rule-count">{{ rule_count if rule_count > 0 else '-' }}</div>
+            </div>
+            <div class="aw-detail-field">
+              <div class="aw-dl">最新进展</div>
+              <div class="aw-dv js-progress">{{ progress_text }}</div>
+            </div>
+          </div>
+          <div class="aw-detail-links">
+            <a class="js-link-upload" href="{{ url_for('ledger.invoices_page', tab='ledger', open_evidence=row.id, reference_no=(row.reference_no or '')) }}" target="_blank" rel="noopener">
+              <i class="ri-file-text-line"></i> 单据详情
+            </a>
+            <a class="js-link-risk" href="{% if row.ai_trace_id %}/api/ai/ledger/{{ row.ai_trace_id }}{% else %}/risk-center{% endif %}" target="_blank" rel="noopener">
+              <i class="ri-shield-check-line"></i> 风险审计
+            </a>
+            <a class="js-link-evidence {% if st != 'APPROVED' %}is-disabled{% endif %}" href="/invoices_page?tab=ledger&reference_no={{ row.reference_no or row.id }}" target="_blank" rel="noopener">
+              <i class="ri-folder-shield-2-line"></i> 凭证中心
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="aw-empty d-none" id="approvalEmpty">
+      <i class="ri-inbox-unarchive-line"></i>
+      当前筛选条件下没有审批记录
+    </div>
+  </div>
+</section>
+
+<!-- Approval Action Modal -->
+<div class="modal fade" id="approvalActionModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">审批操作</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="workRowId" value="">
+        <div class="aw-modal-context" id="workContextHint">请选择动作并提交。</div>
+
+        <div class="form-row">
+          <div class="form-group col-md-4">
+            <label for="workActionType">动作</label>
+            <select id="workActionType" class="custom-select">
+              <option value="APPROVE">通过</option>
+              <option value="RETURN">退回</option>
+              <option value="ASSIGN">转派</option>
+            </select>
+          </div>
+          <div class="form-group col-md-4 d-none" id="workAssignWrap">
+            <label for="workAssignTo">转派给</label>
+            <input id="workAssignTo" class="form-control" placeholder="接收人账号/姓名">
+            <div id="workAssignError" class="invalid-feedback d-none">请填写转派接收人</div>
+          </div>
+          <div class="form-group col-md-8">
+            <label for="workReasonCode">处理原因 <span class="text-danger">*</span></label>
+            <select id="workReasonCode" class="form-control enterprise-select" data-clear-button="0">
+              <option value="">请选择处理原因</option>
+              <option value="POLICY_MATCH">符合制度</option>
+              <option value="POLICY_EXCEPTION">制度例外</option>
+              <option value="NEED_MORE_INFO">需要补充信息</option>
+              <option value="DUPLICATE_SUSPECT">疑似重复报销</option>
+              <option value="MANUAL_OVERRIDE">人工覆盖</option>
+            </select>
+            <div id="workReasonError" class="invalid-feedback d-block d-none">请选择处理原因</div>
+          </div>
+          <div class="form-group col-12">
+            <div class="form-check mb-2">
+              <input type="checkbox" class="form-check-input" id="workNeedSupplement">
+              <label class="form-check-label" for="workNeedSupplement">追加材料（可选）</label>
+            </div>
+            <label for="workReasonNote">补充说明（可选）</label>
+            <textarea id="workReasonNote" rows="2" class="form-control" placeholder="填写处理背景或补充说明"></textarea>
+          </div>
+        </div>
+
+        <div id="workActionError" class="small text-danger mb-2 d-none"></div>
+
+        <div class="aw-modal-trail">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <strong class="small">流转留痕</strong>
+            <button type="button" id="workTrailToggle" class="btn btn-xs btn-outline-secondary d-none">展开全部</button>
+          </div>
+          <div class="card-body py-2 px-3">
+            <div class="small text-muted mb-1">最新进展</div>
+            <div id="workLatestProgress" class="font-weight-bold mb-2" style="font-size: 14px;">-</div>
+            <ol id="workTrailList" class="trail-list"></ol>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" data-dismiss="modal">取消</button>
+        <button class="btn btn-primary" id="workSubmitBtn">确认提交</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="approvalWorkbenchInit" type="application/json">{{ {
+  'identities': [
+    (nav_user.id|string) if nav_user and nav_user.get('id') is not none else '',
+    (nav_user.username if nav_user else ''),
+    (nav_user.employee_no if nav_user else ''),
+    (approval_actor_id or '')
+  ]
+}|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/tom-select/tom-select.complete.min.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/enterprise_select.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/approval_center.js', v=static_version) }}"></script>
+{% endblock %}

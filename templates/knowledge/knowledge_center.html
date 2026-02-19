@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}知识中心 - DeepAudit Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h3 class="text-dark font-weight-bold">知识中心</h3>
+            <p class="text-muted mb-2">风险案例库、规则库、知识检索</p>
+            <div id="knowledgeFeedback" class="alert d-none py-2 px-3 mb-0"></div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="input-group">
+                <input type="text" class="form-control" id="searchQuery" placeholder="搜索知识...">
+                <div class="input-group-append">
+                    <button class="btn btn-primary" onclick="searchKnowledge()">搜索</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">风险案例库</h5>
+                </div>
+                <div class="card-body">
+                    <div id="casesList">
+                        <div class="text-muted text-center py-3">加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const ALERT_ICONS = {success:"ri-checkbox-circle-line",info:"ri-information-line",warning:"ri-error-warning-line",danger:"ri-close-circle-line"};
+
+    function showFeedback(type, msg) {
+        const box = document.getElementById("knowledgeFeedback");
+        const icon = ALERT_ICONS[type] || ALERT_ICONS.info;
+        box.className = `alert alert-${type} py-2 px-3 mb-0`;
+        box.innerHTML = `<span class="alert-icon"><i class="${icon}"></i></span><span class="alert-body">${msg}</span>`;
+        box.classList.remove("d-none");
+        setTimeout(() => box.classList.add("d-none"), 3000);
+    }
+
+    async function loadCases() {
+        try {
+            const res = await fetch("/api/knowledge/cases");
+            const data = await res.json();
+            if (data.ok) {
+                renderCases(data.cases);
+            }
+        } catch (e) {
+            console.error("加载案例失败", e);
+        }
+    }
+
+    function renderCases(cases) {
+        const list = document.getElementById("casesList");
+        if (!cases || cases.length === 0) {
+            list.innerHTML = '<div class="text-muted text-center py-3">暂无案例</div>';
+            return;
+        }
+        list.innerHTML = cases.map(c => `
+            <div class="card mb-2">
+                <div class="card-body">
+                    <h6>${c.case_code} - ${c.risk_type}</h6>
+                    <p class="mb-1">${c.description}</p>
+                    <small class="text-muted">解决方案: ${c.solution}</small>
+                    <div class="mt-2">
+                        ${(c.tags || []).map(t => `<span class="badge badge-secondary mr-1">${t}</span>`).join("")}
+                    </div>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    window.searchKnowledge = async function() {
+        const query = document.getElementById("searchQuery").value.trim();
+        if (!query) {
+            showFeedback("warning", "请输入搜索关键词");
+            return;
+        }
+        try {
+            const res = await fetch(`/api/knowledge/search?query=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            if (data.ok) {
+                renderSearchResults(data.results);
+            } else {
+                showFeedback("danger", data.msg || "搜索失败");
+            }
+        } catch (e) {
+            showFeedback("danger", "搜索失败: " + e.message);
+        }
+    };
+
+    function renderSearchResults(results) {
+        const list = document.getElementById("casesList");
+        if (!results || results.length === 0) {
+            list.innerHTML = '<div class="text-muted text-center py-3">未找到相关结果</div>';
+            return;
+        }
+        list.innerHTML = results.map(r => {
+            if (r.type === "risk_case") {
+                return `
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <span class="badge badge-info">案例</span>
+                            <h6>${r.case_code} - ${r.risk_type}</h6>
+                            <p class="mb-1">${r.description}</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <span class="badge badge-success">规则</span>
+                            <h6>${r.rule_name}</h6>
+                            <p class="mb-1">${r.rule_key}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }).join("");
+    }
+
+    document.getElementById("searchQuery").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") {
+            searchKnowledge();
+        }
+    });
+
+    loadCases();
+})();
+</script>
+{% endblock %}

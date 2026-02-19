@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}岗位管理 - 深度审计{% endblock %}
+{% block page_title %}岗位管理{% endblock %}
+
+{% block head %}
+<style>
+/* 与人员管理页面一致的字体与间距，提升可读性 */
+.position-admin .card-header {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  padding: 12px 16px;
+}
+.position-admin .card-body {
+  padding: 14px 16px;
+  font-size: 14px;
+}
+.position-admin .form-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.position-admin .form-inline label {
+  font-size: 14px;
+  color: #475569;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+.position-admin .form-control {
+  font-size: 14px;
+  padding: 8px 12px;
+  min-height: 38px;
+  min-width: 200px;
+}
+.position-admin .form-inline .btn {
+  font-size: 14px;
+  padding: 8px 16px;
+  white-space: nowrap;
+}
+.position-admin #positionMsg {
+  font-size: 14px;
+  color: #64748b;
+}
+.position-admin .card-header .badge {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 4px 10px;
+  margin-left: 8px;
+}
+.position-admin .table {
+  font-size: 14px;
+}
+.position-admin .table thead th {
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+  letter-spacing: 0.02em;
+}
+.position-admin .table tbody td {
+  vertical-align: middle;
+  padding: 12px 14px;
+  color: #1e293b;
+  line-height: 1.5;
+}
+.position-admin .table tbody tr:hover {
+  background-color: #f1f5f9;
+}
+.position-admin .table .badge {
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+.position-admin .table .btn {
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.position-admin .card-header .btn {
+  font-size: 14px;
+  padding: 8px 16px;
+}
+/* 优化表格列宽，减少右侧空白 */
+.position-admin .table {
+  table-layout: auto;
+  width: 100%;
+}
+.position-admin .table thead th:nth-child(1) { width: 70px; } /* ID */
+.position-admin .table thead th:nth-child(2) { min-width: 150px; } /* 岗位名称 */
+.position-admin .table thead th:nth-child(3) { width: 100px; } /* 状态 */
+.position-admin .table thead th:nth-child(4) { width: 160px; } /* 更新时间 */
+.position-admin .table thead th:nth-child(5) { width: 100px; } /* 操作 */
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid pb-3 position-admin">
+  <div class="card card-outline card-primary mb-3">
+    <div class="card-header"><strong>新增岗位</strong></div>
+    <div class="card-body">
+      <form id="createPositionForm" class="form-inline">
+        <label class="text-muted" for="newPositionName">岗位名称</label>
+        <input id="newPositionName" class="form-control" placeholder="例如：财务专员" required>
+        <button type="submit" class="btn btn-primary">新增</button>
+        <span id="positionMsg" class="text-muted"></span>
+      </form>
+    </div>
+  </div>
+
+  <div class="card card-outline card-secondary mb-0">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center">
+        <strong>岗位列表</strong>
+        <span id="positionCountBadge" class="badge badge-light">{{ positions|length }}</span>
+      </div>
+      <button id="reloadPositionsBtn" class="btn btn-outline-secondary">刷新</button>
+    </div>
+    <div class="card-body table-responsive p-0">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>岗位名称</th>
+            <th>状态</th>
+            <th>更新时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="positionsTableBody">
+          {% for position in positions %}
+          <tr data-position-id="{{ position.id }}">
+            <td>{{ position.id }}</td>
+            <td>{{ position.name or '-' }}</td>
+            <td>
+              {% if (position.status or '')|upper == 'ACTIVE' %}
+              <span class="badge badge-success">启用</span>
+              {% else %}
+              <span class="badge badge-secondary">禁用</span>
+              {% endif %}
+            </td>
+            <td>{{ position.updated_at or position.created_at or '-' }}</td>
+            <td>
+              {% if (position.status or '')|upper == 'ACTIVE' %}
+              <button type="button" class="btn btn-outline-danger js-position-disable" data-position-id="{{ position.id }}" data-position-name="{{ position.name or '' }}">禁用</button>
+              {% else %}
+              <button type="button" class="btn btn-outline-success js-position-enable" data-position-id="{{ position.id }}" data-position-name="{{ position.name or '' }}">启用</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const body = document.getElementById("positionsTableBody");
+  const form = document.getElementById("createPositionForm");
+  const nameInput = document.getElementById("newPositionName");
+  const reloadBtn = document.getElementById("reloadPositionsBtn");
+  const msg = document.getElementById("positionMsg");
+  const countBadge = document.getElementById("positionCountBadge");
+
+  let state = {
+    positions: Array.isArray({{ positions | tojson }}) ? {{ positions | tojson }} : [],
+  };
+
+  function setMessage(text, isError = false) {
+    if (!msg) return;
+    msg.textContent = String(text || "");
+    msg.className = isError ? "text-danger" : "text-muted";
+  }
+
+  function escapeHtml(v) {
+    const s = String(v ?? "");
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function statusBadge(status) {
+    const n = String(status || "").trim().toUpperCase();
+    if (n === "ACTIVE") return '<span class="badge badge-success">启用</span>';
+    return '<span class="badge badge-secondary">禁用</span>';
+  }
+
+  function renderRows() {
+    if (!body) return;
+    if (!state.positions.length) {
+      body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">暂无岗位</td></tr>';
+      if (countBadge) countBadge.textContent = "0";
+      return;
+    }
+    const rows = state.positions.map((p) => {
+      const id = p.id;
+      const name = escapeHtml(p.name || "-");
+      const status = p.status || "ACTIVE";
+      const updated = p.updated_at || p.created_at || "-";
+      const isDisabled = String(status).toUpperCase() === "DISABLED";
+      const actionBtn = isDisabled
+        ? "<button type=\"button\" class=\"btn btn-outline-success js-position-enable\" data-position-id=\"" + id + "\" data-position-name=\"" + escapeHtml(p.name || "") + "\">启用</button>"
+        : "<button type=\"button\" class=\"btn btn-outline-danger js-position-disable\" data-position-id=\"" + id + "\" data-position-name=\"" + escapeHtml(p.name || "") + "\">禁用</button>";
+      return (
+        "<tr data-position-id=\"" + id + "\">" +
+        "<td>" + id + "</td>" +
+        "<td>" + name + "</td>" +
+        "<td>" + statusBadge(status) + "</td>" +
+        "<td>" + escapeHtml(updated) + "</td>" +
+        "<td>" + actionBtn + "</td></tr>"
+      );
+    });
+    body.innerHTML = rows.join("");
+    if (countBadge) countBadge.textContent = String(state.positions.length);
+  }
+
+  async function loadPositions() {
+    try {
+      const r = await fetch("/api/admin/positions?include_disabled=1", { headers: { Accept: "application/json" } });
+      const data = await r.json();
+      if (data && data.ok && Array.isArray(data.positions)) {
+        state.positions = data.positions;
+        renderRows();
+      }
+    } catch (e) {
+      setMessage("加载失败：" + (e && e.message), true);
+    }
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = (nameInput && nameInput.value || "").trim();
+    if (!name) {
+      setMessage("请输入岗位名称", true);
+      return;
+    }
+    setMessage("提交中...");
+    try {
+      const res = await fetch("/api/admin/positions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ name: name }),
+      });
+      const data = await res.json();
+      if (data && data.ok && data.position) {
+        state.positions = state.positions || [];
+        if (!state.positions.some((p) => p.id === data.position.id)) {
+          state.positions.push(data.position);
+        }
+        renderRows();
+        if (nameInput) nameInput.value = "";
+        setMessage("已新增");
+        setTimeout(() => setMessage(""), 2000);
+      } else {
+        setMessage(data && data.message ? data.message : "新增失败（可能已存在同名岗位）", true);
+      }
+    } catch (err) {
+      setMessage("请求失败：" + (err && err.message), true);
+    }
+  });
+
+  reloadBtn.addEventListener("click", loadPositions);
+
+  body.addEventListener("click", async (e) => {
+    const disableBtn = e.target && e.target.closest && e.target.closest(".js-position-disable");
+    const enableBtn = e.target && e.target.closest && e.target.closest(".js-position-enable");
+    const btn = disableBtn || enableBtn;
+    if (!btn) return;
+    const id = parseInt(btn.getAttribute("data-position-id"), 10);
+    const name = btn.getAttribute("data-position-name") || "";
+    if (!id) return;
+    const isEnable = !!enableBtn;
+    const action = isEnable ? "启用" : "禁用";
+    const url = isEnable ? "/api/admin/positions/" + id + "/enable" : "/api/admin/positions/" + id + "/disable";
+    if (!window.confirm("确定要" + action + "岗位「" + (name || id) + "」吗？")) return;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: "{}",
+      });
+      const data = await res.json();
+      if (data && data.ok && data.position) {
+        const idx = state.positions.findIndex((p) => p.id === id);
+        if (idx >= 0) state.positions[idx] = data.position;
+        renderRows();
+      } else {
+        alert(data && data.message ? data.message : action + "失败");
+      }
+    } catch (err) {
+      alert("请求失败：" + (err && err.message));
+    }
+  });
+
+  renderRows();
+})();
+</script>
+{% endblock %}

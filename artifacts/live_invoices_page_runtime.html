@@ -1,0 +1,4207 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="x">
+    <title>凭证台账中心 - DeepAudit_Pro</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="/static/css/custom.css">
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-bs4@1.13.8/css/dataTables.bootstrap4.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css">
+
+</head>
+
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav">
+            <li class="nav-item d-none d-sm-inline-block">
+                <span class="nav-link topbar-system-title">广州特色财务风控管理系统</span>
+            </li>
+        </ul>
+
+        <ul class="navbar-nav ml-auto">
+            <li class="nav-item dropdown user-menu-dropdown">
+                <a href="#" class="nav-link d-flex align-items-center" data-toggle="dropdown" style="padding: 0 12px; height: 100%;">
+                    <img src="/static/dist/img/user2-160x160.jpg" class="user-avatar-sm" alt="User" onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name=%E6%9D%8E%E6%98%8E&background=1f78ff&color=fff&size=96';">
+                    <span class="d-none d-md-inline ml-2 text-dark font-weight-medium">李明</span>
+                </a>
+
+                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right ant-dropdown-menu">
+                    <div class="dropdown-header text-center border-bottom bg-light-subtle">
+                        <div class="font-weight-bold text-dark">finance_manager</div>
+                        <div class="small text-muted">财务部</div>
+                    </div>
+
+                    <a href="/profile" class="dropdown-item ant-dropdown-item">
+                        <i class="ri-user-settings-line mr-2"></i> 个人中心
+                    </a>
+                    <a href="/profile" class="dropdown-item ant-dropdown-item">
+                        <i class="ri-lock-password-line mr-2"></i> 修改密码
+                    </a>
+                    <a href="/settings" class="dropdown-item ant-dropdown-item">
+                        <i class="ri-settings-3-line mr-2"></i> 系统设置
+                    </a>
+
+                    <div class="dropdown-divider"></div>
+
+                    <a href="/logout" class="dropdown-item ant-dropdown-item text-danger">
+                        <i class="ri-logout-box-r-line mr-2"></i> 退出登录
+                    </a>
+                </div>
+            </li>
+        </ul>
+    </nav>
+
+    <aside class="main-sidebar sidebar-container d-flex flex-column">
+        <button id="sidebarToggleBtn" class="sidebar-toggle-btn" type="button" aria-label="切换侧边栏" aria-expanded="true">
+            <i class="fas fa-bars" aria-hidden="true"></i>
+        </button>
+
+        <div class="brand-link sidebar-logo">
+            <span class="brand-text">
+                <strong>DeepAudit</strong> Pro
+            </span>
+        </div>
+
+        <div class="sidebar flex-grow-1">
+            <nav class="mt-3">
+                <ul class="nav nav-pills nav-sidebar flex-column sidebar-groups" role="menu">
+                    
+                    <li
+                        class="nav-item sidebar-group is-open"
+                        data-group-key="biz_ops"
+                        data-open-default="1"
+                    >
+                        <button type="button" class="sidebar-group-toggle" aria-expanded="true">
+                            <i class="ri-arrow-right-s-line sidebar-group-arrow" aria-hidden="true"></i>
+                            <span class="sidebar-group-title">业务运营</span>
+                        </button>
+                        <ul class="nav nav-pills flex-column sidebar-submenu">
+                            
+                            <li class="nav-item">
+                                <a href="/dashboard" class="nav-link menu-item sidebar-submenu-link ">
+                                    <i class="nav-icon fas fa-th-large"></i>
+                                    <p>管理总览</p>
+                                </a>
+                            </li>
+                            
+                            
+                            <li class="nav-item">
+                                <a href="/upload" class="nav-link menu-item sidebar-submenu-link ">
+                                    <i class="nav-icon fas fa-edit"></i>
+                                    <p>费用报销受理</p>
+                                </a>
+                            </li>
+                            
+                            
+                            <li class="nav-item">
+                                <a href="/invoices_page" class="nav-link menu-item sidebar-submenu-link active">
+                                    <i class="nav-icon fas fa-file-invoice-dollar"></i>
+                                    <p>凭证台账中心</p>
+                                </a>
+                            </li>
+                            
+                        </ul>
+                    </li>
+                    
+
+                    
+                    <li
+                        class="nav-item sidebar-group "
+                        data-group-key="risk_approval"
+                        data-open-default="0"
+                    >
+                        <button type="button" class="sidebar-group-toggle" aria-expanded="false">
+                            <i class="ri-arrow-right-s-line sidebar-group-arrow" aria-hidden="true"></i>
+                            <span class="sidebar-group-title">风险与审批</span>
+                        </button>
+                        <ul class="nav nav-pills flex-column sidebar-submenu">
+                            
+                            <li class="nav-item">
+                                <a href="/invoices_page?focus=risk" class="nav-link menu-item sidebar-submenu-link ">
+                                    <i class="nav-icon fas fa-shield-alt"></i>
+                                    <p>风险中心（事件/案件入口）</p>
+                                </a>
+                            </li>
+                            
+                            
+                            <li class="nav-item">
+                                <a href="/approval_center" class="nav-link menu-item sidebar-submenu-link ">
+                                    <i class="nav-icon fas fa-user-check"></i>
+                                    <p>审批管理</p>
+                                </a>
+                            </li>
+                            
+                            
+                            <li class="nav-item">
+                                <a href="/workflow" class="nav-link menu-item sidebar-submenu-link ">
+                                    <i class="nav-icon fas fa-project-diagram"></i>
+                                    <p>审批流程管理</p>
+                                </a>
+                            </li>
+                            
+                        </ul>
+                    </li>
+                    
+
+                    
+
+                    
+
+                    
+                    <li
+                        class="nav-item sidebar-group "
+                        data-group-key="sys_monitor"
+                        data-open-default="0"
+                    >
+                        <button type="button" class="sidebar-group-toggle" aria-expanded="false">
+                            <i class="ri-arrow-right-s-line sidebar-group-arrow" aria-hidden="true"></i>
+                            <span class="sidebar-group-title">系统监控</span>
+                        </button>
+                        <ul class="nav nav-pills flex-column sidebar-submenu">
+                            
+                            <li class="nav-item">
+                                <a href="/dashboard?section=monitor" class="nav-link menu-item sidebar-submenu-link ">
+                                    <i class="nav-icon fas fa-chart-line"></i>
+                                    <p>系统监控</p>
+                                </a>
+                            </li>
+                            
+                            
+                        </ul>
+                    </li>
+                    
+                </ul>
+            </nav>
+        </div>
+
+        <div class="sidebar-footer mt-auto text-center"><small>Copyright © 2026 画画</small></div>
+    </aside>
+
+    <div class="content-wrapper">
+        
+        
+
+        <section class="content">
+            
+
+
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row mb-2">
+      <div class="col-sm-6">
+        <h1 class="m-0">凭证台账中心</h1>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-right">
+          <li class="breadcrumb-item"><a href="/dashboard">管理总览</a></li>
+          <li class="breadcrumb-item active">凭证台账中心</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="content">
+  <div class="container-fluid">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title">费用合规中心 · 凭证台账</h3>
+      </div>
+
+      <div class="card-body">
+        <div class="query-panel">
+          <div class="query-panel-head">
+            <div class="query-panel-title">企业级筛选控制台</div>
+            <div class="query-panel-meta">主要筛选 + 高级筛选</div>
+          </div>
+          <form id="ledgerSearchForm" class="ledger-search-form">
+            <div class="form-row query-main-row">
+              <div class="form-group col-lg-4 col-md-6">
+                <label for="dateStart">日期范围</label>
+                <div class="ledger-range">
+                  <input id="dateStart" type="date" class="form-control form-control-sm">
+                  <span class="ledger-range-sep">至</span>
+                  <input id="dateEnd" type="date" class="form-control form-control-sm">
+                </div>
+              </div>
+
+              <div class="form-group col-lg-3 col-md-6">
+                <label for="invoiceIdFilter">单据编号</label>
+                <input id="invoiceIdFilter" type="text" class="form-control form-control-sm" placeholder="输入单据编号">
+              </div>
+
+              <div class="form-group col-lg-2 col-md-4">
+                <label for="statusFilter">状态</label>
+                <select id="statusFilter" class="custom-select custom-select-sm">
+                  <option value="">全部状态</option>
+                  <option value="PENDING">待复核</option>
+                  <option value="APPROVED">已通过</option>
+                  <option value="REJECTED">已驳回</option>
+                </select>
+              </div>
+
+              <div class="form-group col-lg-3 col-md-8 query-actions">
+                <button type="submit" class="btn btn-primary btn-sm">
+                  <i class="fas fa-search mr-1"></i>查询
+                </button>
+                <button id="btnResetFilters" type="button" class="btn btn-light btn-sm">
+                  <i class="fas fa-sync-alt mr-1"></i>重置
+                </button>
+              </div>
+            </div>
+
+            <div class="advanced-filter-toggle">
+              <button
+                id="btnToggleAdvanced"
+                type="button"
+                class="btn btn-link btn-sm p-0"
+                data-toggle="collapse"
+                data-target="#advancedFilters"
+                aria-expanded="false"
+                aria-controls="advancedFilters"
+              >
+                <i class="fas fa-sliders-h mr-1"></i><span id="advancedToggleText">展开高级筛选</span>
+              </button>
+            </div>
+
+            <div class="collapse" id="advancedFilters">
+              <div class="form-row query-advanced-row mt-2">
+                <div class="form-group col-lg-3 col-md-6">
+                  <label for="vendorFilter">供应商</label>
+                  <input id="vendorFilter" type="text" class="form-control form-control-sm" placeholder="输入供应商名称">
+                </div>
+
+                <div class="form-group col-lg-3 col-md-6">
+                  <label for="amountMin">金额区间（CNY）</label>
+                  <div class="ledger-range">
+                    <input id="amountMin" type="number" step="0.01" class="form-control form-control-sm" placeholder="最小值">
+                    <span class="ledger-range-sep">至</span>
+                    <input id="amountMax" type="number" step="0.01" class="form-control form-control-sm" placeholder="最大值">
+                  </div>
+                </div>
+
+                <div class="form-group col-lg-3 col-md-6">
+                  <label for="applicantFilter">报销人</label>
+                  <input id="applicantFilter" type="text" class="form-control form-control-sm" placeholder="输入报销人">
+                </div>
+
+                <div class="form-group col-lg-3 col-md-6">
+                  <label for="departmentFilter">部门</label>
+                  <input id="departmentFilter" type="text" class="form-control form-control-sm" placeholder="输入部门">
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="table-toolbar">
+          <a href="/upload" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus mr-1"></i>新增
+          </a>
+          <a href="/export" class="btn btn-success btn-sm">
+            <i class="ri-file-excel-2-line mr-1"></i>导出 Excel
+          </a>
+        </div>
+        <div id="ledgerFeedback" class="alert d-none py-2 px-3 mt-2 mb-0" role="alert"></div>
+
+        <div class="table-responsive">
+          <table id="invoiceTable" class="table table-hover">
+            <thead>
+              <tr>
+                <th>单据编号</th>
+                <th>开票日期</th>
+                <th>报销人</th>
+                <th>部门</th>
+                <th>供应商/商户</th>
+                <th>费用类别</th>
+                <th class="text-right">金额 (CNY)</th>
+                <th class="text-center">风险等级</th>
+                <th>风险研判说明</th>
+                <th class="text-center">AI风控判级</th>
+                <th class="text-center">审批状态</th>
+                <th class="text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="100"
+                data-filename="test_invoice_98c5e437.png"
+                data-date="2026-02-16"
+                data-amount="¥860.00"
+                data-status="PENDING"
+                data-risk="HIGH"
+                data-risk-reason="超限（金额 &gt; 住宿限额）"
+                data-ai-risk="MEDIUM"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="未发现明显汇率套利特征"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="李明"
+                data-department="财务部"
+                data-vendor="Regression Hotel"
+                data-category="Travel"
+                data-merchant="Regression Hotel"
+                data-item="Travel"
+              >
+                <td>
+  
+  
+  
+  
+    <span>100</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-02-16</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>李明</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>Regression Hotel</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>Travel</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥860.00">
+  
+  
+  
+  
+    <span>860.00</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-high">高风险</span>
+                  
+                </td>
+                <td class="risk-note" title="超限（金额 &gt; 住宿限额）">
+  
+  
+  
+  
+    <span>超限（金额 &gt; 住宿限额）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-medium">中风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-pending">待复核</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="100"
+                      data-filename="test_invoice_98c5e437.png"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="100"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="79"
+                data-filename="test_invoice_83fed169.png"
+                data-date="2026-02-16"
+                data-amount="¥860.00"
+                data-status="PENDING"
+                data-risk="HIGH"
+                data-risk-reason="超限（金额 &gt; 住宿限额）"
+                data-ai-risk="MEDIUM"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="未发现明显汇率套利特征"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="李明"
+                data-department="财务部"
+                data-vendor="Regression Hotel"
+                data-category="Travel"
+                data-merchant="Regression Hotel"
+                data-item="Travel"
+              >
+                <td>
+  
+  
+  
+  
+    <span>79</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-02-16</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>李明</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>Regression Hotel</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>Travel</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥860.00">
+  
+  
+  
+  
+    <span>860.00</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-high">高风险</span>
+                  
+                </td>
+                <td class="risk-note" title="超限（金额 &gt; 住宿限额）">
+  
+  
+  
+  
+    <span>超限（金额 &gt; 住宿限额）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-medium">中风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-pending">待复核</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="79"
+                      data-filename="test_invoice_83fed169.png"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="79"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="75"
+                data-filename="test_invoice_usd_a6b38ea5.png"
+                data-date="2026-02-02"
+                data-amount="¥232.00"
+                data-status="PENDING"
+                data-risk="LOW"
+                data-risk-reason="正常（未触发阈值）"
+                data-ai-risk="HIGH"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="未发现明显汇率套利特征"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="林涛"
+                data-department="财务部"
+                data-vendor="33"
+                data-category="-"
+                data-merchant="33"
+                data-item="-"
+              >
+                <td>
+  
+  
+  
+  
+    <span>75</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-02-02</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>林涛</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>33</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥232.00">
+  
+  
+  
+  
+    <span>232.00</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-low">低风险</span>
+                  
+                </td>
+                <td class="risk-note" title="正常（未触发阈值）">
+  
+  
+  
+  
+    <span>正常（未触发阈值）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-high">高风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-pending">待复核</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="75"
+                      data-filename="test_invoice_usd_a6b38ea5.png"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="75"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="71"
+                data-filename="test_invoice_usd_3122e979.png"
+                data-date="2026-02-15"
+                data-amount="-"
+                data-status="PENDING"
+                data-risk="MEDIUM"
+                data-risk-reason="信息缺失（金额或日期为空）"
+                data-ai-risk="MEDIUM"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="缺少金额或币种，跳过汇率套利检查"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="林涛"
+                data-department="财务部"
+                data-vendor="-"
+                data-category="-"
+                data-merchant="-"
+                data-item="-"
+              >
+                <td>
+  
+  
+  
+  
+    <span>71</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-02-15</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>林涛</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="-">
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-medium">中风险</span>
+                  
+                </td>
+                <td class="risk-note" title="信息缺失（金额或日期为空）">
+  
+  
+  
+  
+    <span>信息缺失（金额或日期为空）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-medium">中风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-pending">待复核</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="71"
+                      data-filename="test_invoice_usd_3122e979.png"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="71"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="70"
+                data-filename="test_invoice_usd_6793cde0.png"
+                data-date="2026-02-02"
+                data-amount="¥232.00"
+                data-status="PENDING"
+                data-risk="LOW"
+                data-risk-reason="正常（未触发阈值）"
+                data-ai-risk="MEDIUM"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="未发现明显汇率套利特征"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="林涛"
+                data-department="财务部"
+                data-vendor="33"
+                data-category="住宿"
+                data-merchant="33"
+                data-item="住宿"
+              >
+                <td>
+  
+  
+  
+  
+    <span>70</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-02-02</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>林涛</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>33</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>住宿</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥232.00">
+  
+  
+  
+  
+    <span>232.00</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-low">低风险</span>
+                  
+                </td>
+                <td class="risk-note" title="正常（未触发阈值）">
+  
+  
+  
+  
+    <span>正常（未触发阈值）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-medium">中风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-pending">待复核</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="70"
+                      data-filename="test_invoice_usd_6793cde0.png"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="70"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="69"
+                data-filename="test_invoice_usd_d5e744bc.png"
+                data-date="2026-02-15"
+                data-amount="-"
+                data-status="PENDING"
+                data-risk="MEDIUM"
+                data-risk-reason="信息缺失（金额或日期为空）"
+                data-ai-risk="HIGH"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="缺少金额或币种，跳过汇率套利检查"
+                data-manual-rate="7.6"
+                data-manual-cny="-"
+                data-applicant="林涛"
+                data-department="财务部"
+                data-vendor="-"
+                data-category="-"
+                data-merchant="-"
+                data-item="-"
+              >
+                <td>
+  
+  
+  
+  
+    <span>69</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-02-15</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>林涛</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="-">
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-medium">中风险</span>
+                  
+                </td>
+                <td class="risk-note" title="信息缺失（金额或日期为空）">
+  
+  
+  
+  
+    <span>信息缺失（金额或日期为空）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-high">高风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-pending">待复核</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="69"
+                      data-filename="test_invoice_usd_d5e744bc.png"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="69"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="68"
+                data-filename="test_invoice_usd_57cc9a78.png"
+                data-date="2026-02-15"
+                data-amount="-"
+                data-status="PENDING"
+                data-risk="MEDIUM"
+                data-risk-reason="信息缺失（金额或日期为空）"
+                data-ai-risk="HIGH"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="缺少金额或币种，跳过汇率套利检查"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="林涛"
+                data-department="财务部"
+                data-vendor="-"
+                data-category="-"
+                data-merchant="-"
+                data-item="-"
+              >
+                <td>
+  
+  
+  
+  
+    <span>68</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-02-15</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>林涛</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="-">
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-medium">中风险</span>
+                  
+                </td>
+                <td class="risk-note" title="信息缺失（金额或日期为空）">
+  
+  
+  
+  
+    <span>信息缺失（金额或日期为空）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-high">高风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-pending">待复核</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="68"
+                      data-filename="test_invoice_usd_57cc9a78.png"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="68"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="66"
+                data-filename="test_invoice_usd_4fd8b626.png"
+                data-date="2026-02-02"
+                data-amount="¥112.00"
+                data-status="PENDING"
+                data-risk="LOW"
+                data-risk-reason="正常（未触发阈值）"
+                data-ai-risk="HIGH"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="未发现明显汇率套利特征"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="张三"
+                data-department="财务部"
+                data-vendor="222"
+                data-category="餐饮"
+                data-merchant="222"
+                data-item="餐饮"
+              >
+                <td>
+  
+  
+  
+  
+    <span>66</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-02-02</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>张三</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>222</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>餐饮</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥112.00">
+  
+  
+  
+  
+    <span>112.00</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-low">低风险</span>
+                  
+                </td>
+                <td class="risk-note" title="正常（未触发阈值）">
+  
+  
+  
+  
+    <span>正常（未触发阈值）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-high">高风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-pending">待复核</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="66"
+                      data-filename="test_invoice_usd_4fd8b626.png"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="66"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="65"
+                data-filename="test_invoice_usd_1c065d4f.png"
+                data-date=""
+                data-amount="-"
+                data-status="PENDING"
+                data-risk="MEDIUM"
+                data-risk-reason="信息缺失（金额或日期为空）"
+                data-ai-risk="-"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="缺少金额或币种，跳过汇率套利检查"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="张三"
+                data-department="财务部"
+                data-vendor="-"
+                data-category="-"
+                data-merchant="-"
+                data-item="-"
+              >
+                <td>
+  
+  
+  
+  
+    <span>65</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>张三</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="-">
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-medium">中风险</span>
+                  
+                </td>
+                <td class="risk-note" title="信息缺失（金额或日期为空）">
+  
+  
+  
+  
+    <span>信息缺失（金额或日期为空）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-neutral">待判定</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-pending">待复核</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="65"
+                      data-filename="test_invoice_usd_1c065d4f.png"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="65"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="61"
+                data-filename="missing-key-test_e1146494.pdf"
+                data-date="2026-02-15"
+                data-amount="¥10.00"
+                data-status="APPROVED"
+                data-risk="LOW"
+                data-risk-reason="正常（未触发阈值）"
+                data-ai-risk="HIGH"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="未发现明显汇率套利特征"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="张三"
+                data-department="财务部"
+                data-vendor="Vendor X"
+                data-category="-"
+                data-merchant="Vendor X"
+                data-item="-"
+              >
+                <td>
+  
+  
+  
+  
+    <span>61</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-02-15</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>张三</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>Vendor X</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥10.00">
+  
+  
+  
+  
+    <span>10.00</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-low">低风险</span>
+                  
+                </td>
+                <td class="risk-note" title="正常（未触发阈值）">
+  
+  
+  
+  
+    <span>正常（未触发阈值）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-high">高风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-approved">已通过</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="61"
+                      data-filename="missing-key-test_e1146494.pdf"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="61"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="60"
+                data-filename="session-enforced_1c91d342.pdf"
+                data-date="2026-02-15"
+                data-amount="¥88.66"
+                data-status="REJECTED"
+                data-risk="LOW"
+                data-risk-reason="正常（未触发阈值）"
+                data-ai-risk="HIGH"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="未发现明显汇率套利特征"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="张三"
+                data-department="财务部"
+                data-vendor="Vendor X"
+                data-category="-"
+                data-merchant="Vendor X"
+                data-item="-"
+              >
+                <td>
+  
+  
+  
+  
+    <span>60</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-02-15</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>张三</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>Vendor X</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥88.66">
+  
+  
+  
+  
+    <span>88.66</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-low">低风险</span>
+                  
+                </td>
+                <td class="risk-note" title="正常（未触发阈值）">
+  
+  
+  
+  
+    <span>正常（未触发阈值）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-high">高风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-rejected">已驳回</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="60"
+                      data-filename="session-enforced_1c91d342.pdf"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="60"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="58"
+                data-filename="test_invoice_85e1c07c.png"
+                data-date="2026-02-15"
+                data-amount="¥100.50"
+                data-status="REJECTED"
+                data-risk="LOW"
+                data-risk-reason="正常（未触发阈值）"
+                data-ai-risk="HIGH"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="未发现明显汇率套利特征"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="张三"
+                data-department="财务部"
+                data-vendor="-"
+                data-category="-"
+                data-merchant="-"
+                data-item="-"
+              >
+                <td>
+  
+  
+  
+  
+    <span>58</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-02-15</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>张三</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥100.50">
+  
+  
+  
+  
+    <span>100.50</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-low">低风险</span>
+                  
+                </td>
+                <td class="risk-note" title="正常（未触发阈值）">
+  
+  
+  
+  
+    <span>正常（未触发阈值）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-high">高风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-rejected">已驳回</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="58"
+                      data-filename="test_invoice_85e1c07c.png"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="58"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="57"
+                data-filename="test_invoice_usd_493e5377.png"
+                data-date=""
+                data-amount="-"
+                data-status="APPROVED"
+                data-risk="MEDIUM"
+                data-risk-reason="信息缺失（金额或日期为空）"
+                data-ai-risk="-"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="缺少金额或币种，跳过汇率套利检查"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="李明"
+                data-department="财务部"
+                data-vendor="-"
+                data-category="-"
+                data-merchant="-"
+                data-item="-"
+              >
+                <td>
+  
+  
+  
+  
+    <span>57</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>李明</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="-">
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-medium">中风险</span>
+                  
+                </td>
+                <td class="risk-note" title="信息缺失（金额或日期为空）">
+  
+  
+  
+  
+    <span>信息缺失（金额或日期为空）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-neutral">待判定</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-approved">已通过</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="57"
+                      data-filename="test_invoice_usd_493e5377.png"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="57"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="54"
+                data-filename="jpg_e3296cd5.jpg"
+                data-date=""
+                data-amount="-"
+                data-status="REJECTED"
+                data-risk="MEDIUM"
+                data-risk-reason="信息缺失（金额或日期为空）"
+                data-ai-risk="-"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="缺少金额或币种，跳过汇率套利检查"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="李明"
+                data-department="财务部"
+                data-vendor="-"
+                data-category="-"
+                data-merchant="-"
+                data-item="-"
+              >
+                <td>
+  
+  
+  
+  
+    <span>54</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>李明</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="-">
+  
+  
+  
+  
+    <span class="cell-empty">&ndash;</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-medium">中风险</span>
+                  
+                </td>
+                <td class="risk-note" title="信息缺失（金额或日期为空）">
+  
+  
+  
+  
+    <span>信息缺失（金额或日期为空）</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-neutral">待判定</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-rejected">已驳回</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="54"
+                      data-filename="jpg_e3296cd5.jpg"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="54"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="48"
+                data-filename="mock_invoice_20260114_048.jpg"
+                data-date="2026-01-14"
+                data-amount="¥141.76"
+                data-status="APPROVED"
+                data-risk="LOW"
+                data-risk-reason="金额在限额内，未触发规则风险"
+                data-ai-risk="LOW"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="-"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="李芳"
+                data-department="财务部"
+                data-vendor="滴滴出行"
+                data-category="出差市内交通费"
+                data-merchant="滴滴出行"
+                data-item="出差市内交通费"
+              >
+                <td>
+  
+  
+  
+  
+    <span>48</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-01-14</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>李芳</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>滴滴出行</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>出差市内交通费</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥141.76">
+  
+  
+  
+  
+    <span>141.76</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-low">低风险</span>
+                  
+                </td>
+                <td class="risk-note" title="金额在限额内，未触发规则风险">
+  
+  
+  
+  
+    <span>金额在限额内，未触发规则风险</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-low">低风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-approved">已通过</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="48"
+                      data-filename="mock_invoice_20260114_048.jpg"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="48"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="46"
+                data-filename="mock_invoice_20260210_046.jpg"
+                data-date="2026-02-10"
+                data-amount="¥1,993.98"
+                data-status="APPROVED"
+                data-risk="HIGH"
+                data-risk-reason="住宿限额超标：金额 1993.98 &gt; 限额 500"
+                data-ai-risk="LOW"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="-"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="高磊"
+                data-department="财务部"
+                data-vendor="广州琶洲会展商务酒店"
+                data-category="标准间住宿费"
+                data-merchant="广州琶洲会展商务酒店"
+                data-item="标准间住宿费"
+              >
+                <td>
+  
+  
+  
+  
+    <span>46</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-02-10</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>高磊</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>广州琶洲会展商务酒店</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>标准间住宿费</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥1,993.98">
+  
+  
+  
+  
+    <span>1,993.98</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-high">高风险</span>
+                  
+                </td>
+                <td class="risk-note" title="住宿限额超标：金额 1993.98 &gt; 限额 500">
+  
+  
+  
+  
+    <span>住宿限额超标：金额 1993.98 &gt; 限额 500</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-low">低风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-approved">已通过</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="46"
+                      data-filename="mock_invoice_20260210_046.jpg"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="46"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="43"
+                data-filename="mock_invoice_20260211_043.jpg"
+                data-date="2026-02-11"
+                data-amount="¥1,199.21"
+                data-status="APPROVED"
+                data-risk="HIGH"
+                data-risk-reason="住宿限额超标：金额 1199.21 &gt; 限额 500"
+                data-ai-risk="LOW"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="-"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="何健"
+                data-department="财务部"
+                data-vendor="广州天河希尔顿酒店"
+                data-category="豪华大床房 1 晚"
+                data-merchant="广州天河希尔顿酒店"
+                data-item="豪华大床房 1 晚"
+              >
+                <td>
+  
+  
+  
+  
+    <span>43</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-02-11</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>何健</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>广州天河希尔顿酒店</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>豪华大床房 1 晚</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥1,199.21">
+  
+  
+  
+  
+    <span>1,199.21</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-high">高风险</span>
+                  
+                </td>
+                <td class="risk-note" title="住宿限额超标：金额 1199.21 &gt; 限额 500">
+  
+  
+  
+  
+    <span>住宿限额超标：金额 1199.21 &gt; 限额 500</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-low">低风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-approved">已通过</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="43"
+                      data-filename="mock_invoice_20260211_043.jpg"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="43"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="36"
+                data-filename="mock_invoice_20260129_036.jpg"
+                data-date="2026-01-29"
+                data-amount="¥317.86"
+                data-status="APPROVED"
+                data-risk="LOW"
+                data-risk-reason="金额在限额内，未触发规则风险"
+                data-ai-risk="HIGH"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="-"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="陈工"
+                data-department="财务部"
+                data-vendor="星彩娱乐会所"
+                data-category="娱乐项目综合服务费"
+                data-merchant="星彩娱乐会所"
+                data-item="娱乐项目综合服务费"
+              >
+                <td>
+  
+  
+  
+  
+    <span>36</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-01-29</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>陈工</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>星彩娱乐会所</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>娱乐项目综合服务费</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥317.86">
+  
+  
+  
+  
+    <span>317.86</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-low">低风险</span>
+                  
+                </td>
+                <td class="risk-note" title="金额在限额内，未触发规则风险">
+  
+  
+  
+  
+    <span>金额在限额内，未触发规则风险</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-high">高风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-approved">已通过</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="36"
+                      data-filename="mock_invoice_20260129_036.jpg"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="36"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="30"
+                data-filename="mock_invoice_20260119_030.jpg"
+                data-date="2026-01-19"
+                data-amount="¥2,449.70"
+                data-status="REJECTED"
+                data-risk="HIGH"
+                data-risk-reason="住宿限额超标：金额 2449.70 &gt; 限额 500"
+                data-ai-risk="LOW"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="-"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="陈工"
+                data-department="财务部"
+                data-vendor="华住会-全季酒店"
+                data-category="商务住宿费"
+                data-merchant="华住会-全季酒店"
+                data-item="商务住宿费"
+              >
+                <td>
+  
+  
+  
+  
+    <span>30</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-01-19</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>陈工</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>华住会-全季酒店</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>商务住宿费</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥2,449.70">
+  
+  
+  
+  
+    <span>2,449.70</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-high">高风险</span>
+                  
+                </td>
+                <td class="risk-note" title="住宿限额超标：金额 2449.70 &gt; 限额 500">
+  
+  
+  
+  
+    <span>住宿限额超标：金额 2449.70 &gt; 限额 500</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-low">低风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-rejected">已驳回</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="30"
+                      data-filename="mock_invoice_20260119_030.jpg"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="30"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="23"
+                data-filename="mock_invoice_20251130_023.jpg"
+                data-date="2025-11-30"
+                data-amount="¥2,206.83"
+                data-status="REJECTED"
+                data-risk="HIGH"
+                data-risk-reason="住宿限额超标：金额 2206.83 &gt; 限额 500"
+                data-ai-risk="LOW"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="-"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="朱琳"
+                data-department="财务部"
+                data-vendor="顺丰速运"
+                data-category="合同资料寄送"
+                data-merchant="顺丰速运"
+                data-item="合同资料寄送"
+              >
+                <td>
+  
+  
+  
+  
+    <span>23</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2025-11-30</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>朱琳</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>顺丰速运</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>合同资料寄送</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥2,206.83">
+  
+  
+  
+  
+    <span>2,206.83</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-high">高风险</span>
+                  
+                </td>
+                <td class="risk-note" title="住宿限额超标：金额 2206.83 &gt; 限额 500">
+  
+  
+  
+  
+    <span>住宿限额超标：金额 2206.83 &gt; 限额 500</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-low">低风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-rejected">已驳回</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="23"
+                      data-filename="mock_invoice_20251130_023.jpg"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="23"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+              
+              
+              
+              
+              
+              <tr
+                data-id="7"
+                data-filename="mock_invoice_20260103_007.jpg"
+                data-date="2026-01-03"
+                data-amount="¥2,037.37"
+                data-status="APPROVED"
+                data-risk="HIGH"
+                data-risk-reason="住宿限额超标：金额 2037.37 &gt; 限额 500"
+                data-ai-risk="LOW"
+                data-currency="CNY"
+                data-fx-flag="0"
+                data-fx-reason="-"
+                data-manual-rate="-"
+                data-manual-cny="-"
+                data-applicant="周强"
+                data-department="财务部"
+                data-vendor="携程商旅"
+                data-category="差旅预订服务费"
+                data-merchant="携程商旅"
+                data-item="差旅预订服务费"
+              >
+                <td>
+  
+  
+  
+  
+    <span>7</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>2026-01-03</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>周强</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>财务部</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>携程商旅</span>
+  </td>
+                <td>
+  
+  
+  
+  
+    <span>差旅预订服务费</span>
+  </td>
+                <td class="text-right ledger-amount font-financial js-financial-amount" data-money="¥2,037.37">
+  
+  
+  
+  
+    <span>2,037.37</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="badge badge-pill risk-badge risk-badge-high">高风险</span>
+                  
+                </td>
+                <td class="risk-note" title="住宿限额超标：金额 2037.37 &gt; 限额 500">
+  
+  
+  
+  
+    <span>住宿限额超标：金额 2037.37 &gt; 限额 500</span>
+  </td>
+                <td class="text-center">
+                  
+                    <span class="ai-pill ai-pill-low">低风险</span>
+                  
+                </td>
+                <td class="text-center">
+                  
+                    <span class="status-pill status-pill-approved">已通过</span>
+                  
+                </td>
+                <td class="text-center">
+                  <div class="table-actions">
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-view js-view-raw"
+                      data-id="7"
+                      data-filename="mock_invoice_20260103_007.jpg"
+                      data-toggle="tooltip"
+                      title="查看证据"
+                      type="button"
+                    >
+                      <i class="ri-search-line"></i>
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light icon-btn btn-ai js-ai-report"
+                      data-id="7"
+                      data-toggle="tooltip"
+                      title="AI 解读"
+                      type="button"
+                    >
+                      <i class="ri-robot-line"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              
+              
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="modal fade" id="rawModal" tabindex="-1" role="dialog" aria-labelledby="rawModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl evidence-modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="rawModalLabel">证据中心</h5>
+        <a id="evidenceSourceLink" class="btn btn-sm btn-light ml-3 d-none" href="#" target="_blank" rel="noopener noreferrer">
+          <i class="ri-image-line mr-1"></i>查看原始影像
+        </a>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="evidenceBoard" class="evidence-board">
+          <div class="evidence-layout">
+            <section class="evidence-left audit-darkroom">
+              <div class="evidence-toolbar">
+                <button type="button" class="btn btn-light btn-sm js-ev-zoom-out" title="缩小">
+                  <i class="ri-zoom-out-line"></i>
+                </button>
+                <button type="button" class="btn btn-light btn-sm js-ev-zoom-in" title="放大">
+                  <i class="ri-zoom-in-line"></i>
+                </button>
+                <button type="button" class="btn btn-light btn-sm js-ev-rotate" title="旋转">
+                  <i class="ri-anticlockwise-line"></i>
+                </button>
+                <button type="button" class="btn btn-light btn-sm js-ev-reset" title="重置视图">
+                  <i class="ri-restart-line"></i>
+                </button>
+              </div>
+              <div class="evidence-canvas">
+                <img id="evidenceImage" alt="发票物证影像">
+                <div id="evidenceCanvasTip" class="evidence-canvas-tip">正在加载物证影像...</div>
+              </div>
+            </section>
+            <section class="evidence-right">
+              <div id="evidenceScoreCard" class="evidence-score-card">
+                <div class="evidence-score-main">
+                  <div class="evidence-score-label">AI 综合评分</div>
+                  <div id="evidenceScoreValue" class="evidence-score-value">--分</div>
+                </div>
+                <div class="evidence-score-side">
+                  <span id="evidenceRiskBadge" class="badge badge-pill evidence-score-risk evidence-score-risk-neutral">待判级</span>
+                  <div id="evidenceModeText" class="evidence-right-mode">识别中</div>
+                </div>
+                <div id="evidenceScoreSummary" class="evidence-score-summary">正在生成审计摘要...</div>
+              </div>
+
+              <div class="evidence-content-shell">
+                <ul class="nav nav-tabs evidence-tabs" id="evidenceTabs" role="tablist">
+                  <li class="nav-item">
+                    <a class="nav-link active" id="evidence-data-tab" data-toggle="tab" href="#evidence-data-pane" role="tab" aria-controls="evidence-data-pane" aria-selected="true">结构化数据</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" id="evidence-rule-tab" data-toggle="tab" href="#evidence-rule-pane" role="tab" aria-controls="evidence-rule-pane" aria-selected="false">规则命中详情</a>
+                  </li>
+                </ul>
+                <div class="tab-content evidence-tab-content">
+                  <div class="tab-pane fade show active" id="evidence-data-pane" role="tabpanel" aria-labelledby="evidence-data-tab">
+                    <div id="evidenceStructuredList" class="evidence-structured-list">
+                      <div class="text-muted">正在提取结构化字段...</div>
+                    </div>
+                  </div>
+                  <div class="tab-pane fade" id="evidence-rule-pane" role="tabpanel" aria-labelledby="evidence-rule-tab">
+                    <div id="ruleEngineList" class="rule-engine-list">
+                      <div class="text-muted">正在计算规则结果...</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="audit-action-bar">
+                <button type="button" class="btn btn-outline-danger btn-sm js-audit-action" data-action="reject">
+                  <i class="ri-forbid-2-line mr-1"></i>驳回
+                </button>
+                <button type="button" class="btn btn-warning btn-sm js-audit-action" data-action="flag">
+                  <i class="ri-alert-line mr-1"></i>挂起
+                </button>
+                <button type="button" class="btn btn-success btn-sm js-audit-action audit-action-approve" data-action="approve">
+                  <i class="ri-check-line mr-1"></i>通过
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade ai-modal-shell" id="aiModal" tabindex="-1" role="dialog" aria-labelledby="aiModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl ai-modal-dialog" role="document">
+    <div class="modal-content ai-modal-content">
+      <div class="modal-header ai-modal-header">
+        <div class="ai-modal-title-wrap">
+          <h5 class="modal-title" id="aiModalLabel">AI 解读</h5>
+          <div class="ai-modal-subtitle">企业级审计解释与处置建议</div>
+        </div>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body ai-modal-body">
+        <div id="ai-audit-container" class="ai-audit-container"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+        </section>
+    </div>
+
+</div>
+
+<div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="true"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script>
+(() => {
+    const host = document.getElementById('toastHost');
+    if (!host) return;
+
+    window.showToast = (message, type = 'success', duration = 1500) => {
+        const toast = document.createElement('div');
+        toast.className = `toast-item toast-${type}`;
+        toast.textContent = message;
+        host.appendChild(toast);
+        window.setTimeout(() => {
+            toast.classList.add('show');
+        }, 20);
+        window.setTimeout(() => {
+            toast.classList.remove('show');
+            window.setTimeout(() => {
+                if (toast && toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 200);
+        }, Math.max(800, Number(duration) || 1500));
+    };
+})();
+</script>
+<script>
+(() => {
+    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = tokenMeta ? String(tokenMeta.content || '').trim() : '';
+    if (!csrfToken || typeof window.fetch !== 'function') return;
+
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (input, init = {}) => {
+        const nextInit = { ...init };
+        const baseHeaders = init && init.headers ? init.headers : (input instanceof Request ? input.headers : undefined);
+        const headers = new Headers(baseHeaders || {});
+        const method = String(nextInit.method || (input instanceof Request ? input.method : 'GET') || 'GET').toUpperCase();
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && !headers.has('X-CSRF-Token')) {
+            headers.set('X-CSRF-Token', csrfToken);
+        }
+        nextInit.headers = headers;
+        return nativeFetch(input, nextInit);
+    };
+})();
+</script>
+<script>
+(() => {
+    const body = document.body;
+    const sidebar = document.querySelector('.sidebar-container');
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+    if (!sidebar || !toggleBtn) return;
+
+    const collapseClass = 'sidebar-collapse';
+    const hoverExpandClass = 'sidebar-hover-expand';
+    const storageKey = 'deepaudit.sidebar.fixedState';
+    let collapseTimer = null;
+
+    const isDesktop = () => window.matchMedia('(min-width: 992px)').matches;
+    const isFixedCollapsed = () => body.classList.contains(collapseClass);
+
+    const clearCollapseTimer = () => {
+        if (collapseTimer) {
+            window.clearTimeout(collapseTimer);
+            collapseTimer = null;
+        }
+    };
+
+    const syncToggleState = () => {
+        const expanded = !isFixedCollapsed() || body.classList.contains(hoverExpandClass);
+        toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        toggleBtn.setAttribute('title', expanded ? '收缩侧边栏' : '展开侧边栏');
+    };
+
+    const setFixedState = (state, persist = true) => {
+        if (state === 'collapsed') {
+            body.classList.add(collapseClass);
+        } else {
+            body.classList.remove(collapseClass);
+        }
+        body.classList.remove(hoverExpandClass);
+        if (persist) {
+            try {
+                window.localStorage.setItem(storageKey, state);
+            } catch (error) {
+                // Ignore storage failures in restricted browser contexts.
+            }
+        }
+        syncToggleState();
+    };
+
+    const handleSidebarMouseEnter = () => {
+        if (!isDesktop() || !isFixedCollapsed()) return;
+        clearCollapseTimer();
+        body.classList.add(hoverExpandClass);
+        syncToggleState();
+    };
+
+    const handleSidebarMouseLeave = () => {
+        if (!isDesktop() || !isFixedCollapsed()) return;
+        clearCollapseTimer();
+        collapseTimer = window.setTimeout(() => {
+            body.classList.remove(hoverExpandClass);
+            syncToggleState();
+        }, 300);
+    };
+
+    const applyMenuTitles = () => {
+        document.querySelectorAll('.sidebar-container .menu-item, .nav-sidebar .nav-item > .nav-link').forEach((item) => {
+            if (item.dataset.menuTitle) return;
+            const label = item.querySelector('p');
+            if (!label) return;
+            const labelClone = label.cloneNode(true);
+            labelClone.querySelectorAll('.badge, .right').forEach((node) => node.remove());
+            const titleText = labelClone.textContent.replace(/\s+/g, ' ').trim();
+            if (titleText) {
+                item.dataset.menuTitle = titleText;
+            }
+        });
+    };
+
+    toggleBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        clearCollapseTimer();
+
+        if (!isDesktop()) {
+            body.classList.toggle('sidebar-open');
+            return;
+        }
+
+        if (isFixedCollapsed()) {
+            setFixedState('expanded');
+            return;
+        }
+
+        setFixedState('collapsed');
+    });
+
+    sidebar.addEventListener('mouseenter', handleSidebarMouseEnter);
+    sidebar.addEventListener('mouseleave', handleSidebarMouseLeave);
+
+    window.addEventListener('resize', () => {
+        clearCollapseTimer();
+        body.classList.remove(hoverExpandClass);
+        syncToggleState();
+    });
+
+    applyMenuTitles();
+
+    let savedState = null;
+    try {
+        savedState = window.localStorage.getItem(storageKey);
+    } catch (error) {
+        savedState = null;
+    }
+    setFixedState(savedState === 'collapsed' ? 'collapsed' : 'expanded', false);
+})();
+</script>
+<script>
+(() => {
+    const storageKey = "deepaudit.sidebar.groupState.v1";
+    const groups = Array.from(document.querySelectorAll(".sidebar-group"));
+    if (!groups.length) return;
+
+    let state = {};
+    try {
+        const raw = window.localStorage.getItem(storageKey);
+        state = raw ? JSON.parse(raw) : {};
+    } catch (error) {
+        state = {};
+    }
+
+    const saveState = () => {
+        try {
+            window.localStorage.setItem(storageKey, JSON.stringify(state));
+        } catch (error) {
+            // Ignore storage failures in restricted browser contexts.
+        }
+    };
+
+    const setGroupOpen = (group, open, persist = false) => {
+        group.classList.toggle("is-open", open);
+        const toggle = group.querySelector(".sidebar-group-toggle");
+        if (toggle) {
+            toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        }
+        const key = String(group.dataset.groupKey || "").trim();
+        if (persist && key) {
+            state[key] = open;
+            saveState();
+        }
+    };
+
+    for (const group of groups) {
+        const key = String(group.dataset.groupKey || "").trim();
+        const hasActive = !!group.querySelector(".sidebar-submenu-link.active");
+        const hasSaved = key && Object.prototype.hasOwnProperty.call(state, key);
+        const defaultOpen = String(group.dataset.openDefault || "") === "1";
+
+        const open = hasActive ? true : (hasSaved ? !!state[key] : defaultOpen);
+        setGroupOpen(group, open, false);
+
+        const toggle = group.querySelector(".sidebar-group-toggle");
+        if (toggle) {
+            toggle.addEventListener("click", () => {
+                const next = !group.classList.contains("is-open");
+                setGroupOpen(group, next, true);
+            });
+        }
+    }
+})();
+</script>
+<script>
+(() => {
+    const clearStaleModalState = () => {
+        if (document.querySelector('.modal.show')) return;
+        document.querySelectorAll('.modal-backdrop').forEach((node) => {
+            if (node && node.parentNode) {
+                node.parentNode.removeChild(node);
+            }
+        });
+        document.body.classList.remove('modal-open', 'settings-modal-open', 'evidence-modal-open');
+        document.body.style.removeProperty('padding-right');
+    };
+
+    window.addEventListener('pageshow', clearStaleModalState);
+    if (window.jQuery) {
+        window.jQuery(document).on('hidden.bs.modal', () => {
+            window.setTimeout(clearStaleModalState, 0);
+        });
+    }
+    clearStaleModalState();
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/datatables.net@1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net-bs4@1.13.8/js/dataTables.bootstrap4.min.js"></script>
+<script src="/static/js/audit.js"></script>
+<script>
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function parseDate(value) {
+    const text = String(value || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+      return NaN;
+    }
+    return new Date(text + "T00:00:00").getTime();
+  }
+
+  function parseAmount(value) {
+    const normalized = String(value || "").replace(/[^\d.-]/g, "");
+    const num = parseFloat(normalized);
+    return Number.isFinite(num) ? num : NaN;
+  }
+
+  function formatFinancialAmount(value) {
+    const num = parseAmount(value);
+    if (!Number.isFinite(num)) {
+      return "";
+    }
+    return num.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function refreshFinancialAmountCells() {
+    document.querySelectorAll("#invoiceTable tbody .js-financial-amount").forEach(function (cell) {
+      const formatted = formatFinancialAmount(cell.getAttribute("data-money"));
+      if (!formatted) {
+        cell.innerHTML = '<span class="cell-empty">&ndash;</span>';
+        return;
+      }
+      cell.textContent = formatted;
+    });
+  }
+
+  function normalizeText(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function showLedgerFeedback(type, message) {
+    const box = document.getElementById("ledgerFeedback");
+    if (!box) {
+      return;
+    }
+    box.className = `alert alert-${type} py-2 px-3 mt-2 mb-0`;
+    box.textContent = message;
+    box.classList.remove("d-none");
+    window.clearTimeout(showLedgerFeedback._timer);
+    showLedgerFeedback._timer = window.setTimeout(function () {
+      box.classList.add("d-none");
+    }, 3200);
+  }
+
+  const EVIDENCE_PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720">' +
+      '<defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#27323f"/><stop offset="1" stop-color="#1d2632"/></linearGradient></defs>' +
+      '<rect width="960" height="720" fill="url(#g)"/>' +
+      '<rect x="210" y="140" width="540" height="420" rx="10" fill="#f4f6f8"/>' +
+      '<rect x="250" y="200" width="260" height="18" rx="4" fill="#ccd4df"/>' +
+      '<rect x="250" y="238" width="420" height="12" rx="3" fill="#d9e0e9"/>' +
+      '<rect x="250" y="264" width="360" height="12" rx="3" fill="#d9e0e9"/>' +
+      '<rect x="250" y="290" width="380" height="12" rx="3" fill="#d9e0e9"/>' +
+      '<text x="480" y="520" text-anchor="middle" font-size="26" fill="#7a8799">暂无可用发票影像</text>' +
+    "</svg>"
+  );
+
+  const evidenceViewerState = { scale: 1, rotation: 0 };
+
+  function toDisplayText(value) {
+    if (value === null || value === undefined || value === "") {
+      return "-";
+    }
+    if (Array.isArray(value)) {
+      return value.map(toDisplayText).filter(Boolean).join(" / ") || "-";
+    }
+    if (typeof value === "object") {
+      const pairs = Object.entries(value).slice(0, 4).map(function (entry) {
+        return `${entry[0]}: ${toDisplayText(entry[1])}`;
+      });
+      return pairs.length ? pairs.join(" | ") : "-";
+    }
+    return String(value);
+  }
+
+  function isUnrecognizedValue(value) {
+    const text = String(value == null ? "" : value).trim();
+    const lowered = text.toLowerCase();
+    if (!text) {
+      return true;
+    }
+    if (["-", "—", "–", "null", "none", "nan", ".", "ocr_failed", "undefined", "unknown"].includes(lowered)) {
+      return true;
+    }
+    return /^[?？.]+$/.test(text);
+  }
+
+  function renderEvidenceValue(value) {
+    const text = toDisplayText(value);
+    if (isUnrecognizedValue(text)) {
+      return '<span class="badge badge-light evidence-empty-badge">未识别</span>';
+    }
+    return escapeHtml(text);
+  }
+
+  function extractEvidenceEntries(rawData) {
+    if (!rawData || typeof rawData !== "object") {
+      return [];
+    }
+
+    const mode = String(rawData.mode || "").trim();
+    if (mode === "general_fallback") {
+      const words = (((rawData.general || {}).words_result) || []);
+      return words.map(function (item, index) {
+        const line = String((item && item.words) || "").trim();
+        if (!line) {
+          return null;
+        }
+        const matched = line.match(/^([^:：]{1,20})[:：]\s*(.+)$/);
+        if (matched) {
+          return { key: matched[1], value: matched[2], line: line };
+        }
+        return { key: `OCR字段${index + 1}`, value: line, line: line };
+      }).filter(Boolean);
+    }
+
+    if (mode === "vat_invoice") {
+      const wordsResult = (((rawData.vat || {}).words_result) || {});
+      return Object.keys(wordsResult).map(function (key) {
+        const rawValue = wordsResult[key];
+        const value = rawValue && typeof rawValue === "object" ? rawValue.words : rawValue;
+        const text = toDisplayText(value);
+        if (isUnrecognizedValue(text)) {
+          return null;
+        }
+        return { key: key, value: text, line: text };
+      }).filter(Boolean);
+    }
+
+    return [];
+  }
+
+  function collectEvidenceMap(entries) {
+    const map = {};
+    entries.forEach(function (entry) {
+      const key = normalizeText(entry.key);
+      if (key) {
+        map[key] = toDisplayText(entry.value);
+      }
+    });
+    return map;
+  }
+
+  function pickByKeys(dataMap, candidates) {
+    const keys = Object.keys(dataMap);
+    for (const candidate of candidates) {
+      const target = normalizeText(candidate);
+      for (const key of keys) {
+        if (key === target || key.includes(target)) {
+          return dataMap[key];
+        }
+      }
+    }
+    return "";
+  }
+
+  function resolveModeLabel(mode) {
+    if (mode === "vat_invoice") {
+      return "增值税发票模型";
+    }
+    if (mode === "general_fallback") {
+      return "通用OCR回退模型";
+    }
+    if (mode === "manual_entry") {
+      return "手工填报单据";
+    }
+    if (mode === "ocr_failed") {
+      return "OCR未识别";
+    }
+    return "待识别";
+  }
+
+  function buildStructuredItems(rawData, rowMeta) {
+    const entries = extractEvidenceEntries(rawData);
+    const evidenceMap = collectEvidenceMap(entries);
+    const riskLevel = String(rowMeta.risk || "").trim().toUpperCase();
+
+    const merchant = toDisplayText(rowMeta.merchant || pickByKeys(evidenceMap, ["商户", "商家", "销售方", "merchant", "vendor"]));
+    const item = toDisplayText(rowMeta.item || pickByKeys(evidenceMap, ["项目", "费用", "内容", "item", "detail"]));
+    const amountRaw = rowMeta.amount || pickByKeys(evidenceMap, ["金额", "价税合计", "总额", "amount", "totalamount"]);
+    const amountFormatted = formatFinancialAmount(amountRaw);
+    const amount = amountFormatted || toDisplayText(amountRaw);
+    const invoiceDate = toDisplayText(rowMeta.date || pickByKeys(evidenceMap, ["日期", "开票日期", "invoice date", "date"]));
+    const scenario = toDisplayText(pickByKeys(evidenceMap, ["场景", "用途", "说明", "remark"]));
+
+    return [
+      { key: "id", label: "单据编号", value: toDisplayText(rowMeta.id) },
+      { key: "applicant", label: "报销人", value: toDisplayText(rowMeta.applicant) },
+      { key: "department", label: "所属部门", value: toDisplayText(rowMeta.department) },
+      { key: "vendor", label: "供应商/商户", value: merchant },
+      { key: "category", label: "费用类别", value: item },
+      { key: "amount", label: "金额", value: amount, isAmount: true, highRisk: riskLevel === "HIGH" },
+      { key: "date", label: "开票日期", value: invoiceDate },
+      { key: "currency", label: "币种", value: toDisplayText(rowMeta.currency || "CNY") },
+      { key: "scenario", label: "业务场景", value: scenario },
+    ];
+  }
+
+  function renderStructuredItems(items) {
+    if (!items.length) {
+      return '<div class="alert alert-light border mb-0">未提取到结构化字段。</div>';
+    }
+    return `
+      <div class="structured-grid">
+        ${items.map(function (item) {
+          const amountClass = item.isAmount ? " structured-value-amount" : "";
+          const highRiskClass = item.isAmount && item.highRisk ? " is-high-risk" : "";
+          return `
+            <div class="structured-item">
+              <div class="structured-item-head">
+                <div class="structured-label">${escapeHtml(item.label)}</div>
+                <button type="button" class="field-edit-hint" title="支持人工修正（待开放）">
+                  <i class="ri-edit-line"></i>
+                </button>
+              </div>
+              <div class="structured-value${amountClass}${highRiskClass}">${renderEvidenceValue(item.value)}</div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  function buildRuleEngineResults(rawData, rowMeta) {
+    const mode = String((rawData && rawData.mode) || "").trim();
+    const riskLevel = String(rowMeta.risk || "").trim().toUpperCase();
+    const riskReason = String(rowMeta.riskReason || "").trim();
+    const status = String(rowMeta.status || "").trim().toUpperCase();
+    const fxFlag = String(rowMeta.fxFlag || "0") === "1";
+    const fxReason = String(rowMeta.fxReason || "").trim();
+
+    let ocrRule = { name: "OCR识别模式", status: "待判定", cls: "rule-warn", note: "暂未检测到有效识别模型信息" };
+    if (mode === "vat_invoice") {
+      ocrRule = { name: "OCR识别模式", status: "增票模型", cls: "rule-pass", note: "使用增值税发票模型完成结构化识别" };
+    } else if (mode === "general_fallback") {
+      ocrRule = { name: "OCR识别模式", status: "回退模型", cls: "rule-warn", note: "使用通用OCR回退模型，建议人工抽检" };
+    } else if (mode === "manual_entry") {
+      ocrRule = { name: "OCR识别模式", status: "手工录入", cls: "rule-warn", note: "该单据由手工填报提交，请重点核对原始凭证" };
+    } else if (mode === "ocr_failed") {
+      ocrRule = { name: "OCR识别模式", status: "未识别", cls: "rule-fail", note: "OCR识别失败，建议结合原始影像进行人工复核" };
+    }
+
+    let riskRule = { name: "规则引擎判级", status: "未判级", cls: "rule-warn", note: riskReason || "暂无规则判定说明" };
+    if (riskLevel === "HIGH") {
+      riskRule = { name: "规则引擎判级", status: "高风险", cls: "rule-fail", note: riskReason || "命中高风险规则，需人工复核" };
+    } else if (riskLevel === "MEDIUM") {
+      riskRule = { name: "规则引擎判级", status: "中风险", cls: "rule-warn", note: riskReason || "接近阈值，建议补充材料" };
+    } else if (riskLevel === "LOW") {
+      riskRule = { name: "规则引擎判级", status: "低风险", cls: "rule-pass", note: riskReason || "未命中关键风险规则" };
+    }
+
+    let approvalRule = { name: "审批流状态", status: "待复核", cls: "rule-warn", note: "尚未完成人工审批" };
+    if (status === "APPROVED") {
+      approvalRule = { name: "审批流状态", status: "已通过", cls: "rule-pass", note: "已完成审批并通过" };
+    } else if (status === "REJECTED") {
+      approvalRule = { name: "审批流状态", status: "已驳回", cls: "rule-fail", note: "单据已被驳回，进入闭环处理" };
+    }
+
+    const fxRule = fxFlag
+      ? { name: "汇率一致性", status: "异常", cls: "rule-fail", note: fxReason || "手工汇率与系统基准存在明显偏差" }
+      : { name: "汇率一致性", status: "正常", cls: "rule-pass", note: fxReason || "未发现异常汇率套利特征" };
+
+    return [ocrRule, riskRule, approvalRule, fxRule];
+  }
+
+  function renderRuleEngineResults(results) {
+    if (!results.length) {
+      return '<div class="alert alert-light border mb-0">暂无规则引擎结果。</div>';
+    }
+    return results.map(function (item) {
+      return `
+        <div class="rule-item">
+          <div class="rule-item-head">
+            <div class="rule-item-name">${escapeHtml(item.name)}</div>
+            <span class="rule-status ${escapeHtml(item.cls)}">${escapeHtml(item.status)}</span>
+          </div>
+          <div class="rule-item-note">${escapeHtml(item.note)}</div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function riskBadgeMeta(level) {
+    if (level === "HIGH") {
+      return { text: "高风险", cls: "evidence-score-risk-high" };
+    }
+    if (level === "LOW") {
+      return { text: "低风险", cls: "evidence-score-risk-low" };
+    }
+    if (level === "MEDIUM") {
+      return { text: "中风险", cls: "evidence-score-risk-medium" };
+    }
+    return { text: "未判级", cls: "evidence-score-risk-neutral" };
+  }
+
+  function estimateEvidenceScore(rawData, rowMeta, items) {
+    const mode = String((rawData && rawData.mode) || "").trim();
+    let base = 76;
+    if (mode === "vat_invoice") {
+      base = 94;
+    } else if (mode === "general_fallback") {
+      base = 80;
+    } else if (mode === "manual_entry") {
+      base = 84;
+    } else if (mode === "ocr_failed") {
+      base = 58;
+    }
+
+    const missingCount = items.filter(function (item) {
+      return isUnrecognizedValue(toDisplayText(item.value));
+    }).length;
+    let score = base - missingCount * 3;
+    if (String(rowMeta.risk || "").trim().toUpperCase() === "HIGH") {
+      score -= 8;
+    }
+    return Math.max(35, Math.min(98, score));
+  }
+
+  function buildEvidenceSummary(rawData, rowMeta, items) {
+    const mode = String((rawData && rawData.mode) || "").trim();
+    const riskReason = toDisplayText(rowMeta.riskReason);
+    if (!isUnrecognizedValue(riskReason)) {
+      return riskReason;
+    }
+    if (mode === "vat_invoice") {
+      return "OCR识别成功，结构化字段完整度高，可进入审计复核。";
+    }
+    if (mode === "general_fallback") {
+      return "OCR使用回退模型，建议重点核验金额、日期与供应商字段。";
+    }
+    if (mode === "manual_entry") {
+      return "当前单据来自手工填报，请结合原始影像确认关键字段。";
+    }
+    if (mode === "ocr_failed") {
+      return "OCR未识别成功，建议人工复核并补录关键信息。";
+    }
+
+    const missingCount = items.filter(function (item) {
+      return isUnrecognizedValue(toDisplayText(item.value));
+    }).length;
+    if (missingCount > 3) {
+      return "可用字段较少，建议补传清晰票据并进行人工复核。";
+    }
+    return "审计视图已生成，未发现明显结构化异常。";
+  }
+
+  function updateEvidenceScoreCard(rawData, rowMeta, items) {
+    const scoreEl = document.getElementById("evidenceScoreValue");
+    const badgeEl = document.getElementById("evidenceRiskBadge");
+    const summaryEl = document.getElementById("evidenceScoreSummary");
+    const modeEl = document.getElementById("evidenceModeText");
+    if (!scoreEl || !badgeEl || !summaryEl || !modeEl) {
+      return;
+    }
+
+    const riskLevel = String(rowMeta.risk || "").trim().toUpperCase();
+    const riskMeta = riskBadgeMeta(riskLevel);
+    const score = estimateEvidenceScore(rawData, rowMeta, items);
+    const modeLabel = resolveModeLabel(String((rawData && rawData.mode) || "").trim());
+
+    scoreEl.textContent = `${score}分`;
+    badgeEl.className = `badge badge-pill evidence-score-risk ${riskMeta.cls}`;
+    badgeEl.textContent = riskMeta.text;
+    summaryEl.textContent = buildEvidenceSummary(rawData, rowMeta, items);
+    modeEl.textContent = modeLabel;
+  }
+
+  function applyEvidenceTransform() {
+    const image = document.getElementById("evidenceImage");
+    if (!image) {
+      return;
+    }
+    image.style.transform = `scale(${evidenceViewerState.scale}) rotate(${evidenceViewerState.rotation}deg)`;
+  }
+
+  function resetEvidenceTransform() {
+    evidenceViewerState.scale = 1;
+    evidenceViewerState.rotation = 0;
+    applyEvidenceTransform();
+  }
+
+  function loadEvidenceImage(filename) {
+    const image = document.getElementById("evidenceImage");
+    const tip = document.getElementById("evidenceCanvasTip");
+    const sourceLink = document.getElementById("evidenceSourceLink");
+    if (!image || !tip) {
+      return;
+    }
+
+    resetEvidenceTransform();
+    image.dataset.fallbackApplied = "0";
+    if (sourceLink) {
+      sourceLink.classList.add("d-none");
+      sourceLink.setAttribute("href", "#");
+    }
+
+    if (!filename) {
+      image.src = EVIDENCE_PLACEHOLDER;
+      tip.textContent = "未上传原始影像，展示示意图";
+      tip.style.display = "block";
+      return;
+    }
+
+    tip.textContent = "正在加载物证影像...";
+    tip.style.display = "block";
+    image.onload = function () {
+      tip.style.display = "none";
+    };
+    image.onerror = function () {
+      if (image.dataset.fallbackApplied === "1") {
+        tip.textContent = "影像加载失败";
+        tip.style.display = "block";
+        return;
+      }
+      image.dataset.fallbackApplied = "1";
+      image.src = EVIDENCE_PLACEHOLDER;
+      tip.textContent = "未找到原始影像，已切换示意图";
+      tip.style.display = "block";
+    };
+    const safeSrc = `/uploads/${encodeURIComponent(filename)}`;
+    image.src = safeSrc;
+    if (sourceLink) {
+      sourceLink.setAttribute("href", safeSrc);
+      sourceLink.classList.remove("d-none");
+    }
+  }
+
+  function renderEvidenceKanban(payload, rowMeta) {
+    const structuredEl = document.getElementById("evidenceStructuredList");
+    const rulesEl = document.getElementById("ruleEngineList");
+    if (!structuredEl || !rulesEl) {
+      return;
+    }
+
+    const rawData = payload && payload.ok !== false ? (payload.data || payload.raw || payload) : {};
+    const normalizedRaw = rawData && typeof rawData === "object" ? rawData : {};
+    const items = buildStructuredItems(normalizedRaw, rowMeta);
+    const rules = buildRuleEngineResults(normalizedRaw, rowMeta);
+
+    updateEvidenceScoreCard(normalizedRaw, rowMeta, items);
+    structuredEl.innerHTML = renderStructuredItems(items);
+    rulesEl.innerHTML = renderRuleEngineResults(rules);
+  }
+
+  function collectRowMeta(rawBtn) {
+    const row = rawBtn.closest("tr");
+    const fromRow = function (name) {
+      return row ? (row.getAttribute(name) || "") : "";
+    };
+    return {
+      id: rawBtn.getAttribute("data-id") || fromRow("data-id"),
+      filename: rawBtn.getAttribute("data-filename") || fromRow("data-filename"),
+      amount: fromRow("data-amount"),
+      date: fromRow("data-date"),
+      risk: fromRow("data-risk"),
+      riskReason: fromRow("data-risk-reason"),
+      status: fromRow("data-status"),
+      currency: fromRow("data-currency"),
+      fxFlag: fromRow("data-fx-flag"),
+      fxReason: fromRow("data-fx-reason"),
+      manualRate: fromRow("data-manual-rate"),
+      manualCny: fromRow("data-manual-cny"),
+      applicant: fromRow("data-applicant"),
+      department: fromRow("data-department"),
+      vendor: fromRow("data-vendor"),
+      category: fromRow("data-category"),
+      merchant: fromRow("data-vendor"),
+      item: fromRow("data-category"),
+      rowElement: row,
+    };
+  }
+
+  function renderStatusPill(status) {
+    const st = String(status || "").trim().toUpperCase();
+    if (st === "APPROVED") {
+      return '<span class="status-pill status-pill-approved">已通过</span>';
+    }
+    if (st === "REJECTED") {
+      return '<span class="status-pill status-pill-rejected">已驳回</span>';
+    }
+    return '<span class="status-pill status-pill-pending">待复核</span>';
+  }
+
+  function escapeSelectorValue(value) {
+    return String(value || "").replace(/"/g, '\\"');
+  }
+
+  function syncRowStatus(invoiceId, status) {
+    const row = document.querySelector(`#invoiceTable tbody tr[data-id="${escapeSelectorValue(invoiceId)}"]`);
+    if (!row) {
+      return;
+    }
+    row.setAttribute("data-status", status);
+    const cell = row.children[10];
+    if (cell) {
+      cell.innerHTML = renderStatusPill(status);
+    }
+  }
+
+  async function postInvoiceStatus(invoiceId, status) {
+    const res = await fetch(`/api/invoice/${encodeURIComponent(invoiceId)}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ status: status }),
+    });
+    const payload = await res.json();
+    if (!res.ok || !payload || payload.ok !== true) {
+      throw new Error((payload && payload.msg) || "审批动作提交失败");
+    }
+    return payload;
+  }
+
+  function zoomInEvidence() {
+    evidenceViewerState.scale = Math.min(2.5, evidenceViewerState.scale + 0.1);
+    applyEvidenceTransform();
+  }
+
+  function zoomOutEvidence() {
+    evidenceViewerState.scale = Math.max(0.6, evidenceViewerState.scale - 0.1);
+    applyEvidenceTransform();
+  }
+
+  function rotateEvidence() {
+    evidenceViewerState.rotation = (evidenceViewerState.rotation + 90) % 360;
+    applyEvidenceTransform();
+  }
+
+  function forceClearModalOverlay() {
+    document.querySelectorAll(".modal-backdrop").forEach(function (node) {
+      node.parentNode && node.parentNode.removeChild(node);
+    });
+    document.body.classList.remove("modal-open");
+    document.body.classList.remove("evidence-modal-open");
+    document.body.style.removeProperty("padding-right");
+  }
+
+  function ensureModalMountedOnBody(modalSelector) {
+    const modal = document.querySelector(modalSelector);
+    if (modal && modal.parentElement !== document.body) {
+      document.body.appendChild(modal);
+    }
+  }
+
+  function showModalSafe(modalSelector) {
+    forceClearModalOverlay();
+    document.body.classList.add("evidence-modal-open");
+    ensureModalMountedOnBody(modalSelector);
+    $(modalSelector).modal({
+      backdrop: true,
+      keyboard: true,
+      focus: true,
+      show: true
+    });
+  }
+
+  async function openEvidenceModal(rawBtn) {
+    const rowMeta = collectRowMeta(rawBtn);
+    const rawModal = document.getElementById("rawModal");
+    const structuredEl = document.getElementById("evidenceStructuredList");
+    const rulesEl = document.getElementById("ruleEngineList");
+    const scoreValueEl = document.getElementById("evidenceScoreValue");
+    const scoreSummaryEl = document.getElementById("evidenceScoreSummary");
+    const scoreRiskEl = document.getElementById("evidenceRiskBadge");
+    const modeEl = document.getElementById("evidenceModeText");
+
+    if (rawModal) {
+      rawModal.setAttribute("data-active-invoice-id", rowMeta.id || "");
+    }
+
+    if (structuredEl) {
+      structuredEl.innerHTML = '<div class="text-muted">正在提取结构化字段...</div>';
+    }
+    if (rulesEl) {
+      rulesEl.innerHTML = '<div class="text-muted">正在计算规则结果...</div>';
+    }
+    if (scoreValueEl) {
+      scoreValueEl.textContent = "--分";
+    }
+    if (scoreSummaryEl) {
+      scoreSummaryEl.textContent = "正在生成审计摘要...";
+    }
+    if (scoreRiskEl) {
+      scoreRiskEl.className = "badge badge-pill evidence-score-risk evidence-score-risk-neutral";
+      scoreRiskEl.textContent = "待判级";
+    }
+    if (modeEl) {
+      modeEl.textContent = "识别中";
+    }
+
+    showModalSafe("#rawModal");
+    $("#evidence-data-tab").tab("show");
+    loadEvidenceImage(rowMeta.filename);
+
+    try {
+      const payload = await fetchRaw(rowMeta.id);
+      renderEvidenceKanban(payload, rowMeta);
+    } catch (error) {
+      renderEvidenceKanban({ ok: false }, rowMeta);
+    }
+  }
+
+  async function fetchRaw(id) {
+    const res = await fetch(`/invoice/${id}/raw`, { headers: { Accept: "application/json" } });
+    return await res.json();
+  }
+
+  $(function () {
+    refreshFinancialAmountCells();
+
+    const table = $("#invoiceTable").DataTable({
+      pageLength: 10,
+      order: [[1, "desc"], [0, "desc"]],
+      language: {
+        lengthMenu: "每页 _MENU_ 条",
+        info: "显示 _START_ 到 _END_ 条，共 _TOTAL_ 条",
+        infoEmpty: "暂无数据",
+        zeroRecords: "未找到匹配记录",
+        paginate: { first: "首页", last: "末页", next: "下一页", previous: "上一页" }
+      },
+      columnDefs: [
+        { orderable: false, targets: [11] }
+      ]
+    });
+
+    $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+      if (settings.nTable.id !== "invoiceTable") {
+        return true;
+      }
+
+      const node = table.row(dataIndex).node();
+      if (!node) {
+        return true;
+      }
+
+      const dateStart = parseDate(document.getElementById("dateStart").value);
+      const dateEnd = parseDate(document.getElementById("dateEnd").value);
+      const amountMin = parseFloat(document.getElementById("amountMin").value);
+      const amountMax = parseFloat(document.getElementById("amountMax").value);
+      const statusFilter = (document.getElementById("statusFilter").value || "").trim();
+      const invoiceIdFilter = normalizeText(document.getElementById("invoiceIdFilter").value);
+      const vendorFilter = normalizeText(document.getElementById("vendorFilter").value);
+      const applicantFilter = normalizeText(document.getElementById("applicantFilter").value);
+      const departmentFilter = normalizeText(document.getElementById("departmentFilter").value);
+
+      const rowDate = parseDate(node.getAttribute("data-date"));
+      const rowAmount = parseAmount(node.getAttribute("data-amount"));
+      const rowStatus = (node.getAttribute("data-status") || "").trim();
+      const rowId = normalizeText(node.getAttribute("data-id"));
+      const rowVendor = normalizeText(node.getAttribute("data-vendor"));
+      const rowApplicant = normalizeText(node.getAttribute("data-applicant"));
+      const rowDepartment = normalizeText(node.getAttribute("data-department"));
+
+      if (!Number.isNaN(dateStart) && (Number.isNaN(rowDate) || rowDate < dateStart)) {
+        return false;
+      }
+      if (!Number.isNaN(dateEnd) && (Number.isNaN(rowDate) || rowDate > dateEnd)) {
+        return false;
+      }
+      if (!Number.isNaN(amountMin) && (Number.isNaN(rowAmount) || rowAmount < amountMin)) {
+        return false;
+      }
+      if (!Number.isNaN(amountMax) && (Number.isNaN(rowAmount) || rowAmount > amountMax)) {
+        return false;
+      }
+      if (statusFilter && rowStatus !== statusFilter) {
+        return false;
+      }
+      if (invoiceIdFilter && !rowId.includes(invoiceIdFilter)) {
+        return false;
+      }
+      if (vendorFilter && !rowVendor.includes(vendorFilter)) {
+        return false;
+      }
+      if (applicantFilter && !rowApplicant.includes(applicantFilter)) {
+        return false;
+      }
+      if (departmentFilter && !rowDepartment.includes(departmentFilter)) {
+        return false;
+      }
+      return true;
+    });
+
+    document.getElementById("ledgerSearchForm").addEventListener("submit", function (event) {
+      event.preventDefault();
+      table.draw();
+    });
+
+    document.getElementById("btnResetFilters").addEventListener("click", function () {
+      document.getElementById("ledgerSearchForm").reset();
+      const advanced = document.getElementById("advancedFilters");
+      if (advanced && advanced.classList.contains("show")) {
+        $(advanced).collapse("hide");
+      }
+      table.draw();
+    });
+
+    const advancedEl = document.getElementById("advancedFilters");
+    const advancedToggleText = document.getElementById("advancedToggleText");
+    function syncAdvancedToggleText(expanded) {
+      if (!advancedToggleText) {
+        return;
+      }
+      advancedToggleText.textContent = expanded ? "收起高级筛选" : "展开高级筛选";
+    }
+    if (advancedEl) {
+      $(advancedEl).on("shown.bs.collapse", function () {
+        syncAdvancedToggleText(true);
+      });
+      $(advancedEl).on("hidden.bs.collapse", function () {
+        syncAdvancedToggleText(false);
+      });
+      syncAdvancedToggleText(advancedEl.classList.contains("show"));
+    }
+
+    document.addEventListener("click", async function (event) {
+      const zoomOutBtn = event.target.closest(".js-ev-zoom-out");
+      if (zoomOutBtn) {
+        zoomOutEvidence();
+        return;
+      }
+
+      const zoomInBtn = event.target.closest(".js-ev-zoom-in");
+      if (zoomInBtn) {
+        zoomInEvidence();
+        return;
+      }
+
+      const rotateBtn = event.target.closest(".js-ev-rotate");
+      if (rotateBtn) {
+        rotateEvidence();
+        return;
+      }
+
+      const resetBtn = event.target.closest(".js-ev-reset");
+      if (resetBtn) {
+        resetEvidenceTransform();
+        return;
+      }
+
+      const actionBtn = event.target.closest(".js-audit-action");
+      if (actionBtn) {
+        const rawModal = document.getElementById("rawModal");
+        const invoiceId = rawModal ? (rawModal.getAttribute("data-active-invoice-id") || "") : "";
+        const action = actionBtn.getAttribute("data-action");
+        if (!invoiceId || !action) {
+          showLedgerFeedback("warning", "未找到当前单据，无法提交决策。");
+          return;
+        }
+
+        const statusMap = {
+          approve: "APPROVED",
+          reject: "REJECTED",
+          flag: "PENDING",
+        };
+        const status = statusMap[action];
+        if (!status) {
+          return;
+        }
+
+        const buttons = rawModal ? rawModal.querySelectorAll(".js-audit-action") : [];
+        buttons.forEach(function (btn) {
+          btn.disabled = true;
+        });
+
+        try {
+          await postInvoiceStatus(invoiceId, status);
+          syncRowStatus(invoiceId, status);
+          if (action === "approve") {
+            showLedgerFeedback("success", "已标记为通过，单据进入已通过列表。");
+            $("#rawModal").modal("hide");
+          } else if (action === "reject") {
+            showLedgerFeedback("danger", "已驳回该单据。");
+            $("#rawModal").modal("hide");
+          } else {
+            showLedgerFeedback("warning", "已挂起，等待补充材料后复核。");
+          }
+        } catch (error) {
+          showLedgerFeedback("danger", error && error.message ? error.message : "审批动作提交失败。");
+        } finally {
+          buttons.forEach(function (btn) {
+            btn.disabled = false;
+          });
+        }
+        return;
+      }
+
+      const rawBtn = event.target.closest(".js-view-raw");
+      if (rawBtn) {
+        await openEvidenceModal(rawBtn);
+        return;
+      }
+
+      const aiBtn = event.target.closest(".js-ai-report");
+      if (aiBtn) {
+        const id = aiBtn.getAttribute("data-id");
+        const rowMeta = collectRowMeta(aiBtn);
+        showModalSafe("#aiModal");
+        if (window.DeepAuditAudit && typeof window.DeepAuditAudit.openInvoiceAudit === "function") {
+          window.DeepAuditAudit.openInvoiceAudit(id, {
+            containerId: "ai-audit-container",
+            claimCategory: rowMeta.category || "office_expense",
+            extraContext: {
+              amount: rowMeta.amount || "",
+              invoice_date: rowMeta.date || "",
+              vendor: rowMeta.vendor || "",
+              category: rowMeta.category || "",
+              applicant: rowMeta.applicant || "",
+              department: rowMeta.department || "",
+              risk_level: rowMeta.risk || "",
+              risk_reason: rowMeta.riskReason || "",
+            },
+          });
+        } else {
+          const container = document.getElementById("ai-audit-container");
+          if (container) {
+            container.innerHTML = '<div class="audit-error-card fade-in"><div class="audit-error-icon"><i class="ri-error-warning-line"></i></div><div class="audit-error-text">AI 模块加载失败，请刷新页面后重试。</div></div>';
+          }
+        }
+      }
+    });
+
+    ensureModalMountedOnBody("#rawModal");
+    ensureModalMountedOnBody("#aiModal");
+
+    $("#rawModal, #aiModal").on("hidden.bs.modal", function () {
+      if (this && this.id === "rawModal") {
+        this.removeAttribute("data-active-invoice-id");
+      }
+      resetEvidenceTransform();
+      forceClearModalOverlay();
+    });
+
+    $("#invoiceTable").on("draw.dt", function () {
+      refreshFinancialAmountCells();
+      $("[data-toggle='tooltip']").tooltip();
+    });
+    $("[data-toggle='tooltip']").tooltip();
+  });
+</script>
+
+
+</body>
+</html>

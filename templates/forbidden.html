@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}403 无权限 - 深度审计{% endblock %}
+{% block page_title %}您无权访问（403）{% endblock %}
+
+{% block content %}
+<div class="container-fluid pb-3">
+  <div class="card card-outline card-danger">
+    <div class="card-body">
+      <h5 class="mb-2">您无权访问当前页面（403）</h5>
+      <p class="text-muted mb-2">当前模块：{{ module_name or "目标模块" }}</p>
+      {% set _required = required_permissions if required_permissions is defined and required_permissions else [] %}
+      {% if _required %}
+      <p class="small text-muted mb-2">建议开通权限：</p>
+      <ul class="small text-muted mb-3 pl-3">
+        {% for key in _required %}
+        <li>{{ permission_label_cn(key) }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="small text-muted mb-3">如需访问，请联系系统管理员处理账号授权。</p>
+      {% endif %}
+      <a href="/dashboard" class="btn btn-sm btn-outline-primary">返回管理总览</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

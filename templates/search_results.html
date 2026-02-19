@@ -1,0 +1,350 @@
+{% extends "layout/base.html" %}
+{% block title %}搜索结果 — 深度审计{% endblock %}
+{% block page_css %}
+<style>
+.search-page {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 32px 20px;
+}
+
+.search-header {
+    margin-bottom: 32px;
+}
+.search-header-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.search-header-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--skill-color-secondary), #6366f1);
+    color: #fff;
+}
+.search-header-title {
+    font-family: var(--skill-font-heading);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--skill-color-primary);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.search-form-row {
+    display: flex;
+    gap: 10px;
+    position: relative;
+}
+.search-form-input {
+    flex: 1;
+    height: 44px;
+    padding: 0 14px 0 40px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: var(--skill-control-radius);
+    font-size: 14px;
+    color: var(--skill-color-text);
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='8' r='6'/%3E%3Cpath d='m16 16-3.5-3.5'/%3E%3C/svg%3E") 12px center / 18px no-repeat;
+    transition: border-color .2s, box-shadow .2s;
+}
+.search-form-input::placeholder { color: #94a3b8; }
+.search-form-input:focus {
+    outline: none;
+    border-color: var(--skill-color-secondary);
+    box-shadow: 0 0 0 3px var(--skill-color-focus-ring);
+}
+.search-form-btn {
+    height: 44px;
+    padding: 0 24px;
+    border: none;
+    border-radius: var(--skill-control-radius);
+    background: var(--skill-color-secondary);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, box-shadow .2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.search-form-btn:hover {
+    background: var(--skill-color-secondary-hover);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, .18);
+}
+.search-form-btn:active { background: var(--skill-color-secondary-active); }
+
+.search-stats {
+    font-size: 13px;
+    color: var(--skill-color-muted);
+    margin-top: 14px;
+    min-height: 20px;
+}
+
+.search-result-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: var(--skill-card-radius);
+    cursor: pointer;
+    transition: border-color .2s, box-shadow .2s, transform .15s;
+    text-decoration: none;
+}
+.search-result-item:hover {
+    border-color: var(--skill-color-secondary);
+    box-shadow: 0 4px 16px rgba(37, 99, 235, .08);
+    transform: translateY(-1px);
+}
+.search-result-item:active { transform: translateY(0); }
+
+.search-result-badge {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+}
+.badge-invoice         { background: #eff6ff; color: #2563eb; }
+.badge-risk_case       { background: #fef2f2; color: #dc2626; }
+.badge-bank_txn        { background: #f0fdf4; color: #16a34a; }
+.badge-governance_rule { background: #faf5ff; color: #7c3aed; }
+
+.search-result-body { flex: 1; min-width: 0; }
+.search-result-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--skill-color-primary);
+    margin: 0 0 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.search-result-subtitle {
+    font-size: 13px;
+    color: var(--skill-color-muted);
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.search-result-arrow {
+    flex-shrink: 0;
+    color: #cbd5e1;
+    transition: color .2s, transform .2s;
+}
+.search-result-item:hover .search-result-arrow {
+    color: var(--skill-color-secondary);
+    transform: translateX(2px);
+}
+
+.search-empty {
+    text-align: center;
+    padding: 72px 16px;
+    color: var(--skill-color-muted);
+    font-size: 14px;
+    line-height: 1.7;
+}
+.search-empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: var(--skill-color-surface);
+    border: 1px solid #e2e8f0;
+}
+.search-empty-icon svg { opacity: .4; }
+
+.search-loading {
+    text-align: center;
+    padding: 56px 16px;
+    color: var(--skill-color-muted);
+    font-size: 14px;
+}
+@keyframes searchSpin {
+    to { transform: rotate(360deg); }
+}
+.search-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2.5px solid #e2e8f0;
+    border-top-color: var(--skill-color-secondary);
+    border-radius: 50%;
+    animation: searchSpin .7s linear infinite;
+    margin-bottom: 12px;
+}
+
+.search-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: #94a3b8;
+}
+.search-kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    background: #f8fafc;
+    font-size: 11px;
+    font-family: var(--skill-font-body);
+    color: #64748b;
+    line-height: 1;
+}
+
+@media (max-width: 640px) {
+    .search-page { padding: 20px 12px; }
+    .search-header-title { font-size: 18px; }
+    .search-form-input { height: 40px; font-size: 13px; }
+    .search-form-btn { height: 40px; padding: 0 16px; font-size: 13px; }
+    .search-result-item { padding: 12px 14px; gap: 10px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-page">
+    <div class="search-header">
+        <div class="search-header-row">
+            <span class="search-header-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </span>
+            <h1 class="search-header-title">全局搜索</h1>
+        </div>
+        <form class="search-form-row" id="searchForm" method="get" action="/search">
+            <input class="search-form-input" type="text" name="q" id="searchPageInput"
+                   value="{{ q }}" placeholder="搜索单据、风险案例、台账、规则…"
+                   autocomplete="off" spellcheck="false" />
+            <button class="search-form-btn" type="submit">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                搜索
+            </button>
+        </form>
+        <div class="search-stats" id="searchStats"></div>
+    </div>
+    <div id="searchResultsContainer">
+        {% if q and q|length >= 2 %}
+        <div class="search-loading" id="searchLoading">
+            <div class="search-spinner"></div>
+            <div>正在搜索…</div>
+        </div>
+        {% elif q %}
+        <div class="search-empty">
+            <div class="search-empty-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </div>
+            请输入至少 2 个字符再搜索
+        </div>
+        {% else %}
+        <div class="search-empty">
+            <div class="search-empty-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </div>
+            输入关键词后按 Enter 开始搜索
+            <div class="search-hint">
+                支持搜索：单据编号、申请人、风险案例、银行交易、治理规则
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+(() => {
+    const TYPE_LABEL = {
+        invoice: '单据/发票',
+        risk_case: '风险案例',
+        bank_txn: '银行台账',
+        governance_rule: '治理规则',
+    };
+    const TYPE_ICON = {
+        invoice: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+        risk_case: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        bank_txn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+        governance_rule: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+    };
+    const ARROW_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+
+    const q = '{{ q | e }}';
+    if (!q || q.length < 2) return;
+
+    const container = document.getElementById('searchResultsContainer');
+    const stats = document.getElementById('searchStats');
+
+    fetch('/api/search?q=' + encodeURIComponent(q) + '&limit=20')
+        .then(function(r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(function(data) {
+            const results = data.results || [];
+            stats.textContent = '找到 ' + results.length + ' 条结果';
+            if (!results.length) {
+                container.innerHTML =
+                    '<div class="search-empty">' +
+                    '<div class="search-empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>' +
+                    '未找到与「' + q.replace(/</g, '&lt;') + '」相关的结果' +
+                    '<div class="search-hint">尝试更换关键词或缩短搜索词</div></div>';
+                return;
+            }
+            let html = '<div class="search-result-list">';
+            for (const item of results) {
+                const label = TYPE_LABEL[item.type] || item.type;
+                const icon = TYPE_ICON[item.type] || '';
+                const badgeCls = 'badge-' + item.type;
+                html += '<a class="search-result-item" href="' + item.url + '">'
+                    + '<span class="search-result-badge ' + badgeCls + '">' + icon + ' ' + label + '</span>'
+                    + '<div class="search-result-body">'
+                    + '<p class="search-result-title">' + (item.title || '').replace(/</g, '&lt;') + '</p>'
+                    + '<p class="search-result-subtitle">' + (item.subtitle || '').replace(/</g, '&lt;') + '</p>'
+                    + '</div>'
+                    + '<span class="search-result-arrow">' + ARROW_SVG + '</span>'
+                    + '</a>';
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        })
+        .catch(function() {
+            container.innerHTML =
+                '<div class="search-empty">' +
+                '<div class="search-empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>' +
+                '搜索出错，请稍后重试</div>';
+        });
+
+    const input = document.getElementById('searchPageInput');
+    if (input) input.focus();
+})();
+</script>
+{% endblock %}

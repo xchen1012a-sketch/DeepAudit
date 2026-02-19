@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}企业中心 - DeepAudit Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h3 class="text-dark font-weight-bold">企业中心</h3>
+            <p class="text-muted mb-2">管理企业租户、切换企业、配置企业设置</p>
+            <div id="enterpriseFeedback" class="alert d-none py-2 px-3 mb-0" role="alert"></div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">企业列表</h5>
+                </div>
+                <div class="card-body">
+                    <div id="enterpriseList" class="list-group">
+                        <div class="text-center text-muted py-3">加载中...</div>
+                    </div>
+                    <button class="btn btn-primary btn-sm mt-3" data-toggle="modal" data-target="#createEnterpriseModal">
+                        <i class="ri-add-line"></i> 创建企业
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">当前企业</h5>
+                </div>
+                <div class="card-body">
+                    <div id="currentEnterprise">
+                        <div class="text-muted">未选择企业</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 创建企业模态框 -->
+<div class="modal fade" id="createEnterpriseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">创建企业</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createEnterpriseForm">
+                    <div class="form-group">
+                        <label>企业代码</label>
+                        <input type="text" class="form-control" id="enterpriseCode" required>
+                    </div>
+                    <div class="form-group">
+                        <label>企业名称</label>
+                        <input type="text" class="form-control" id="enterpriseName" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="createEnterpriseBtn">创建</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const ALERT_ICONS = {success:"ri-checkbox-circle-line",info:"ri-information-line",warning:"ri-error-warning-line",danger:"ri-close-circle-line"};
+
+    function showFeedback(type, message) {
+        const box = document.getElementById("enterpriseFeedback");
+        const icon = ALERT_ICONS[type] || ALERT_ICONS.info;
+        box.className = `alert alert-${type} py-2 px-3 mb-0`;
+        box.innerHTML = `<span class="alert-icon"><i class="${icon}"></i></span><span class="alert-body">${message}</span>`;
+        box.classList.remove("d-none");
+        setTimeout(() => box.classList.add("d-none"), 3000);
+    }
+
+    async function loadEnterprises() {
+        try {
+            const res = await fetch("/api/enterprise/list");
+            const data = await res.json();
+            if (data.ok) {
+                renderEnterpriseList(data.enterprises);
+            }
+        } catch (e) {
+            console.error("加载企业列表失败", e);
+        }
+    }
+
+    function renderEnterpriseList(enterprises) {
+        const list = document.getElementById("enterpriseList");
+        if (!enterprises || enterprises.length === 0) {
+            list.innerHTML = '<div class="text-muted py-3">暂无企业</div>';
+            return;
+        }
+        list.innerHTML = enterprises.map(e => `
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${e.enterprise_name}</strong>
+                    <small class="text-muted d-block">${e.enterprise_code}</small>
+                </div>
+                <button class="btn btn-sm btn-outline-primary" onclick="switchEnterprise(${e.id})">切换</button>
+            </div>
+        `).join("");
+    }
+
+    async function switchEnterprise(enterpriseId) {
+        try {
+            const res = await fetch("/api/enterprise/switch", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({enterprise_id: enterpriseId})
+            });
+            const data = await res.json();
+            if (data.ok) {
+                showFeedback("success", "切换成功");
+                loadCurrentEnterprise();
+                loadEnterprises();
+            } else {
+                showFeedback("danger", data.msg || "切换失败");
+            }
+        } catch (e) {
+            showFeedback("danger", "切换失败: " + e.message);
+        }
+    }
+
+    async function loadCurrentEnterprise() {
+        try {
+            const enterpriseId = sessionStorage.getItem("currentEnterpriseId");
+            if (!enterpriseId) return;
+            const res = await fetch(`/api/enterprise/get?enterprise_id=${enterpriseId}`);
+            const data = await res.json();
+            if (data.ok) {
+                const e = data.enterprise;
+                document.getElementById("currentEnterprise").innerHTML = `
+                    <strong>${e.enterprise_name}</strong>
+                    <small class="text-muted d-block">${e.enterprise_code}</small>
+                `;
+            }
+        } catch (e) {
+            console.error("加载当前企业失败", e);
+        }
+    }
+
+    document.getElementById("createEnterpriseBtn").addEventListener("click", async function() {
+        const code = document.getElementById("enterpriseCode").value.trim();
+        const name = document.getElementById("enterpriseName").value.trim();
+        if (!code || !name) {
+            showFeedback("warning", "请填写完整信息");
+            return;
+        }
+        try {
+            const res = await fetch("/api/enterprise/create", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({enterprise_code: code, enterprise_name: name})
+            });
+            const data = await res.json();
+            if (data.ok) {
+                showFeedback("success", "创建成功");
+                $("#createEnterpriseModal").modal("hide");
+                document.getElementById("createEnterpriseForm").reset();
+                loadEnterprises();
+            } else {
+                showFeedback("danger", data.msg || "创建失败");
+            }
+        } catch (e) {
+            showFeedback("danger", "创建失败: " + e.message);
+        }
+    });
+
+    window.switchEnterprise = switchEnterprise;
+    loadEnterprises();
+    loadCurrentEnterprise();
+})();
+</script>
+{% endblock %}

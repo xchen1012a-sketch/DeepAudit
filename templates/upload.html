@@ -1,0 +1,1826 @@
+{% extends "base.html" %}
+{% block title %}费用报销受理中心 - 深度审计{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tom-select/tom-select.css', v=_static_version) }}">
+{% endblock %}
+
+{% block content %}
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-sm-8">
+        <h1 class="m-0">费用报销受理中心</h1>
+        <div class="text-muted small mt-1">上传票据、补充参数、触发智能合规校验，全流程在一个页面完成。</div>
+      </div>
+      <div class="col-sm-4">
+        <ol class="breadcrumb float-sm-right">
+          <li class="breadcrumb-item"><a href="/dashboard">管理总览</a></li>
+          <li class="breadcrumb-item active">费用报销受理中心</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="content workbench-shell">
+  <div class="container-fluid">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="row">
+        <div class="col-12">
+          <div class="submission-banner-stack">
+            {% for category, message in messages %}
+            {% set tone = category if category in ['success', 'info', 'warning', 'danger'] else 'info' %}
+            <div class="submission-banner submission-banner-{{ tone }} alert alert-dismissible fade show" role="alert">
+              <div class="submission-banner-icon">
+                {% if tone == 'success' %}
+                  <i class="ri-checkbox-circle-fill"></i>
+                {% elif tone == 'warning' %}
+                  <i class="ri-error-warning-fill"></i>
+                {% elif tone == 'danger' %}
+                  <i class="ri-close-circle-fill"></i>
+                {% else %}
+                  <i class="ri-information-fill"></i>
+                {% endif %}
+              </div>
+              <div class="submission-banner-body">
+                <div class="submission-banner-title">
+                  {% if tone == 'success' %}提交成功{% elif tone == 'warning' %}请注意{% elif tone == 'danger' %}处理失败{% else %}系统提示{% endif %}
+                </div>
+                <div class="submission-banner-text">{{ message }}</div>
+              </div>
+              <button type="button" class="close submission-banner-close" data-dismiss="alert" aria-label="关闭">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="row align-items-start workbench-main-row">
+      <div class="col-lg-9 workbench-left">
+        <div class="row">
+          <div class="col-12 text-center">
+            <div class="mode-switcher" role="tablist" aria-label="报销申请录入模式切换">
+              <button type="button" class="mode-tab active" data-mode="ocr" aria-selected="true">
+                <i class="ri-scan-2-line"></i>智能识别录入
+              </button>
+              <button type="button" class="mode-tab" data-mode="manual" aria-selected="false">
+                <i class="ri-edit-2-line"></i>手工填报
+              </button>
+            </div>
+            <div class="mode-switch-tip text-muted small">可通过上方切换录入模式，也可使用卡片右上角快捷切换。</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-12">
+            <div class="card mb-3 workbench-card">
+              <div class="card-body py-3">
+                <div class="biz-step-caption">业务流程</div>
+                <div class="biz-steps" aria-label="合规流程步骤条">
+                  <div class="biz-step current">
+                    <span class="biz-step-icon"><i class="ri-checkbox-circle-line"></i></span>
+                    <span class="biz-step-label">1 上传凭证</span>
+                  </div>
+                  <span class="biz-step-line"></span>
+                  <div class="biz-step">
+                    <span class="biz-step-icon"><i class="ri-scan-2-line"></i></span>
+                    <span class="biz-step-label">2 智能识别</span>
+                  </div>
+                  <span class="biz-step-line"></span>
+                  <div class="biz-step">
+                    <span class="biz-step-icon"><i class="ri-shield-check-line"></i></span>
+                    <span class="biz-step-label">3 智能合规校验</span>
+                  </div>
+                  <span class="biz-step-line"></span>
+                  <div class="biz-step">
+                    <span class="biz-step-icon"><i class="ri-file-chart-line"></i></span>
+                    <span class="biz-step-label">4 归档入库</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-12">
+            <div class="upload-time-filter" role="group" aria-label="时间筛选">
+              <span class="upload-time-filter-label">时间筛选</span>
+              <button type="button" class="btn btn-sm upload-time-btn active" data-range="today">今天</button>
+              <button type="button" class="btn btn-sm upload-time-btn" data-range="yesterday">昨天</button>
+              <button type="button" class="btn btn-sm upload-time-btn" data-range="7d">近7天</button>
+              <button type="button" class="btn btn-sm upload-time-btn" data-range="30d">近30天</button>
+              <button type="button" class="btn btn-sm upload-time-btn" data-range="all">全部</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-12">
+        <div id="mode-ocr">
+          <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="card mb-3 workbench-card upload-zone-card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title">凭证投递区</h3>
+                <div class="mode-header-actions">
+                  <span class="badge badge-primary mr-2">主操作区</span>
+                  <button type="button" id="ocrToManualBtn" class="btn btn-xs btn-outline-primary switch-mode-btn">切换手工填报</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <input id="fileInput" type="file" class="d-none" name="file" accept=".jpg,.jpeg,.png,.webp,.bmp,.gif,.tif,.tiff,.pdf,application/pdf" required>
+
+                <div class="row">
+                  <div class="col-md-7 mb-3 mb-md-0">
+                    <div id="dropZone" class="dropzone-area dropzone-workbench" role="button" tabindex="0" aria-label="发票上传区域">
+                      <div class="dropzone-state">
+                        <div class="mb-2"><i class="ri-upload-cloud-2-line dropzone-icon"></i></div>
+                        <div class="title">拖拽发票到此处，或点击选择文件</div>
+                        <div class="small">支持图片或 PDF 文档（JPG/PNG/JPEG/WEBP/PDF）</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-5">
+                    <div class="upload-guide-panel">
+                      <div class="upload-guide-title">提交规范</div>
+                      <ul class="upload-guide-list">
+                        <li>票据边缘完整，避免裁切。</li>
+                        <li>票面金额、日期、抬头必须清晰。</li>
+                        <li>报销场景需附消费明细。</li>
+                      </ul>
+                      <div class="upload-guide-tip">上传后自动进入智能识别并执行规则引擎。</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="readyBox" class="dropzone-ready">
+                  <i class="ri-check-line mr-1"></i>
+                  <span id="readyName">-</span>
+                  <span>已就绪</span>
+                  <button type="button" id="clearFileBtn" class="ready-clear-btn" aria-label="移除已选文件">
+                    <i class="ri-close-line"></i>
+                  </button>
+                </div>
+                <div id="fileMeta" class="file-meta-grid mt-2 d-none">
+                  <div><span>文件大小:</span> <strong id="fileSize">-</strong></div>
+                  <div><span>文件类型:</span> <strong id="fileType">-</strong></div>
+                  <div><span>准备时间:</span> <strong id="fileTime">-</strong></div>
+                </div>
+
+                <div class="advanced-panel-wrap mt-3">
+                  <a class="advanced-panel-trigger collapsed" data-toggle="collapse" href="#advancedOptions" role="button" aria-expanded="false" aria-controls="advancedOptions">
+                    <span><i class="ri-settings-3-line mr-1"></i>高级选项：汇率/报销参数</span>
+                    <i class="ri-arrow-down-s-line advanced-arrow"></i>
+                  </a>
+                  <div class="collapse" id="advancedOptions">
+                    <div class="fx-panel mt-3">
+                      <div class="fx-panel-title">跨境票据可手工补充汇率，提升折算一致性</div>
+                      <div class="form-row form-row-compact">
+                        <div class="form-group col-md-4">
+                          <label>币种（手工覆盖）</label>
+                          <select class="form-control enterprise-select" name="currency" data-max-options="120">
+                            <option value="">自动识别 / 默认人民币</option>
+                            <option value="CNY">人民币</option>
+                            <option value="USD">美元</option>
+                            <option value="HKD">港币</option>
+                          </select>
+                        </div>
+                        <div class="form-group col-md-4">
+                          <label>手工汇率（1 外币 = ? 人民币）</label>
+                          <input type="text" class="form-control" name="manual_rate" placeholder="例如 7.60">
+                        </div>
+                        <div class="form-group col-md-4">
+                          <label>手工折算人民币</label>
+                          <input type="text" class="form-control" name="manual_cny_amount" placeholder="例如 760.00">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card mb-3 workbench-card">
+              <div class="card-header">
+                <h3 class="card-title">提交前自检</h3>
+              </div>
+              <div class="card-body">
+                <div class="self-check-grid">
+                  <div class="self-check-item"><i class="ri-check-line mr-2"></i>票据清晰可读</div>
+                  <div class="self-check-item"><i class="ri-check-line mr-2"></i>消费日期在报销范围内</div>
+                  <div class="self-check-item"><i class="ri-check-line mr-2"></i>金额与币种已确认</div>
+                  <div class="self-check-item"><i class="ri-check-line mr-2"></i>敏感消费已二次复核</div>
+                  <div id="selfCheckVerifyItem" class="self-check-item is-verify-pending">
+                    <i id="selfCheckVerifyIcon" class="ri-time-line mr-2"></i>
+                    <span id="selfCheckVerifyText">发票验真回执：待验真</span>
+                  </div>
+                  <div id="selfCheckAlert" class="self-check-item is-alert d-none"><i class="ri-error-warning-line mr-2"></i>检测到可疑票据特征，请人工复核</div>
+                </div>
+              </div>
+              <div class="card-footer workbench-actions">
+                <div class="submit-action-group">
+                  <button id="submitBtn" type="submit" class="btn btn-primary">
+                    <i class="ri-upload-cloud-2-line mr-1"></i> 上传并校验
+                  </button>
+                  <div class="aigc-microcopy">已接入智能分析引擎，支持多语种发票自动折算。</div>
+                </div>
+                <div class="secondary-actions">
+                  <a href="/invoices_page" class="btn btn-outline-secondary mr-2">
+                    <i class="ri-file-list-3-line mr-1"></i> 查看凭证台账
+                  </a>
+                  <a href="/dashboard" class="btn btn-light">
+                    <i class="ri-dashboard-line mr-1"></i> 返回管理总览
+                  </a>
+                </div>
+              </div>
+            </div>
+
+          </form>
+        </div>
+
+        <div id="mode-manual" class="d-none">
+          <form id="manualForm" action="/upload" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="entry_mode" value="manual">
+            <div class="card mb-3 workbench-card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title">手工填报区</h3>
+                <div class="mode-header-actions">
+                  <span class="badge badge-info mr-2">人工录入</span>
+                  <button type="button" id="manualToOcrBtn" class="btn btn-xs btn-outline-secondary switch-mode-btn">切回智能识别</button>
+                </div>
+              </div>
+              <div class="card-body manual-form-card">
+                <div id="financeSubmitterBlock" class="finance-submitter-block d-none">
+                  <div class="finance-submitter-title">
+                    <i class="ri-shield-user-line mr-1"></i>财务提交人信息（代报）
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group col-md-4">
+                      <label for="financeDepartment">部门</label>
+                      <input
+                        type="text"
+                        class="form-control submitter-readonly-input"
+                        id="financeDepartment"
+                        readonly
+                        placeholder="自动带出"
+                      >
+                    </div>
+                    <div class="form-group col-md-4">
+                      <label for="financeEmployeeName">员工姓名</label>
+                      <input
+                        type="text"
+                        class="form-control submitter-readonly-input"
+                        id="financeEmployeeName"
+                        readonly
+                        placeholder="自动带出"
+                      >
+                    </div>
+                    <div class="form-group col-md-4">
+                      <label for="financeEmployeeNo">工号</label>
+                      <div class="input-group">
+                        <input
+                          type="text"
+                          class="form-control submitter-readonly-input"
+                          id="financeEmployeeNo"
+                          readonly
+                          placeholder="自动带出"
+                        >
+                        <div class="input-group-append">
+                          <button
+                            type="button"
+                            id="validateEmployeeBtn"
+                            class="btn btn-outline-secondary btn-sm d-none"
+                            title="校验工号"
+                          >
+                            <i class="ri-shield-check-line"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="finance-submitter-tip">仅财务部可见，提交时以后端登录态为准。</div>
+                  <div class="finance-sop-tip text-muted small mt-1">
+                    注：财务人员代报时，请务必核对实际报销人工号，系统将自动留痕。
+                  </div>
+                  <div id="financeLookupHint" class="finance-lookup-hint text-muted small mt-1"></div>
+                </div>
+
+                <div class="form-group row">
+                  <label for="manualInvoiceCode" class="col-sm-2 col-form-label">发票代码</label>
+                  <div class="col-sm-4">
+                    <input type="text" class="form-control" id="manualInvoiceCode" name="invoice_code" placeholder="请输入发票代码">
+                  </div>
+                  <label for="manualInvoiceNo" class="col-sm-2 col-form-label">发票号码</label>
+                  <div class="col-sm-4">
+                    <input type="text" class="form-control" id="manualInvoiceNo" name="invoice_number" placeholder="请输入发票号码">
+                  </div>
+                </div>
+
+                <div class="form-group row">
+                  <label for="manualInvoiceDate" class="col-sm-2 col-form-label">开票日期</label>
+                  <div class="col-sm-4">
+                    <input
+                      type="text"
+                      class="form-control manual-date-input"
+                      id="manualInvoiceDate"
+                      name="invoice_date"
+                      placeholder="例如 2026-02-17"
+                      autocomplete="off"
+                    >
+                  </div>
+                  <label for="manualAmount" class="col-sm-2 col-form-label">报销金额</label>
+                  <div class="col-sm-4">
+                    <input type="number" class="form-control" id="manualAmount" name="amount" step="0.01" placeholder="0.00">
+                  </div>
+                </div>
+
+                <div class="form-group row">
+                  <label for="manualSellerName" class="col-sm-2 col-form-label">销售方名称</label>
+                  <div class="col-sm-4">
+                    <input type="text" class="form-control" id="manualSellerName" name="seller_name" placeholder="请输入销售方名称">
+                  </div>
+                  <label for="manualCategory" class="col-sm-2 col-form-label">消费类型</label>
+                  <div class="col-sm-4">
+                    <select class="custom-select manual-category-select enterprise-select" id="manualCategory" name="expense_category" data-max-options="120" data-clear-button="0">
+                      <option value="">请选择消费类型</option>
+                      <option value="住宿">住宿</option>
+                      <option value="差旅交通">差旅交通</option>
+                      <option value="餐饮">餐饮</option>
+                      <option value="办公采购">办公采购</option>
+                      <option value="通讯">通讯</option>
+                      <option value="通讯网络">通讯网络</option>
+                      <option value="会议会务">会议会务</option>
+                      <option value="培训学习">培训学习</option>
+                      <option value="业务招待">业务招待</option>
+                      <option value="市场营销">市场营销</option>
+                      <option value="车辆使用">车辆使用</option>
+                      <option value="软件服务">软件服务</option>
+                      <option value="设备维护">设备维护</option>
+                      <option value="物业水电">物业水电</option>
+                      <option value="税费缴纳">税费缴纳</option>
+                      <option value="福利补贴">福利补贴</option>
+                      <option value="员工福利">员工福利</option>
+                      <option value="快递物流">快递物流</option>
+                      <option value="会展活动">会展活动</option>
+                      <option value="其他">其他</option>
+                    </select>
+                    <input type="hidden" id="manualCategoryCode" name="expense_category_code" value="">
+                    <div id="manualCategoryHint" class="invalid-feedback d-none">请选择消费类型</div>
+                  </div>
+                </div>
+
+                <div class="form-group row">
+                  <label for="manualDescription" class="col-sm-2 col-form-label">费用说明</label>
+                  <div class="col-sm-10">
+                    <textarea class="form-control" id="manualDescription" name="expense_description" rows="3" placeholder="请填写费用用途、发生背景等说明"></textarea>
+                  </div>
+                </div>
+
+                <div class="form-group row">
+                  <label for="manualFileInput" class="col-sm-2 col-form-label">上传原始凭证或截图（必填）</label>
+                  <div class="col-sm-10">
+                    <input id="manualFileInput" type="file" class="manual-file-native" name="file" accept=".jpg,.jpeg,.png,.webp,.bmp,.gif,.tif,.tiff,.pdf,application/pdf">
+                    <div class="manual-file-picker">
+                      <button type="button" id="manualPickBtn" class="manual-pick-btn">
+                        <i class="ri-folder-upload-line mr-1"></i>选择凭证文件
+                      </button>
+                      <span id="manualFileName" class="manual-file-name">未选择文件</span>
+                      <button type="button" id="manualClearFileBtn" class="manual-file-clear d-none" aria-label="删除已选文件">
+                        <i class="ri-delete-bin-line"></i>
+                      </button>
+                    </div>
+                    <small class="form-text text-muted">支持图片或 PDF 文档（JPG/PNG/JPEG/WEBP/PDF），单次提交 1 个文件。</small>
+                  </div>
+                </div>
+
+                <div class="form-group row mb-0">
+                  <div class="col-sm-10 offset-sm-2">
+                    <button id="manualSubmitBtn" type="submit" class="btn btn-primary btn-lg btn-block">
+                      提交受理
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-3 my-bills-panel upload-sidebar">
+        <div class="upload-sidebar-verify" aria-label="发票验真回执">
+          <div class="card mb-3 workbench-card verify-receipt-card">
+            <div class="card-header">
+              <h3 class="card-title mb-0"><i class="ri-shield-check-line mr-1"></i>验真回执</h3>
+            </div>
+            <div class="card-body">
+              <div id="verifyEmptyHint" class="text-muted small">请先在下方「我的单据」中选择一条单据，再执行验真回放。</div>
+              <div id="verifyPanel" class="d-none">
+                <div class="verify-meta-grid">
+                  <div>单据编号：<strong id="verifyReferenceNo">-</strong></div>
+                  <div>台账状态：<span id="verifyRecordStateBadge" class="verify-status-badge pending">待补录</span></div>
+                  <div>验真状态：<span id="verifyStatusBadge" class="verify-status-badge pending">待验真</span></div>
+                  <div>风险等级：<span id="verifyRiskBadge" class="verify-status-badge pending">正常</span></div>
+                  <div>验真次数：<strong id="verifyCount">0</strong></div>
+                  <div>验真时间：<strong id="verifyCheckedAt">-</strong></div>
+                </div>
+                <div class="verify-message-wrap mt-2">
+                  <div class="small text-muted mb-1">验真说明</div>
+                  <div id="verifyMessage" class="verify-message">-</div>
+                </div>
+                <details class="tech-details mt-3">
+                  <summary>技术信息（可展开）</summary>
+                  <div class="tech-meta-grid mt-2">
+                    <div>内部编号：<strong id="verifyInvoiceId">-</strong></div>
+                    <div>验真服务商：<strong id="verifyProvider">-</strong></div>
+                    <div>请求编号：<strong id="verifyRequestId">-</strong></div>
+                    <div>接口状态码：<strong id="verifyStatusCode">-</strong></div>
+                    <div>耗时：<strong id="verifyLatency">-</strong></div>
+                    <div>追踪编号：<strong id="verifyTraceId">-</strong></div>
+                  </div>
+                </details>
+                <div class="mt-3">
+                  <button id="runVerifyBtn" type="button" class="btn btn-outline-primary btn-sm btn-block">
+                    <i class="ri-shield-check-line mr-1"></i>执行验真回放
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="upload-sidebar-docs-wrap">
+        <div class="card mb-3 workbench-card sidebar-mydocs-card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0"><i class="ri-file-list-3-line mr-1"></i>我的单据</h3>
+            <a href="/invoices_page" class="btn btn-xs btn-outline-primary">查看全部</a>
+          </div>
+          <div class="card-body p-0">
+            <div id="draftList" class="sidebar-doc-list">
+              <div class="activity-empty">加载中...</div>
+            </div>
+          </div>
+          <div class="card-footer sidebar-doc-footer">
+            <div id="docPagination" class="sidebar-doc-pagination">
+              <button type="button" id="docLoadMore" class="btn btn-sm btn-outline-secondary btn-block">加载更多</button>
+            </div>
+            <div id="docCount" class="sidebar-doc-count text-muted small mt-1 text-center"></div>
+          </div>
+        </div>
+
+        <div class="sidebar-accordion" id="sidebarAccordion">
+          <div class="card mb-2 workbench-card sidebar-acc-card">
+            <div class="card-header sidebar-acc-header" id="accHeadProgress">
+              <button class="btn btn-link btn-block text-left sidebar-acc-btn collapsed" type="button" data-toggle="collapse" data-target="#accBodyProgress" aria-expanded="false" aria-controls="accBodyProgress">
+                <i class="ri-line-chart-line mr-1"></i>今日提交进度
+                <i class="ri-arrow-down-s-line sidebar-acc-arrow"></i>
+              </button>
+            </div>
+            <div id="accBodyProgress" class="collapse" aria-labelledby="accHeadProgress" data-parent="#sidebarAccordion">
+              <div class="card-body">
+                <div class="upload-kpi-label">今日提交进度</div>
+                <div id="uploadKpiValue" class="upload-kpi-value">-- / 40</div>
+                <div class="progress mt-2">
+                  <div id="uploadKpiBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <div id="uploadKpiHint" class="upload-kpi-hint mt-2">加载中...</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card mb-2 workbench-card sidebar-acc-card">
+            <div class="card-header sidebar-acc-header" id="accHeadPolicy">
+              <button class="btn btn-link btn-block text-left sidebar-acc-btn collapsed" type="button" data-toggle="collapse" data-target="#accBodyPolicy" aria-expanded="false" aria-controls="accBodyPolicy">
+                <i class="ri-shield-check-line mr-1"></i>智能合规策略
+                <i class="ri-arrow-down-s-line sidebar-acc-arrow"></i>
+              </button>
+            </div>
+            <div id="accBodyPolicy" class="collapse" aria-labelledby="accHeadPolicy" data-parent="#sidebarAccordion">
+              <div class="card-body">
+                <div class="intel-rule-item danger">
+                  <i class="ri-error-warning-fill"></i>
+                  <div>
+                    <div class="intel-rule-title">禁止歌厅/足浴消费</div>
+                    <div class="intel-rule-desc">命中即触发高风险告警并建议驳回。</div>
+                  </div>
+                </div>
+                <div class="intel-rule-item warning">
+                  <i class="ri-lightbulb-line"></i>
+                  <div>
+                    <div class="intel-rule-title">住宿限额 ¥500/晚</div>
+                    <div class="intel-rule-desc">超限部分自动进入人工复核池。</div>
+                  </div>
+                </div>
+                <div class="intel-rule-item neutral">
+                  <i class="ri-file-list-2-line"></i>
+                  <div>
+                    <div class="intel-rule-title">必须包含消费明细</div>
+                    <div class="intel-rule-desc">缺失明细将降低自动通过概率。</div>
+                  </div>
+                </div>
+                <ul class="intel-reminder-list mt-2 mb-0">
+                  <li><i class="ri-time-line"></i>16:30 前需提交差旅票据汇总。</li>
+                  <li><i class="ri-alarm-warning-line"></i>高风险单据建议同日闭环。</li>
+                  <li><i class="ri-lightbulb-line"></i>跨币种票据优先补录手工汇率。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="card mb-2 workbench-card sidebar-acc-card">
+            <div class="card-header sidebar-acc-header" id="accHeadQuick">
+              <button class="btn btn-link btn-block text-left sidebar-acc-btn collapsed" type="button" data-toggle="collapse" data-target="#accBodyQuick" aria-expanded="false" aria-controls="accBodyQuick">
+                <i class="ri-links-line mr-1"></i>快捷入口
+                <i class="ri-arrow-down-s-line sidebar-acc-arrow"></i>
+              </button>
+            </div>
+            <div id="accBodyQuick" class="collapse" aria-labelledby="accHeadQuick" data-parent="#sidebarAccordion">
+              <div class="card-body">
+                <div class="quick-entry-grid">
+                  <a href="/invoices_page" class="btn btn-light btn-block mb-2"><i class="ri-book-read-line mr-1"></i>凭证台账</a>
+                  <a href="/export" class="btn btn-light btn-block mb-2"><i class="ri-file-download-line mr-1"></i>导出报表</a>
+                  <a href="/dashboard" class="btn btn-light btn-block"><i class="ri-dashboard-line mr-1"></i>管理总览</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="activityDetailBackdrop" class="upload-detail-backdrop" aria-hidden="true"></div>
+    <aside id="activityDetailPanel" class="upload-detail-panel" aria-hidden="true">
+      <div class="upload-detail-head">
+        <strong>单据详情</strong>
+        <button class="btn btn-sm btn-light" id="activityDetailClose" type="button">关闭</button>
+      </div>
+      <div class="upload-detail-body">
+        <div class="upload-detail-card">
+          <div class="upload-detail-row"><span>单据编号</span><span id="detailReference">-</span></div>
+          <div class="upload-detail-row"><span>报销人</span><span id="detailApplicant">-</span></div>
+          <div class="upload-detail-row"><span>部门</span><span id="detailDepartment">-</span></div>
+          <div class="upload-detail-row"><span>金额</span><span id="detailAmount">-</span></div>
+          <div class="upload-detail-row"><span>开票日期</span><span id="detailInvoiceDate">-</span></div>
+          <div class="upload-detail-row"><span>提交时间</span><span id="detailCreatedAt">-</span></div>
+        </div>
+        <div id="detailSupplementWrap" class="upload-detail-card d-none">
+          <div class="small text-muted mb-2">待补录：补全金额与开票日期后可入账并进入审批（与验真是否通过无关）。</div>
+          <div class="form-group">
+            <label class="small">金额</label>
+            <input type="text" id="detailSupplementAmount" class="form-control form-control-sm" placeholder="例如 1234.56">
+          </div>
+          <div class="form-group">
+            <label class="small">开票日期</label>
+            <input type="date" id="detailSupplementDate" class="form-control form-control-sm">
+          </div>
+          <button type="button" id="detailSupplementSaveBtn" class="btn btn-sm btn-primary">保存补录</button>
+        </div>
+        <div class="upload-detail-card">
+          <div class="upload-detail-row"><span>台账状态</span><span id="detailRecordState">-</span></div>
+          <div class="upload-detail-row"><span>验真状态</span><span id="detailVerifyStatus">-</span></div>
+          <div class="upload-detail-row"><span>风险等级</span><span id="detailRiskLevel">-</span></div>
+          <div class="upload-detail-row"><span>审批状态</span><span id="detailApprovalStatus">-</span></div>
+        </div>
+        <div class="upload-detail-card">
+          <div class="upload-detail-row"><span>验真说明</span><span id="detailVerifyMessage">-</span></div>
+          <div class="upload-detail-row"><span>规则提示</span><span id="detailRuleSummary">-</span></div>
+        </div>
+        <div class="upload-detail-actions">
+          <a id="detailPreviewLink" class="btn btn-sm btn-outline-primary" href="#" target="_blank" rel="noopener">查看原始凭证</a>
+          <span id="detailPostLedgerWrap" class="d-none">
+            <button type="button" id="detailPostLedgerBtn" class="btn btn-sm btn-success ml-2">入账并进入审批</button>
+            <span class="small text-muted d-block mt-1">入账后单据将出现在审批中心，由审批人处理。</span>
+          </span>
+          <span id="detailGotoApprovalWrap" class="d-none">
+            <a id="detailGotoApprovalLink" class="btn btn-sm btn-primary ml-2" href="/approval_center" target="_blank" rel="noopener">前往审批中心</a>
+          </span>
+        </div>
+        <details class="tech-details mt-2">
+          <summary>技术信息（可展开）</summary>
+          <div class="tech-meta-grid mt-2">
+            <div>内部编号：<strong id="detailInternalId">-</strong></div>
+            <div>台账状态码：<strong id="detailRecordStateCode">-</strong></div>
+            <div>验真状态码：<strong id="detailVerifyStatusCode">-</strong></div>
+            <div>审批状态码：<strong id="detailApprovalStatusCode">-</strong></div>
+            <div>风险等级码：<strong id="detailRiskLevelCode">-</strong></div>
+            <div>验真服务商：<strong id="detailProvider">-</strong></div>
+            <div>请求编号：<strong id="detailRequestId">-</strong></div>
+            <div>接口状态码：<strong id="detailStatusCode">-</strong></div>
+            <div>耗时：<strong id="detailLatency">-</strong></div>
+            <div>追踪编号：<strong id="detailTraceId">-</strong></div>
+          </div>
+          <details class="tech-raw mt-2">
+            <summary>原始数据（可展开）</summary>
+            <pre id="detailRawJson">-</pre>
+          </details>
+        </details>
+      </div>
+    </aside>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.LEDGER_DRAFT_PAGE_URL = "{{ url_for('ledger.invoices_page', tab='draft') }}";
+</script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js"></script>
+<script src="{{ url_for('static', filename='vendor/tom-select/tom-select.complete.min.js', v=_static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/enterprise_select.js', v=_static_version) }}"></script>
+<script>
+  (function () {
+    const form = document.getElementById("uploadForm");
+    const manualForm = document.getElementById("manualForm");
+    const input = document.getElementById("fileInput");
+    const drop = document.getElementById("dropZone");
+    const ready = document.getElementById("readyBox");
+    const readyName = document.getElementById("readyName");
+    const clearFileBtn = document.getElementById("clearFileBtn");
+    const submitBtn = document.getElementById("submitBtn");
+    const manualSubmitBtn = document.getElementById("manualSubmitBtn");
+    const manualFileInput = document.getElementById("manualFileInput");
+    const manualPickBtn = document.getElementById("manualPickBtn");
+    const manualFileName = document.getElementById("manualFileName");
+    const manualClearFileBtn = document.getElementById("manualClearFileBtn");
+    const fileMeta = document.getElementById("fileMeta");
+    const fileSize = document.getElementById("fileSize");
+    const fileType = document.getElementById("fileType");
+    const fileTime = document.getElementById("fileTime");
+    const draftList = document.getElementById("draftList");
+    const docLoadMore = document.getElementById("docLoadMore");
+    const docCount = document.getElementById("docCount");
+    const uploadKpiValue = document.getElementById("uploadKpiValue");
+    const uploadKpiBar = document.getElementById("uploadKpiBar");
+    const uploadKpiHint = document.getElementById("uploadKpiHint");
+    const PAGE_SIZE = 20;
+    let currentOffset = 0;
+    let activeTimeRange = "today";
+    let allLoadedRows = [];
+    let noMoreData = false;
+    const selfCheckAlert = document.getElementById("selfCheckAlert");
+    const ocrToManualBtn = document.getElementById("ocrToManualBtn");
+    const manualToOcrBtn = document.getElementById("manualToOcrBtn");
+    const modeTabs = document.querySelectorAll(".mode-tab");
+    const modeOcr = document.getElementById("mode-ocr");
+    const modeManual = document.getElementById("mode-manual");
+    const manualInvoiceDate = document.getElementById("manualInvoiceDate");
+    const manualCategory = document.getElementById("manualCategory");
+    const manualCategoryCode = document.getElementById("manualCategoryCode");
+    const manualCategoryHint = document.getElementById("manualCategoryHint");
+    const financeSubmitterBlock = document.getElementById("financeSubmitterBlock");
+    const financeDepartment = document.getElementById("financeDepartment");
+    const financeEmployeeName = document.getElementById("financeEmployeeName");
+    const financeEmployeeNo = document.getElementById("financeEmployeeNo");
+    const validateEmployeeBtn = document.getElementById("validateEmployeeBtn");
+    const financeLookupHint = document.getElementById("financeLookupHint");
+    const verifyEmptyHint = document.getElementById("verifyEmptyHint");
+    const verifyPanel = document.getElementById("verifyPanel");
+    const verifyReferenceNo = document.getElementById("verifyReferenceNo");
+    const verifyInvoiceId = document.getElementById("verifyInvoiceId");
+    const verifyRecordStateBadge = document.getElementById("verifyRecordStateBadge");
+    const verifyStatusBadge = document.getElementById("verifyStatusBadge");
+    const verifyRiskBadge = document.getElementById("verifyRiskBadge");
+    const verifyCount = document.getElementById("verifyCount");
+    const verifyCheckedAt = document.getElementById("verifyCheckedAt");
+    const verifyProvider = document.getElementById("verifyProvider");
+    const verifyRequestId = document.getElementById("verifyRequestId");
+    const verifyStatusCode = document.getElementById("verifyStatusCode");
+    const verifyLatency = document.getElementById("verifyLatency");
+    const verifyTraceId = document.getElementById("verifyTraceId");
+    const verifyMessage = document.getElementById("verifyMessage");
+    const runVerifyBtn = document.getElementById("runVerifyBtn");
+    const selfCheckVerifyItem = document.getElementById("selfCheckVerifyItem");
+    const selfCheckVerifyText = document.getElementById("selfCheckVerifyText");
+    const selfCheckVerifyIcon = document.getElementById("selfCheckVerifyIcon");
+    const activityDetailBackdrop = document.getElementById("activityDetailBackdrop");
+    const activityDetailPanel = document.getElementById("activityDetailPanel");
+    const activityDetailClose = document.getElementById("activityDetailClose");
+    const detailReference = document.getElementById("detailReference");
+    const detailApplicant = document.getElementById("detailApplicant");
+    const detailDepartment = document.getElementById("detailDepartment");
+    const detailAmount = document.getElementById("detailAmount");
+    const detailInvoiceDate = document.getElementById("detailInvoiceDate");
+    const detailCreatedAt = document.getElementById("detailCreatedAt");
+    const detailRecordState = document.getElementById("detailRecordState");
+    const detailVerifyStatus = document.getElementById("detailVerifyStatus");
+    const detailRiskLevel = document.getElementById("detailRiskLevel");
+    const detailApprovalStatus = document.getElementById("detailApprovalStatus");
+    const detailVerifyMessage = document.getElementById("detailVerifyMessage");
+    const detailRuleSummary = document.getElementById("detailRuleSummary");
+    const detailPreviewLink = document.getElementById("detailPreviewLink");
+    const detailInternalId = document.getElementById("detailInternalId");
+    const detailRecordStateCode = document.getElementById("detailRecordStateCode");
+    const detailVerifyStatusCode = document.getElementById("detailVerifyStatusCode");
+    const detailApprovalStatusCode = document.getElementById("detailApprovalStatusCode");
+    const detailRiskLevelCode = document.getElementById("detailRiskLevelCode");
+    const detailProvider = document.getElementById("detailProvider");
+    const detailRequestId = document.getElementById("detailRequestId");
+    const detailStatusCode = document.getElementById("detailStatusCode");
+    const detailLatency = document.getElementById("detailLatency");
+    const detailTraceId = document.getElementById("detailTraceId");
+    const detailRawJson = document.getElementById("detailRawJson");
+    const SUPPORTED_UPLOAD_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "bmp", "gif", "tif", "tiff", "pdf"]);
+    let latestRows = [];
+    let selectedInvoiceId = 0;
+    let currentDetailRow = null;
+
+    if (window.flatpickr && manualInvoiceDate) {
+      const zhLocale = (window.flatpickr.l10ns && window.flatpickr.l10ns.zh) ? window.flatpickr.l10ns.zh : "default";
+      const picker = window.flatpickr(manualInvoiceDate, {
+        locale: zhLocale,
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "Y年m月d日",
+        altInputClass: "form-control manual-date-input flatpickr-alt-input",
+        allowInput: true,
+        disableMobile: true
+      });
+      if (picker && picker.calendarContainer) {
+        picker.calendarContainer.classList.add("manual-date-calendar");
+      }
+    }
+
+    if (manualCategory && manualCategoryCode) {
+      const syncManualCategoryCode = () => {
+        const opt = manualCategory.options[manualCategory.selectedIndex];
+        const code = opt ? (opt.getAttribute("data-code") || opt.value || "") : "";
+        manualCategoryCode.value = code;
+      };
+      manualCategory.addEventListener("change", function () {
+        syncManualCategoryCode();
+        validateManualCategory();
+      });
+      syncManualCategoryCode();
+    }
+
+    function markSelectInvalid(select, hintNode, invalid) {
+      if (!select) return;
+      select.classList.toggle("is-invalid", !!invalid);
+      if (hintNode) {
+        hintNode.classList.toggle("d-none", !invalid);
+      }
+    }
+
+    function validateManualCategory() {
+      if (!manualCategory) return true;
+      const hasValue = String(manualCategory.value || "").trim() !== "";
+      markSelectInvalid(manualCategory, manualCategoryHint, !hasValue);
+      return hasValue;
+    }
+
+    function setMode(mode) {
+      const isManual = mode === "manual";
+      modeTabs.forEach(function (tab) {
+        const active = tab.getAttribute("data-mode") === mode;
+        tab.classList.toggle("active", active);
+        tab.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      modeOcr.classList.toggle("d-none", isManual);
+      modeManual.classList.toggle("d-none", !isManual);
+    }
+
+    modeTabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        setMode(tab.getAttribute("data-mode"));
+      });
+    });
+    if (ocrToManualBtn) {
+      ocrToManualBtn.addEventListener("click", function () {
+        setMode("manual");
+      });
+    }
+    if (manualToOcrBtn) {
+      manualToOcrBtn.addEventListener("click", function () {
+        setMode("ocr");
+      });
+    }
+    setMode("ocr");
+
+    function setFinanceSubmitterBlockVisible(visible) {
+      if (!financeSubmitterBlock) {
+        return;
+      }
+      financeSubmitterBlock.classList.toggle("d-none", !visible);
+    }
+
+    function fillFinanceSubmitter(data) {
+      if (financeDepartment) {
+        financeDepartment.value = String((data && data.department) || "").trim();
+      }
+      if (financeEmployeeName) {
+        financeEmployeeName.value = String((data && data.employee_name) || "").trim();
+      }
+      if (financeEmployeeNo) {
+        financeEmployeeNo.value = String((data && data.employee_no) || "").trim();
+      }
+    }
+
+    function setFinanceFieldsEditable(editable) {
+      if (financeDepartment) {
+        financeDepartment.readOnly = true;
+        financeDepartment.classList.remove("is-editable");
+      }
+      [financeEmployeeName, financeEmployeeNo].forEach(function (input) {
+        if (!input) return;
+        input.readOnly = !editable;
+        input.classList.toggle("is-editable", !!editable);
+      });
+      if (validateEmployeeBtn) {
+        validateEmployeeBtn.classList.toggle("d-none", !editable);
+      }
+      if (financeLookupHint) {
+        financeLookupHint.textContent = editable ? "支持输入工号后点击校验联想信息。" : "";
+      }
+    }
+
+    const employeeDirectory = {
+      F0001: { name: "林涛", department: "财务共享中心" },
+      R0001: { name: "陈洁", department: "市场部" },
+      R0002: { name: "黄慧", department: "人力资源部" },
+      R0003: { name: "周强", department: "采购部" }
+    };
+
+    function lookupEmployeeByNo() {
+      if (!financeEmployeeNo) return;
+      const code = String(financeEmployeeNo.value || "").trim().toUpperCase();
+      if (!code) {
+        if (financeLookupHint) financeLookupHint.textContent = "请输入工号后再校验。";
+        return;
+      }
+      const record = employeeDirectory[code];
+      if (record) {
+        if (financeEmployeeName) financeEmployeeName.value = record.name;
+        if (financeDepartment) financeDepartment.value = record.department;
+        if (financeLookupHint) financeLookupHint.textContent = `已联想：${record.department} / ${record.name}`;
+        if (window.showToast) {
+          window.showToast("工号校验通过，信息已联想。", "success", 1500);
+        }
+      } else {
+        if (financeLookupHint) financeLookupHint.textContent = "未匹配到工号，请人工确认。";
+        if (window.showToast) {
+          window.showToast("未匹配到工号，请人工确认。", "warning", 1500);
+        }
+      }
+    }
+
+    function parseFinanceFlag(value) {
+      if (typeof value === "boolean") {
+        return value;
+      }
+      if (typeof value === "number") {
+        return value === 1;
+      }
+      const text = String(value || "").trim().toLowerCase();
+      return text === "1" || text === "true" || text === "yes" || text === "y";
+    }
+
+    async function loadCurrentUserProfile() {
+      try {
+        const response = await fetch("/api/me", { headers: { Accept: "application/json" } });
+        if (response.status === 401) {
+          fillFinanceSubmitter(null);
+          setFinanceSubmitterBlockVisible(false);
+          return;
+        }
+        const payload = await response.json();
+        if (!response.ok || !payload) {
+          throw new Error(payload && (payload.msg || payload.error) ? (payload.msg || payload.error) : "加载失败");
+        }
+        const roleText = String(payload.role || "").toLowerCase();
+        const isFinance = parseFinanceFlag(payload.is_finance) || roleText.includes("finance") || roleText.includes("财务");
+        fillFinanceSubmitter(payload);
+        setFinanceSubmitterBlockVisible(isFinance);
+        setFinanceFieldsEditable(isFinance);
+      } catch (error) {
+        fillFinanceSubmitter(null);
+        setFinanceSubmitterBlockVisible(false);
+        setFinanceFieldsEditable(false);
+      }
+    }
+
+    function formatSize(size) {
+      if (!Number.isFinite(size) || size <= 0) return "-";
+      if (size < 1024) return `${size} 字节`;
+      if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} 千字节`;
+      return `${(size / (1024 * 1024)).toFixed(2)} 兆字节`;
+    }
+
+    function nowText() {
+      const date = new Date();
+      const pad = function (value) {
+        return String(value).padStart(2, "0");
+      };
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function getTypeMeta(name) {
+      const lowerName = String(name || "").toLowerCase();
+      if (lowerName.endsWith(".pdf")) {
+        return { label: "电子文档", icon: "ri-file-pdf-line" };
+      }
+      if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png") || lowerName.endsWith(".webp")) {
+        return { label: "票据图片", icon: "ri-file-image-line" };
+      }
+      return { label: "凭证文件", icon: "ri-file-line" };
+    }
+
+    function normalizeCode(value) {
+      return String(value || "").trim().toUpperCase();
+    }
+
+    function mapRecordState(state) {
+      const value = normalizeCode(state);
+      if (value === "LEDGER") return { text: "已入账", cls: "done" };
+      if (value === "ARCHIVED") return { text: "已归档", cls: "done" };
+      return { text: "待补录", cls: "pending" };
+    }
+
+    function mapApprovalStatus(status) {
+      const value = normalizeCode(status);
+      if (value === "APPROVED") return { text: "已通过", cls: "done" };
+      if (value === "REJECTED") return { text: "已驳回", cls: "risk" };
+      if (value === "RETURNED") return { text: "已打回", cls: "risk" };
+      return { text: "待处理", cls: "pending" };
+    }
+
+    function mapRiskLevel(level) {
+      const value = normalizeCode(level);
+      if (value === "HIGH") return { text: "高风险", cls: "risk-high" };
+      if (value === "MEDIUM") return { text: "中风险", cls: "risk-medium" };
+      if (value === "LOW" || value === "NORMAL") return { text: "正常", cls: "risk-low" };
+      return { text: "待判定", cls: "risk-medium" };
+    }
+
+    function mapVerifyStatus(status) {
+      const value = normalizeCode(status);
+      if (value === "PASS" || value === "PASSED") return { text: "验真通过", cls: "passed" };
+      if (value === "FAIL" || value === "FAILED") return { text: "验真未通过", cls: "failed" };
+      return { text: "待验真", cls: "pending" };
+    }
+
+    function setNodeText(node, value, fallback = "-") {
+      if (!node) return;
+      const text = String(value ?? "").trim();
+      node.textContent = text ? text : fallback;
+    }
+
+    function formatRawPayload(raw) {
+      if (raw === null || raw === undefined || raw === "-") return "-";
+      if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (!trimmed) return "-";
+        try {
+          const parsed = JSON.parse(trimmed);
+          return JSON.stringify(parsed, null, 2);
+        } catch (error) {
+          return trimmed;
+        }
+      }
+      try {
+        return JSON.stringify(raw, null, 2);
+      } catch (error) {
+        return String(raw);
+      }
+    }
+
+    function getFileExtension(fileName) {
+      const name = String(fileName || "").trim().toLowerCase();
+      const idx = name.lastIndexOf(".");
+      if (idx <= -1 || idx >= name.length - 1) {
+        return "";
+      }
+      return name.slice(idx + 1);
+    }
+
+    function isSupportedUploadFile(file) {
+      if (!file) return false;
+      const ext = getFileExtension(file.name);
+      return SUPPORTED_UPLOAD_EXTENSIONS.has(ext);
+    }
+
+    function openActivityDetail(row) {
+      if (!row) return;
+      const recordState = mapRecordState(row.record_state);
+      const verify = mapVerifyStatus(row.verify_status);
+      const riskMeta = mapRiskLevel(row.risk_level || row.ai_risk_level);
+      const approval = mapApprovalStatus(row.approval_status || row.status);
+
+      setNodeText(detailReference, row.reference_no || row.id || "-");
+      setNodeText(detailApplicant, row.applicant || row.submitter_name || "-");
+      setNodeText(detailDepartment, row.department || row.submitter_department || "-");
+      setNodeText(detailAmount, row.amount || "-");
+      setNodeText(detailInvoiceDate, row.invoice_date || "-");
+      setNodeText(detailCreatedAt, row.created_at || "-");
+      setNodeText(detailRecordState, recordState.text);
+      setNodeText(detailVerifyStatus, verify.text);
+      setNodeText(detailRiskLevel, riskMeta.text);
+      setNodeText(detailApprovalStatus, approval.text);
+      setNodeText(detailVerifyMessage, row.verify_message || "-");
+      setNodeText(detailRuleSummary, row.rule_explain_biz || row.risk_reason_biz || row.rule_explain || row.risk_reason || "-");
+
+      const filename = String(row.filename || "").trim();
+      const previewUrl =
+        row.preview_url ||
+        (filename && filename !== "-" ? `/uploads/${encodeURIComponent(filename)}` : "");
+      if (detailPreviewLink) {
+        if (previewUrl) {
+          detailPreviewLink.href = previewUrl;
+          detailPreviewLink.classList.remove("is-disabled");
+          detailPreviewLink.setAttribute("aria-disabled", "false");
+        } else {
+          detailPreviewLink.href = "#";
+          detailPreviewLink.classList.add("is-disabled");
+          detailPreviewLink.setAttribute("aria-disabled", "true");
+        }
+      }
+
+      setNodeText(detailInternalId, row.id || "-");
+      setNodeText(detailRecordStateCode, normalizeCode(row.record_state) || "-");
+      setNodeText(detailVerifyStatusCode, normalizeCode(row.verify_status) || "-");
+      setNodeText(detailApprovalStatusCode, normalizeCode(row.approval_status || row.status) || "-");
+      setNodeText(detailRiskLevelCode, normalizeCode(row.risk_level || row.ai_risk_level) || "-");
+      setNodeText(detailProvider, row.verify_provider || "-");
+      setNodeText(detailRequestId, row.verify_request_id || "-");
+      setNodeText(detailStatusCode, row.verify_status_code || "-");
+      if (detailLatency) {
+        const latency = Number(row.verify_latency_ms);
+        detailLatency.textContent = Number.isFinite(latency) && latency > 0 ? `${latency} 毫秒` : "-";
+      }
+      setNodeText(detailTraceId, row.ai_trace_id || row.trace_id || "-");
+      if (detailRawJson) detailRawJson.textContent = formatRawPayload(row.raw_json);
+
+      currentDetailRow = row;
+      const recordStateNorm = String(row.record_state || "").toUpperCase().trim();
+      const hasAmount = !!String(row.amount || "").trim() && !Number.isNaN(Number(String(row.amount || "").replace(/[^\d.-]/g, "")));
+      const hasDate = !!String(row.invoice_date || "").trim();
+      const canPostLedger = (recordStateNorm === "DRAFT" || !recordStateNorm) && hasAmount && hasDate;
+      const isLedger = recordStateNorm === "LEDGER";
+      const detailPostLedgerWrap = document.getElementById("detailPostLedgerWrap");
+      const detailGotoApprovalWrap = document.getElementById("detailGotoApprovalWrap");
+      const detailSupplementWrap = document.getElementById("detailSupplementWrap");
+      if (detailPostLedgerWrap) {
+        detailPostLedgerWrap.classList.toggle("d-none", !canPostLedger);
+      }
+      if (detailGotoApprovalWrap) {
+        detailGotoApprovalWrap.classList.toggle("d-none", !isLedger);
+      }
+      if (detailSupplementWrap) {
+        detailSupplementWrap.classList.toggle("d-none", !(recordStateNorm === "DRAFT" || !recordStateNorm));
+      }
+      const detailSupplementAmount = document.getElementById("detailSupplementAmount");
+      const detailSupplementDate = document.getElementById("detailSupplementDate");
+      if (detailSupplementAmount) detailSupplementAmount.value = String(row.amount || "").trim();
+      if (detailSupplementDate) detailSupplementDate.value = String(row.invoice_date || "").trim();
+
+      if (activityDetailBackdrop) {
+        activityDetailBackdrop.classList.add("open");
+        activityDetailBackdrop.setAttribute("aria-hidden", "false");
+      }
+      if (activityDetailPanel) {
+        activityDetailPanel.classList.add("open");
+        activityDetailPanel.setAttribute("aria-hidden", "false");
+      }
+    }
+
+    function closeActivityDetail() {
+      if (activityDetailBackdrop) {
+        activityDetailBackdrop.classList.remove("open");
+        activityDetailBackdrop.setAttribute("aria-hidden", "true");
+      }
+      if (activityDetailPanel) {
+        activityDetailPanel.classList.remove("open");
+        activityDetailPanel.setAttribute("aria-hidden", "true");
+      }
+    }
+
+    function csrfToken() {
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      if (meta && meta.content) {
+        return String(meta.content).trim();
+      }
+      const hidden = document.querySelector('input[name="csrf_token"]');
+      return hidden ? String(hidden.value || "").trim() : "";
+    }
+
+    function updateSelfCheckVerify(invoice) {
+      if (!selfCheckVerifyItem || !selfCheckVerifyText || !selfCheckVerifyIcon) {
+        return;
+      }
+      selfCheckVerifyItem.classList.remove("is-verify-pending", "is-verify-passed", "is-verify-failed");
+      const row = invoice || {};
+      const verify = mapVerifyStatus(row.verify_status);
+      const message = String(row.verify_message || "").trim();
+      if (verify.cls === "passed") {
+        selfCheckVerifyItem.classList.add("is-verify-passed");
+        selfCheckVerifyIcon.className = "ri-checkbox-circle-line mr-2";
+        selfCheckVerifyText.textContent = "发票验真回执：通过";
+        return;
+      }
+      if (verify.cls === "failed") {
+        selfCheckVerifyItem.classList.add("is-verify-failed");
+        selfCheckVerifyIcon.className = "ri-close-circle-line mr-2";
+        selfCheckVerifyText.textContent = message
+          ? `发票验真回执：未通过，${message}`
+          : "发票验真回执：未通过";
+        return;
+      }
+      selfCheckVerifyItem.classList.add("is-verify-pending");
+      selfCheckVerifyIcon.className = "ri-time-line mr-2";
+      selfCheckVerifyText.textContent = message
+        ? `发票验真回执：待验真，${message}`
+        : "发票验真回执：待验真";
+    }
+
+    function renderVerifyPanel(invoice) {
+      const row = invoice || null;
+      if (!row) {
+        selectedInvoiceId = 0;
+        if (verifyEmptyHint) verifyEmptyHint.classList.remove("d-none");
+        if (verifyPanel) verifyPanel.classList.add("d-none");
+        updateSelfCheckVerify(null);
+        return;
+      }
+
+      selectedInvoiceId = Number(row.id) || 0;
+      const verify = mapVerifyStatus(row.verify_status);
+      const recordState = mapRecordState(row.record_state);
+      const riskMeta = mapRiskLevel(row.risk_level || row.ai_risk_level);
+      if (verifyEmptyHint) verifyEmptyHint.classList.add("d-none");
+      if (verifyPanel) verifyPanel.classList.remove("d-none");
+
+      if (verifyReferenceNo) {
+        const refText = String(row.reference_no || row.id || "-");
+        verifyReferenceNo.textContent = refText || "-";
+      }
+      if (verifyInvoiceId) verifyInvoiceId.textContent = String(row.id || "-");
+      if (verifyRecordStateBadge) {
+        const stateCls = recordState.cls === "done" ? "passed" : "pending";
+        verifyRecordStateBadge.className = `verify-status-badge ${stateCls}`;
+        verifyRecordStateBadge.textContent = recordState.text;
+      }
+      if (verifyStatusBadge) {
+        verifyStatusBadge.className = `verify-status-badge ${verify.cls}`;
+        verifyStatusBadge.textContent = verify.text;
+      }
+      if (verifyRiskBadge) {
+        verifyRiskBadge.className = `verify-status-badge ${riskMeta.cls}`;
+        verifyRiskBadge.textContent = riskMeta.text;
+      }
+      if (verifyCount) verifyCount.textContent = String(Number(row.verify_count) || 0);
+      if (verifyCheckedAt) verifyCheckedAt.textContent = String(row.verify_checked_at || "-");
+      if (verifyProvider) verifyProvider.textContent = String(row.verify_provider || "-");
+      if (verifyRequestId) verifyRequestId.textContent = String(row.verify_request_id || "-");
+      if (verifyStatusCode) verifyStatusCode.textContent = String(row.verify_status_code || "-");
+      if (verifyLatency) {
+        const latency = Number(row.verify_latency_ms);
+        verifyLatency.textContent = Number.isFinite(latency) && latency > 0 ? `${latency} 毫秒` : "-";
+      }
+      if (verifyTraceId) verifyTraceId.textContent = String(row.ai_trace_id || "-");
+      if (verifyMessage) verifyMessage.textContent = String(row.verify_message || "-");
+      updateSelfCheckVerify(row);
+    }
+
+    function highlightSelectedRow(invoiceId) {
+      const id = Number(invoiceId);
+      draftList.querySelectorAll(".sidebar-doc-row").forEach(function (el) {
+        el.classList.toggle("is-selected", Number(el.getAttribute("data-id")) === id);
+      });
+    }
+
+    function selectInvoiceById(invoiceId) {
+      const targetId = Number(invoiceId);
+      if (!Number.isFinite(targetId) || targetId <= 0) {
+        renderVerifyPanel(null);
+        return;
+      }
+      highlightSelectedRow(targetId);
+      const row = latestRows.find((item) => Number(item.id) === targetId);
+      if (row) {
+        renderVerifyPanel(row);
+      }
+    }
+
+    async function verifyInvoice(invoiceId) {
+      const token = csrfToken();
+      const response = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}/verify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "X-CSRF-Token": token
+        },
+        body: JSON.stringify({ csrf_token: token })
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.msg || payload.message || "验真失败");
+      }
+      return payload;
+    }
+
+    function getTimeRangeDates(range) {
+      const now = new Date();
+      const pad = (v) => String(v).padStart(2, "0");
+      const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      const today = fmt(now);
+      if (range === "today") return { date_start: today, date_end: today };
+      if (range === "yesterday") {
+        const y = new Date(now); y.setDate(y.getDate() - 1);
+        const ys = fmt(y);
+        return { date_start: ys, date_end: ys };
+      }
+      if (range === "7d") {
+        const d = new Date(now); d.setDate(d.getDate() - 6);
+        return { date_start: fmt(d), date_end: today };
+      }
+      if (range === "30d") {
+        const d = new Date(now); d.setDate(d.getDate() - 29);
+        return { date_start: fmt(d), date_end: today };
+      }
+      return {};
+    }
+
+    function buildFetchUrl(offset, limit) {
+      const dates = getTimeRangeDates(activeTimeRange);
+      let url = `/invoices?tab=draft&limit=${limit}&offset=${offset}`;
+      if (dates.date_start) url += `&date_start=${encodeURIComponent(dates.date_start)}`;
+      if (dates.date_end) url += `&date_end=${encodeURIComponent(dates.date_end)}`;
+      return url;
+    }
+
+    async function requestRecentActivities(offset, limit) {
+      const url = buildFetchUrl(offset, limit);
+      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok || !Array.isArray(payload.data)) {
+        throw new Error(payload.msg || payload.error || "加载失败");
+      }
+      return payload.data;
+    }
+
+    function isValidAmount(val) {
+      const text = String(val || "").trim();
+      if (!text || text === "-" || text === "—") return false;
+      return !isNaN(Number(text.replace(/,/g, "")));
+    }
+
+    function renderSidebarRow(item) {
+      const filename = String(item.filename || "-");
+      const rawAmt = String(item.amount || "").trim();
+      const amount = isValidAmount(rawAmt) ? `¥${escapeHtml(rawAmt)}` : "";
+      const createdText = item.created_at ? escapeHtml(String(item.created_at).slice(0, 16)) : "-";
+      const recordState = mapRecordState(item.record_state);
+      const typeMeta = getTypeMeta(filename);
+      const amountHtml = amount
+        ? `<span class="sidebar-doc-amount">${amount}</span>`
+        : `<span class="sidebar-doc-amount muted">待补录</span>`;
+      return (
+        `<div class="sidebar-doc-row" data-id="${escapeHtml(item.id)}">` +
+          `<div class="sidebar-doc-icon"><i class="${escapeHtml(typeMeta.icon)}"></i></div>` +
+          `<div class="sidebar-doc-main">` +
+            `<div class="sidebar-doc-name" title="${escapeHtml(filename)}">${escapeHtml(filename)}</div>` +
+            `<div class="sidebar-doc-meta">` +
+              `<span class="sidebar-doc-time">${createdText}</span>` +
+              amountHtml +
+            `</div>` +
+          `</div>` +
+          `<div class="sidebar-doc-right">` +
+            `<span class="activity-badge ${escapeHtml(recordState.cls)}">${escapeHtml(recordState.text)}</span>` +
+            `<div class="sidebar-doc-ops">` +
+              `<button type="button" class="btn btn-xs sidebar-doc-op-btn op-verify activity-verify" data-id="${escapeHtml(item.id)}" title="验真"><i class="ri-shield-check-line"></i></button>` +
+              `<a href="${(function(){ var base = (typeof window !== 'undefined' && window.LEDGER_DRAFT_PAGE_URL) ? window.LEDGER_DRAFT_PAGE_URL : '/invoices_page'; var sep = base.indexOf('?') >= 0 ? '&' : '?'; var hasTab = base.indexOf('tab=') >= 0; var q = (hasTab ? '' : 'tab=draft&') + 'open_evidence=' + escapeHtml(item.id) + '&invoice_id=' + escapeHtml(item.id); return base + sep + q; })()}" class="btn btn-xs sidebar-doc-op-btn op-detail activity-detail" title="查看详情（补录页）"><i class="ri-eye-line"></i></a>` +
+              `<button type="button" class="btn btn-xs sidebar-doc-op-btn op-remove activity-remove" data-id="${escapeHtml(item.id)}" title="删除"><i class="ri-delete-bin-line"></i></button>` +
+            `</div>` +
+          `</div>` +
+        `</div>`
+      );
+    }
+
+    function renderActivities(rows, append) {
+      const newRows = Array.isArray(rows) ? rows : [];
+      if (!append) {
+        allLoadedRows = newRows;
+        latestRows = newRows;
+      } else {
+        allLoadedRows = allLoadedRows.concat(newRows);
+        latestRows = allLoadedRows;
+      }
+      noMoreData = newRows.length < PAGE_SIZE;
+
+      if (!allLoadedRows.length) {
+        draftList.innerHTML = '<div class="activity-empty">暂无受理记录。</div>';
+        renderVerifyPanel(null);
+      } else if (!append) {
+        draftList.innerHTML = allLoadedRows.map(renderSidebarRow).join("");
+        const preferredId = selectedInvoiceId > 0 ? selectedInvoiceId : Number(allLoadedRows[0].id);
+        selectInvoiceById(preferredId);
+      } else {
+        const frag = document.createElement("div");
+        frag.innerHTML = newRows.map(renderSidebarRow).join("");
+        while (frag.firstChild) draftList.appendChild(frag.firstChild);
+      }
+
+      if (docLoadMore) {
+        docLoadMore.style.display = noMoreData ? "none" : "";
+        docLoadMore.disabled = false;
+        docLoadMore.textContent = "加载更多";
+      }
+      if (docCount) {
+        docCount.textContent = `已加载 ${allLoadedRows.length} 条`;
+      }
+    }
+
+    async function reloadActivities() {
+      currentOffset = 0;
+      noMoreData = false;
+      try {
+        const rows = await requestRecentActivities(0, PAGE_SIZE);
+        renderActivities(rows, false);
+      } catch (error) {
+        console.error("单据加载失败", error);
+        draftList.innerHTML = '<div class="activity-empty text-danger">单据加载失败，请稍后重试。</div>';
+      }
+    }
+
+    async function loadMoreDocs() {
+      if (noMoreData) return;
+      currentOffset += PAGE_SIZE;
+      if (docLoadMore) {
+        docLoadMore.disabled = true;
+        docLoadMore.textContent = "加载中...";
+      }
+      try {
+        const rows = await requestRecentActivities(currentOffset, PAGE_SIZE);
+        renderActivities(rows, true);
+      } catch (error) {
+        console.error("加载更多失败", error);
+        if (docLoadMore) {
+          docLoadMore.disabled = false;
+          docLoadMore.textContent = "加载更多";
+        }
+      }
+    }
+
+    if (docLoadMore) {
+      docLoadMore.addEventListener("click", loadMoreDocs);
+    }
+
+    async function loadSubmitProgress() {
+      if (!uploadKpiValue || !uploadKpiBar || !uploadKpiHint) {
+        return;
+      }
+      try {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, "0");
+        const dd = String(today.getDate()).padStart(2, "0");
+        const todayText = `${yyyy}-${mm}-${dd}`;
+        const response = await fetch(`/invoices?tab=draft&limit=200&date_start=${todayText}&date_end=${todayText}`, { headers: { Accept: "application/json" } });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok || !Array.isArray(payload.data)) {
+          throw new Error(payload.msg || payload.error || "加载失败");
+        }
+        const todayCount = payload.data.length;
+        const target = 40;
+        const remaining = Math.max(0, target - todayCount);
+        const pct = Math.min(100, Math.round((todayCount / target) * 100));
+        uploadKpiValue.textContent = `${todayCount} / ${target}`;
+        uploadKpiBar.style.width = `${pct}%`;
+        uploadKpiBar.setAttribute("aria-valuenow", String(pct));
+        uploadKpiHint.textContent = remaining > 0
+          ? `建议在 18:00 前完成剩余 ${remaining} 单。`
+          : "今日目标已达成。";
+      } catch (error) {
+        uploadKpiValue.textContent = "-- / 40";
+        uploadKpiBar.style.width = "0%";
+        uploadKpiBar.setAttribute("aria-valuenow", "0");
+        uploadKpiHint.textContent = "今日进度加载失败";
+      }
+    }
+
+    async function deleteInvoice(id) {
+      const response = await fetch("/api/invoices/batch-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ ids: [Number(id)] })
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.msg || payload.error || "删除失败");
+      }
+      return payload;
+    }
+
+    function clearSelectedFile() {
+      input.value = "";
+      try {
+        const dt = new DataTransfer();
+        input.files = dt.files;
+      } catch (error) {
+        // Ignore for browsers that do not allow direct assignment.
+      }
+      ready.style.display = "none";
+      readyName.textContent = "-";
+      fileMeta.classList.add("d-none");
+      fileSize.textContent = "-";
+      fileType.textContent = "-";
+      fileTime.textContent = "-";
+      selfCheckAlert.classList.add("d-none");
+    }
+
+    function syncManualFile(file) {
+      if (!file) {
+        manualFileName.textContent = "未选择文件";
+        manualClearFileBtn.classList.add("d-none");
+        return;
+      }
+      manualFileName.textContent = file.name;
+      manualClearFileBtn.classList.remove("d-none");
+    }
+
+    function setFile(file) {
+      if (!file) {
+        return;
+      }
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      readyName.textContent = file.name;
+      ready.style.display = "inline-flex";
+      fileMeta.classList.remove("d-none");
+      fileSize.textContent = formatSize(file.size);
+      fileType.textContent = getTypeMeta(file.name).label || "未知";
+      fileTime.textContent = nowText();
+      if (file.size > 8 * 1024 * 1024) {
+        selfCheckAlert.classList.remove("d-none");
+      } else {
+        selfCheckAlert.classList.add("d-none");
+      }
+    }
+
+    drop.addEventListener("click", function () {
+      input.click();
+    });
+
+    drop.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        input.click();
+      }
+    });
+
+    input.addEventListener("change", function () {
+      const file = input.files && input.files[0] ? input.files[0] : null;
+      if (file && !isSupportedUploadFile(file)) {
+        alert("仅支持 JPG/JPEG/PNG/WEBP/BMP/GIF/TIF/TIFF/PDF 文件。");
+        clearSelectedFile();
+        return;
+      }
+      setFile(file);
+    });
+    manualPickBtn.addEventListener("click", function () {
+      manualFileInput.click();
+    });
+    manualFileInput.addEventListener("change", function () {
+      const file = manualFileInput.files && manualFileInput.files[0] ? manualFileInput.files[0] : null;
+      if (file && !isSupportedUploadFile(file)) {
+        alert("仅支持 JPG/JPEG/PNG/WEBP/BMP/GIF/TIF/TIFF/PDF 文件。");
+        manualFileInput.value = "";
+        syncManualFile(null);
+        return;
+      }
+      syncManualFile(file);
+    });
+    manualClearFileBtn.addEventListener("click", function () {
+      manualFileInput.value = "";
+      syncManualFile(null);
+    });
+    clearFileBtn.addEventListener("click", function () {
+      clearSelectedFile();
+    });
+    if (runVerifyBtn) {
+      runVerifyBtn.addEventListener("click", async function () {
+        if (!selectedInvoiceId) {
+          alert("请先在右侧「我的单据」中选择一条单据。");
+          return;
+        }
+        runVerifyBtn.disabled = true;
+        const originalHtml = runVerifyBtn.innerHTML;
+        runVerifyBtn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1" role="status" aria-hidden="true"></span>验真中';
+        try {
+          await verifyInvoice(selectedInvoiceId);
+          await reloadActivities();
+          await loadSubmitProgress();
+          selectInvoiceById(selectedInvoiceId);
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error("验真失败", error);
+          alert("验真失败，请稍后重试。");
+        } finally {
+          runVerifyBtn.disabled = false;
+          runVerifyBtn.innerHTML = originalHtml;
+        }
+      });
+    }
+    if (validateEmployeeBtn) {
+      validateEmployeeBtn.addEventListener("click", function () {
+        lookupEmployeeByNo();
+      });
+    }
+    if (financeEmployeeNo) {
+      financeEmployeeNo.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          lookupEmployeeByNo();
+        }
+      });
+    }
+    if (activityDetailClose) {
+      activityDetailClose.addEventListener("click", closeActivityDetail);
+    }
+    if (activityDetailBackdrop) {
+      activityDetailBackdrop.addEventListener("click", closeActivityDetail);
+    }
+    document.addEventListener("keydown", function (event) {
+      if ((event.key || "").toLowerCase() === "escape") {
+        closeActivityDetail();
+      }
+    });
+
+    const detailPostLedgerBtn = document.getElementById("detailPostLedgerBtn");
+    if (detailPostLedgerBtn) {
+      detailPostLedgerBtn.addEventListener("click", async function () {
+        const row = currentDetailRow;
+        if (!row || !row.id) {
+          alert("未找到当前单据，请关闭后重新选择。");
+          return;
+        }
+        const id = Number(row.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          alert("单据编号无效。");
+          return;
+        }
+        detailPostLedgerBtn.disabled = true;
+        const originalText = detailPostLedgerBtn.textContent;
+        detailPostLedgerBtn.textContent = "入账中…";
+        try {
+          const response = await fetch(`/api/ledger/${encodeURIComponent(id)}/action`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({
+              action: "POST_LEDGER",
+              change_reason_code: "DATA_COMPLETION",
+              comment: ""
+            })
+          });
+          const result = await response.json().catch(function () { return { ok: false, msg: "响应解析失败" }; });
+          if (!response.ok || !result.ok) {
+            throw new Error(result.msg || result.message || "入账失败");
+          }
+          closeActivityDetail();
+          await reloadActivities();
+          await loadSubmitProgress();
+          alert("入账成功，单据已进入审批流程。可前往「审批中心」进行审批。");
+        } catch (err) {
+          alert("入账失败：" + (err.message || String(err)));
+        } finally {
+          detailPostLedgerBtn.disabled = false;
+          detailPostLedgerBtn.textContent = originalText;
+        }
+      });
+    }
+
+    const detailSupplementSaveBtn = document.getElementById("detailSupplementSaveBtn");
+    if (detailSupplementSaveBtn) {
+      detailSupplementSaveBtn.addEventListener("click", async function () {
+        const row = currentDetailRow;
+        if (!row || !row.id) {
+          alert("未找到当前单据，请关闭后重新选择。");
+          return;
+        }
+        const id = Number(row.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          alert("单据编号无效。");
+          return;
+        }
+        const amountEl = document.getElementById("detailSupplementAmount");
+        const dateEl = document.getElementById("detailSupplementDate");
+        const amount = amountEl && amountEl.value ? String(amountEl.value).trim() : "";
+        const invoiceDate = dateEl && dateEl.value ? String(dateEl.value).trim() : "";
+        if (!amount && !invoiceDate) {
+          alert("请至少填写金额或开票日期。");
+          return;
+        }
+        detailSupplementSaveBtn.disabled = true;
+        const originalText = detailSupplementSaveBtn.textContent;
+        detailSupplementSaveBtn.textContent = "保存中…";
+        try {
+          const response = await fetch("/api/ledger/" + encodeURIComponent(id) + "/structured", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({
+              fields: { amount: amount || undefined, invoice_date: invoiceDate || undefined },
+              change_reason_code: "DATA_COMPLETION"
+            })
+          });
+          const result = await response.json().catch(function () { return { ok: false, msg: "响应解析失败" }; });
+          if (!response.ok || !result.ok) {
+            throw new Error(result.msg || result.message || "保存失败");
+          }
+          if (currentDetailRow && Number(currentDetailRow.id) === id) {
+            currentDetailRow.amount = amount || currentDetailRow.amount;
+            currentDetailRow.invoice_date = invoiceDate || currentDetailRow.invoice_date;
+            setNodeText(document.getElementById("detailAmount"), amount || currentDetailRow.amount || "-");
+            setNodeText(document.getElementById("detailInvoiceDate"), invoiceDate || currentDetailRow.invoice_date || "-");
+            const hasAmount = !!amount && !Number.isNaN(Number(String(amount).replace(/[^\d.-]/g, "")));
+            const hasDate = !!invoiceDate;
+            const canPostLedger = hasAmount && hasDate;
+            const postWrap = document.getElementById("detailPostLedgerWrap");
+            if (postWrap) postWrap.classList.toggle("d-none", !canPostLedger);
+          }
+          await reloadActivities();
+          alert("补录已保存。若金额与开票日期已齐全，可点击「入账并进入审批」。");
+        } catch (err) {
+          alert("保存失败：" + (err.message || String(err)));
+        } finally {
+          detailSupplementSaveBtn.disabled = false;
+          detailSupplementSaveBtn.textContent = originalText;
+        }
+      });
+    }
+
+    ["dragenter", "dragover"].forEach(function (eventName) {
+      drop.addEventListener(eventName, function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        drop.classList.add("is-dragover");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(function (eventName) {
+      drop.addEventListener(eventName, function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        drop.classList.remove("is-dragover");
+      });
+    });
+
+    drop.addEventListener("drop", function (event) {
+      const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]
+        ? event.dataTransfer.files[0]
+        : null;
+      if (!file) {
+        return;
+      }
+      if (!isSupportedUploadFile(file)) {
+        alert("仅支持 JPG/JPEG/PNG/WEBP/BMP/GIF/TIF/TIFF/PDF 文件。");
+        return;
+      }
+      setFile(file);
+    });
+
+    draftList.addEventListener("click", async function (event) {
+      const removeBtn = event.target.closest(".activity-remove");
+      if (removeBtn) {
+        const id = Number(removeBtn.getAttribute("data-id"));
+        if (!Number.isInteger(id) || id <= 0) {
+          return;
+        }
+        if (!window.confirm("确认删除该条受理记录？此操作不可撤销。")) {
+          return;
+        }
+        removeBtn.disabled = true;
+        try {
+          await deleteInvoice(id);
+          await reloadActivities();
+          await loadSubmitProgress();
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error("删除失败", error);
+          alert("删除失败，请稍后重试。");
+        } finally {
+          removeBtn.disabled = false;
+        }
+        return;
+      }
+
+      const verifyBtn = event.target.closest(".activity-verify");
+      if (verifyBtn) {
+        const id = Number(verifyBtn.getAttribute("data-id"));
+        if (!Number.isInteger(id) || id <= 0) {
+          return;
+        }
+        selectInvoiceById(id);
+        verifyBtn.disabled = true;
+        const originalHtml = verifyBtn.innerHTML;
+        verifyBtn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1" role="status" aria-hidden="true"></span>验真中';
+        try {
+          await verifyInvoice(id);
+          await reloadActivities();
+          await loadSubmitProgress();
+          selectInvoiceById(id);
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error("验真失败", error);
+          alert("验真失败，请稍后重试。");
+        } finally {
+          verifyBtn.disabled = false;
+          verifyBtn.innerHTML = originalHtml;
+        }
+        return;
+      }
+
+      const detailBtn = event.target.closest(".activity-detail");
+      if (detailBtn) {
+        if (detailBtn.tagName === "A") return;
+        const id = Number(detailBtn.getAttribute("data-id"));
+        if (!Number.isInteger(id) || id <= 0) {
+          return;
+        }
+        selectInvoiceById(id);
+        const row = latestRows.find((item) => Number(item.id) === id);
+        if (row) {
+          openActivityDetail(row);
+        } else {
+          alert("未找到单据详情，请刷新后再试。");
+        }
+      }
+    });
+
+    form.addEventListener("submit", function (event) {
+      const file = input.files && input.files[0] ? input.files[0] : null;
+      if (!file) {
+        event.preventDefault();
+        alert("请先选择发票文件。");
+        return;
+      }
+      if (!isSupportedUploadFile(file)) {
+        event.preventDefault();
+        alert("仅支持 JPG/JPEG/PNG/WEBP/BMP/GIF/TIF/TIFF/PDF 文件。");
+        return;
+      }
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>正在校验';
+    });
+
+    manualForm.addEventListener("submit", function (event) {
+      if (!validateManualCategory()) {
+        event.preventDefault();
+        alert("请选择消费类型。");
+        return;
+      }
+      const file = manualFileInput.files && manualFileInput.files[0] ? manualFileInput.files[0] : null;
+      if (!file) {
+        event.preventDefault();
+        alert("请先上传原始凭证或截图。");
+        return;
+      }
+      if (!isSupportedUploadFile(file)) {
+        event.preventDefault();
+        alert("仅支持 JPG/JPEG/PNG/WEBP/BMP/GIF/TIF/TIFF/PDF 文件。");
+        return;
+      }
+      manualSubmitBtn.disabled = true;
+      manualSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>提交中';
+    });
+
+    document.querySelectorAll(".upload-time-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.querySelectorAll(".upload-time-btn").forEach(function (b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        activeTimeRange = btn.getAttribute("data-range") || "today";
+        reloadActivities();
+        loadSubmitProgress();
+      });
+    });
+
+    reloadActivities();
+    loadSubmitProgress();
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", loadCurrentUserProfile, { once: true });
+    } else {
+      loadCurrentUserProfile();
+    }
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,744 @@
+{% extends "base.html" %}
+{% set node_defs = [
+  {"step": "A", "title": "AI哨兵"},
+  {"step": "B", "title": "财务主管/经理"},
+  {"step": "C", "title": "财务总监(CFO)"},
+] %}
+{% set role_options = [
+  {"value": "AI_SENTINEL", "label": "AI哨兵"},
+  {"value": "MANAGER", "label": "财务主管/经理"},
+  {"value": "CFO", "label": "财务总监(CFO)"},
+] %}
+{% set risk_options = [
+  {"value": "LOW", "label": "低风险"},
+  {"value": "MEDIUM", "label": "中风险"},
+  {"value": "HIGH", "label": "高风险"},
+] %}
+{% set next_options = [
+  {"value": "A", "label": "节点A（AI哨兵）"},
+  {"value": "B", "label": "节点B（财务主管/经理）"},
+  {"value": "C", "label": "节点C（财务总监(CFO)）"},
+  {"value": "END", "label": "结束流程"},
+] %}
+{% set action_defs = [
+  {"suffix": "Approve", "label": "通过", "error": "请选择“通过”的流转目标"},
+  {"suffix": "Return", "label": "退回", "error": "请选择“退回”的流转目标"},
+  {"suffix": "Assign", "label": "转派", "error": "请选择“转派”的流转目标"},
+  {"suffix": "FalsePositive", "label": "误报", "error": "请选择“误报”的流转目标"},
+  {"suffix": "Close", "label": "结案", "error": "请选择“结案”的流转目标"},
+] %}
+
+{% block title %}流程控制台 - DeepAudit Pro{% endblock %}
+{% block page_title %}流程控制台{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tom-select/tom-select.css', v=_static_version) }}">
+<style>
+/* ── 流程控制台 - 企业级友好设计 ── */
+.workflow-console {
+  --wf-primary: #2563eb;
+  --wf-primary-light: #eff6ff;
+  --wf-success: #10b981;
+  --wf-warning: #f59e0b;
+  --wf-danger: #ef4444;
+  --wf-text: #1e293b;
+  --wf-text-muted: #64748b;
+  --wf-border: #e2e8f0;
+  --wf-bg: #f8fafc;
+  --wf-card-radius: 12px;
+}
+
+.workflow-console .meta-card { 
+  border: 1px solid var(--wf-border); 
+  border-radius: var(--wf-card-radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.workflow-console .meta-grid { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+  gap: 12px; 
+}
+.workflow-console .meta-item { 
+  background: var(--wf-primary-light); 
+  border: 1px solid #dbeafe; 
+  border-radius: 10px; 
+  padding: 12px 14px;
+  transition: all 0.2s ease;
+}
+.workflow-console .meta-item:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 2px 4px rgba(37,99,235,0.1);
+}
+.workflow-console .meta-key { 
+  color: var(--wf-text-muted); 
+  font-size: 12px; 
+  margin-bottom: 4px;
+}
+.workflow-console .meta-value { 
+  color: var(--wf-text); 
+  font-size: 16px; 
+  font-weight: 600; 
+}
+.workflow-console .status-note { 
+  font-size: 12px; 
+  color: var(--wf-text-muted);
+  padding: 8px 12px;
+  background: var(--wf-bg);
+  border-radius: 6px;
+  margin-top: 12px;
+}
+.workflow-console .chain-wrap { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  flex-wrap: wrap;
+  padding: 12px;
+  background: var(--wf-bg);
+  border-radius: 8px;
+}
+.workflow-console .chain-node { 
+  border: 1px solid var(--wf-border); 
+  background: #fff; 
+  border-radius: 999px; 
+  padding: 8px 16px; 
+  font-weight: 600; 
+  color: var(--wf-text);
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+.workflow-console .chain-node:hover {
+  border-color: var(--wf-primary);
+  color: var(--wf-primary);
+}
+.workflow-console .chain-arrow { 
+  color: var(--wf-text-muted); 
+  font-weight: 600;
+  font-size: 16px;
+}
+.workflow-console .node-card { 
+  border: 1px solid var(--wf-border); 
+  border-radius: var(--wf-card-radius);
+  transition: all 0.2s ease;
+  height: 100%;
+}
+.workflow-console .node-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border-color: #cbd5e1;
+}
+.workflow-console .node-title { 
+  font-weight: 700; 
+  color: var(--wf-text);
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+.workflow-console .node-subtitle { 
+  color: var(--wf-text-muted); 
+  font-size: 12px; 
+  margin-bottom: 16px;
+}
+.workflow-console .node-section {
+  padding: 14px;
+}
+.workflow-console .node-section { 
+  border: 1px solid var(--wf-border); 
+  border-radius: 10px; 
+  background: #fff; 
+  padding: 16px; 
+  margin-bottom: 12px;
+}
+.workflow-console .node-section:last-child {
+  margin-bottom: 0;
+}
+.workflow-console .section-title { 
+  font-size: 14px; 
+  font-weight: 600; 
+  color: var(--wf-text);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.workflow-console .section-title i {
+  color: var(--wf-primary);
+  font-size: 16px;
+}
+.workflow-console .section-tip { 
+  color: var(--wf-text-muted); 
+  font-size: 12px; 
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--wf-bg);
+  border-radius: 6px;
+  line-height: 1.5;
+  display: none; /* 隐藏提示文字以减少信息量 */
+}
+.workflow-console .jump-links { 
+  display: flex; 
+  gap: 8px; 
+  flex-wrap: wrap; 
+}
+.workflow-console .preview-item { 
+  border: 1px solid var(--wf-border); 
+  background: #fff; 
+  border-radius: 10px; 
+  padding: 12px 14px;
+  transition: all 0.2s ease;
+}
+.workflow-console .preview-item:hover {
+  border-color: var(--wf-primary);
+  box-shadow: 0 2px 4px rgba(37,99,235,0.1);
+}
+.workflow-console .preview-item .k { 
+  color: var(--wf-text-muted); 
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.workflow-console .preview-item .v { 
+  font-size: 14px; 
+  font-weight: 600; 
+  color: var(--wf-text);
+}
+.workflow-console .preview-item .summary { 
+  color: var(--wf-text-muted);
+  font-size: 12px;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+/* 温和的必填提示 - 不再使用红色星号 */
+.workflow-console .field-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: var(--wf-text);
+  font-size: 14px;
+}
+.workflow-console .field-help {
+  font-size: 12px;
+  color: var(--wf-text-muted);
+  margin-top: 4px;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+/* 预设模板按钮组 */
+.workflow-console .preset-templates {
+  padding: 12px;
+  background: var(--wf-bg);
+  border-radius: 8px;
+  border: 1px solid var(--wf-border);
+}
+
+.workflow-console .preset-templates .btn-group .btn {
+  transition: all 0.2s ease;
+}
+
+.workflow-console .preset-templates .btn-group .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.workflow-console .form-group {
+  margin-bottom: 16px;
+}
+.workflow-console .form-group:last-child {
+  margin-bottom: 0;
+}
+
+/* 错误状态 - 仅在有错误时显示，使用温和色避免“红点太多” */
+.workflow-console .ts-control.is-invalid,
+.workflow-console .tom-select-control .is-invalid,
+.workflow-console .form-control.is-invalid { 
+  border-color: var(--wf-warning) !important; 
+  box-shadow: 0 0 0 0.2rem rgba(245, 158, 11, 0.12) !important; 
+}
+/* 覆盖 custom.css 的全局红色，本页错误提示用中性色 */
+.workflow-console .invalid-feedback,
+#workflowConsole .invalid-feedback {
+  color: #64748b !important;
+  font-size: 12px;
+  margin-top: 4px;
+}
+/* 必填提示统一蓝色，覆盖任何全局红色 */
+.workflow-console .required-hint,
+.workflow-console .field-label .required-hint,
+#workflowConsole .required-hint {
+  color: var(--wf-primary) !important;
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+/* 步骤指引卡片 */
+.workflow-console .steps-guide {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.workflow-console .step-card {
+  flex: 1;
+  min-width: 140px;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid var(--wf-border);
+  border-radius: 8px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+.workflow-console .step-card:hover {
+  border-color: var(--wf-primary);
+  box-shadow: 0 2px 8px rgba(37,99,235,0.1);
+}
+.workflow-console .step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--wf-primary-light);
+  color: var(--wf-primary);
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.workflow-console .step-label {
+  font-size: 13px;
+  color: var(--wf-text);
+  font-weight: 500;
+}
+
+/* 操作按钮组 */
+.workflow-console .action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.workflow-console .btn-primary {
+  background: var(--wf-primary);
+  border-color: var(--wf-primary);
+  font-weight: 500;
+}
+.workflow-console .btn-primary:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+/* 帮助提示 */
+.workflow-console .help-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--wf-primary-light);
+  color: var(--wf-primary);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-left: 8px;
+  cursor: help;
+}
+
+.workflow-console .guide-list { 
+  margin: 0; 
+  padding-left: 20px;
+  line-height: 1.8;
+}
+.workflow-console .guide-list li { 
+  color: var(--wf-text-muted);
+  margin-bottom: 8px;
+}
+.workflow-console .preset-highlight {
+  color: #dc3545;
+  font-weight: 600;
+  background-color: rgba(220, 53, 69, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.workflow-console .preset-details {
+  margin-left: 20px;
+  margin-top: 8px;
+  padding-left: 16px;
+  list-style-type: disc;
+}
+.workflow-console .preset-details li {
+  margin-bottom: 6px;
+  line-height: 1.6;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .workflow-console .steps-guide {
+    flex-direction: column;
+  }
+  .workflow-console .step-card {
+    min-width: 100%;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="workflowConsole" class="container-fluid workflow-console pb-3">
+  <div class="card meta-card mb-3">
+    <div class="card-body">
+      <div class="d-flex flex-wrap justify-content-between align-items-start mb-3" style="gap: 16px;">
+        <div>
+          <h4 class="mb-2" style="color: var(--wf-text);">流程控制台</h4>
+          <p class="text-muted mb-0" style="font-size: 14px;">配置审批流程规则，设置各节点的处理条件和流转路径</p>
+        </div>
+        <div class="action-buttons">
+          <button id="wfSaveDraftBtn" type="button" class="btn btn-outline-primary btn-sm">
+            <i class="ri-save-line"></i> 保存草稿
+          </button>
+          <button id="wfPublishBtn" type="button" class="btn btn-primary btn-sm">
+            <i class="ri-rocket-line"></i> 发布生效
+          </button>
+          <button id="wfHistoryBtn" type="button" class="btn btn-outline-secondary btn-sm">
+            <i class="ri-history-line"></i> 历史版本
+          </button>
+          <button id="wfRollbackBtn" type="button" class="btn btn-outline-danger btn-sm">
+            <i class="ri-arrow-go-back-line"></i> 回滚
+          </button>
+        </div>
+      </div>
+      
+      <!-- 一键选择预设模板 -->
+      <div class="preset-templates mb-3">
+        <div class="d-flex align-items-center mb-2">
+          <span class="text-muted small mr-2">快速配置：</span>
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-outline-info btn-sm" id="wfPresetStandard">
+              <i class="ri-settings-3-line"></i> 标准配置
+            </button>
+            <button type="button" class="btn btn-outline-warning btn-sm" id="wfPresetStrict">
+              <i class="ri-shield-check-line"></i> 严格审批
+            </button>
+            <button type="button" class="btn btn-outline-success btn-sm" id="wfPresetLoose">
+              <i class="ri-speed-up-line"></i> 宽松审批
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="wfPresetReset">
+              <i class="ri-refresh-line"></i> 重置
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div id="wfFeedback" class="alert d-none py-2 px-3 mb-3" role="alert"></div>
+      
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="meta-key">当前生效版本</div>
+          <div id="wfCurrentVersion" class="meta-value">-</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-key">发布人</div>
+          <div id="wfCurrentPublisher" class="meta-value">-</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-key">发布时间</div>
+          <div id="wfCurrentPublishedAt" class="meta-value">-</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-key">适用范围</div>
+          <div id="wfCurrentScope" class="meta-value">-</div>
+        </div>
+      </div>
+      
+      <div class="status-note">
+        <i class="ri-information-line"></i> 以上版本信息为只读状态展示，发布生效后自动更新
+      </div>
+      
+      <div class="form-row mt-4">
+          <div class="form-group col-md-6 mb-0">
+          <label for="wfScopeInput" class="field-label">
+            发布范围 <span class="required-hint">（必填）</span>
+          </label>
+          <select id="wfScopeInput" class="form-control enterprise-select" data-clear-button="0" data-enhance-single="1">
+            <option value="">请选择发布范围</option>
+            <option value="ALL">全部 - 所有单据立即应用新配置</option>
+            <option value="NEW_ONLY">仅新单据 - 只对新创建的单据生效</option>
+            <option value="INFLIGHT_AND_NEW">在途+新单据 - 在途和新单据都应用新配置</option>
+          </select>
+          <div id="wfScopeError" class="invalid-feedback d-block d-none">请选择发布范围</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card meta-card mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center flex-wrap" style="gap: 8px;">
+        <h6 class="mb-0">使用说明</h6>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="collapse" data-target="#wfGuideCollapse" aria-expanded="false" aria-controls="wfGuideCollapse">展开/收起</button>
+      </div>
+      <div id="wfGuideCollapse" class="collapse mt-3">
+        <ol class="guide-list small text-muted">
+          <li><span class="preset-highlight">【快速配置】</span>页面顶部提供三个预设模板按钮，可一键应用配置：
+            <ul class="preset-details mt-2">
+              <li><strong class="preset-highlight">标准配置</strong>：节点A（0元，所有风险等级，0条规则）→ 节点B（0元，所有风险等级，0条规则）→ 节点C（5000元，高风险，2条规则）</li>
+              <li><strong class="preset-highlight">严格审批</strong>：节点A（0元，所有风险等级，1条规则）→ 节点B（1000元，中高风险，1条规则）→ 节点C（10000元，高风险，3条规则）</li>
+              <li><strong class="preset-highlight">宽松审批</strong>：节点A（0元，所有风险等级，0条规则）→ 节点B（0元，所有风险等级，0条规则）→ 节点C（20000元，高风险，1条规则）</li>
+            </ul>
+          </li>
+          <li>先配置各节点"处理角色 / 进入条件 / 流转规则"，带（必填）的字段需要填写。</li>
+          <li>“发布范围”为必填项，可选“全部 / 仅新单据 / 在途+新单据”。</li>
+          <li>点击“保存草稿”仅保存配置，不立即生效；点击“发布生效”后立即按新版本执行。</li>
+          <li>可在“历史版本”查看版本记录，并通过“回滚”恢复到历史版本。</li>
+          <li>页面底部提供 A/B/C 节点待办快捷入口，可直接跳转审批队列。</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="card meta-card mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center flex-wrap" style="gap: 8px;">
+        <h6 class="mb-0">流程链路</h6>
+        <span class="small text-muted">开始 -> A(AI哨兵) -> B(财务主管/经理) -> C(财务总监(CFO)) -> 结束</span>
+      </div>
+      <div class="chain-wrap mt-3">
+        <span class="chain-node">开始</span><span class="chain-arrow">-></span>
+        <span class="chain-node">A AI哨兵</span><span class="chain-arrow">-></span>
+        <span class="chain-node">B 财务主管/经理</span><span class="chain-arrow">-></span>
+        <span class="chain-node">C 财务总监(CFO)</span><span class="chain-arrow">-></span>
+        <span class="chain-node">结束</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    {% for node in node_defs %}
+    <div class="col-12 col-lg-4 mb-3">
+      <div class="card node-card h-100">
+        <div class="card-body">
+          <div class="node-title">节点 {{ node.step }} - {{ node.title }}</div>
+
+          <div class="node-section">
+            <div class="section-title">
+              <i class="ri-user-settings-line"></i> 处理角色
+            </div>
+            <div class="form-group mb-0">
+              <label for="wfNode{{ node.step }}RequiredRole" class="field-label">
+                处理角色 <span class="required-hint">（必填）</span>
+              </label>
+              <select id="wfNode{{ node.step }}RequiredRole" class="form-control enterprise-select js-wf-field" data-clear-button="0">
+                <option value="">请选择处理角色</option>
+                {% for item in role_options %}
+                <option value="{{ item.value }}">{{ item.label }}</option>
+                {% endfor %}
+              </select>
+              <div id="wfNode{{ node.step }}RequiredRoleError" class="invalid-feedback d-block d-none">请选择处理角色</div>
+            </div>
+          </div>
+
+          <div class="node-section">
+            <div class="section-title">
+              <i class="ri-filter-line"></i> 进入条件
+            </div>
+            <div class="form-group">
+              <label for="wfNode{{ node.step }}AmountGte" class="field-label">
+                金额下限 <span class="required-hint">（必填）</span>
+              </label>
+              <div class="input-group">
+                <input id="wfNode{{ node.step }}AmountGte" type="number" min="0" step="0.01" class="form-control js-wf-field" placeholder="0">
+                <div class="input-group-append"><span class="input-group-text">元</span></div>
+              </div>
+              <div id="wfNode{{ node.step }}AmountGteError" class="invalid-feedback d-block d-none">请输入大于等于 0 的金额</div>
+            </div>
+            <div class="form-group">
+              <label for="wfNode{{ node.step }}RiskLevels" class="field-label">
+                风险等级 <span class="required-hint">（必填）</span>
+              </label>
+              <select id="wfNode{{ node.step }}RiskLevels" class="form-control enterprise-select js-wf-field" multiple data-max-options="10" data-enhance-single="1">
+                {% for item in risk_options %}
+                <option value="{{ item.value }}">{{ item.label }}</option>
+                {% endfor %}
+              </select>
+              <div id="wfNode{{ node.step }}RiskLevelsError" class="invalid-feedback d-block d-none">请至少选择一个风险等级</div>
+            </div>
+            <div class="form-group mb-0">
+              <label for="wfNode{{ node.step }}RuleHitCount" class="field-label">
+                规则命中数下限 <span class="required-hint">（必填）</span>
+              </label>
+              <div class="input-group">
+                <input id="wfNode{{ node.step }}RuleHitCount" type="number" min="0" step="1" class="form-control js-wf-field" placeholder="0">
+                <div class="input-group-append"><span class="input-group-text">条</span></div>
+              </div>
+              <div id="wfNode{{ node.step }}RuleHitCountError" class="invalid-feedback d-block d-none">请输入大于等于 0 的整数</div>
+            </div>
+          </div>
+
+          <div class="node-section mb-0">
+            <div class="section-title">
+              <i class="ri-flow-chart-line"></i> 流转规则
+            </div>
+            <div class="form-row">
+              {% for action in action_defs %}
+              <div class="form-group {{ 'col-12 mb-0' if action.suffix == 'Close' else 'col-6' }}">
+                <label for="wfNode{{ node.step }}Next{{ action.suffix }}" class="field-label">
+                  {{ action.label }} <span class="required-hint">（必填）</span>
+                </label>
+                <select id="wfNode{{ node.step }}Next{{ action.suffix }}" class="form-control enterprise-select js-wf-field" data-clear-button="0" data-enhance-single="1">
+                  <option value="">请选择目标节点</option>
+                  {% for item in next_options %}
+                  <option value="{{ item.value }}">{{ item.label }}</option>
+                  {% endfor %}
+                </select>
+                <div id="wfNode{{ node.step }}Next{{ action.suffix }}Error" class="invalid-feedback d-block d-none">{{ action.error }}</div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card node-card">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center flex-wrap" style="gap: 8px;">
+        <h6 class="mb-0">角色预览</h6>
+        <div class="small text-muted">可处理节点 + 规则摘要</div>
+      </div>
+      <div class="form-row mt-3">
+        <div class="form-group col-md-4 mb-2">
+          <label for="wfPreviewRole" class="mb-1">预览角色</label>
+          <select id="wfPreviewRole" class="form-control enterprise-select js-wf-field" data-clear-button="0">
+            <option value="ADMIN">管理员</option>
+            {% for item in role_options %}
+            <option value="{{ item.value }}">{{ item.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div id="wfRolePreviewList" class="row"></div>
+      <div id="wfRoleJumpLinks" class="jump-links mt-2"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="wfPublishModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">发布生效</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-2">
+          <label for="wfPublishReason" class="field-label">
+            处理原因
+            <span class="required-hint">（必填）</span>
+          </label>
+          <div class="field-help">选择发布此配置的原因</div>
+          <select id="wfPublishReason" class="form-control enterprise-select" data-clear-button="0">
+            <option value="">请选择</option>
+            <option value="POLICY_MATCH">符合策略</option>
+            <option value="POLICY_EXCEPTION">策略例外</option>
+            <option value="NEED_MORE_INFO">需补充信息</option>
+            <option value="DUPLICATE_SUSPECT">疑似重复</option>
+            <option value="MANUAL_OVERRIDE">人工覆盖</option>
+          </select>
+          <div id="wfPublishReasonError" class="invalid-feedback d-block d-none">请选择处理原因</div>
+        </div>
+        <div class="form-group mb-0">
+          <label for="wfPublishNote">补充说明（可选）</label>
+          <textarea id="wfPublishNote" rows="3" class="form-control" placeholder="可填写发布说明"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-dismiss="modal">取消</button>
+        <button id="wfPublishConfirmBtn" type="button" class="btn btn-primary">确认发布</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="wfHistoryModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">历史版本</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead>
+              <tr>
+                <th style="width: 80px;">版本</th>
+                <th style="width: 90px;">状态</th>
+                <th style="width: 130px;">发布人</th>
+                <th style="width: 170px;">时间</th>
+                <th style="width: 120px;">范围</th>
+                <th>备注</th>
+              </tr>
+            </thead>
+            <tbody id="wfHistoryBody">
+              <tr><td colspan="6" class="text-center text-muted py-3">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="wfRollbackModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">回滚版本</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-2">
+          <label for="wfRollbackTargetVersion" class="field-label">
+            目标版本
+            <span class="required-hint">（必填）</span>
+          </label>
+          <div class="field-help">选择要回滚到的历史版本</div>
+          <select id="wfRollbackTargetVersion" class="form-control enterprise-select" data-clear-button="0">
+            <option value="">请选择版本</option>
+          </select>
+          <div id="wfRollbackVersionError" class="invalid-feedback d-block d-none">请选择目标版本</div>
+        </div>
+        <div class="form-group mb-2">
+          <label for="wfRollbackReason" class="field-label">
+            处理原因
+            <span class="required-hint">（必填）</span>
+          </label>
+          <div class="field-help">选择回滚此版本的原因</div>
+          <select id="wfRollbackReason" class="form-control enterprise-select" data-clear-button="0">
+            <option value="">请选择</option>
+            <option value="POLICY_MATCH">符合策略</option>
+            <option value="POLICY_EXCEPTION">策略例外</option>
+            <option value="NEED_MORE_INFO">需补充信息</option>
+            <option value="DUPLICATE_SUSPECT">疑似重复</option>
+            <option value="MANUAL_OVERRIDE">人工覆盖</option>
+          </select>
+          <div id="wfRollbackReasonError" class="invalid-feedback d-block d-none">请选择处理原因</div>
+        </div>
+        <div class="form-group mb-0">
+          <label for="wfRollbackNote">补充说明（可选）</label>
+          <textarea id="wfRollbackNote" rows="3" class="form-control" placeholder="可填写回滚说明"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-dismiss="modal">取消</button>
+        <button id="wfRollbackConfirmBtn" type="button" class="btn btn-danger">确认回滚</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/tom-select/tom-select.complete.min.js', v=_static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/enterprise_select.js', v=_static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/workflow_console.js', v=_static_version) }}"></script>
+{% endblock %}

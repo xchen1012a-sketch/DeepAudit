@@ -1,0 +1,959 @@
+{% extends "base.html" %}
+
+{% block title %}系统监控 - 运维控制台 - 深度审计{% endblock %}
+{% block page_title %}系统监控{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* 系统监控专用样式 - 现代化设计 */
+.monitor-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #e2e8f0;
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+.monitor-status-bar .time-window-group {
+  display: flex;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.25rem;
+  border-radius: 10px;
+}
+.monitor-status-bar .time-window-group button {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border: none;
+  background: transparent;
+  color: #cbd5e1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+.monitor-status-bar .time-window-group button:hover { 
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+.monitor-status-bar .time-window-group button.active {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+}
+.monitor-status-bar .stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  min-width: 100px;
+}
+.monitor-status-bar .stat-item .label { 
+  color: #94a3b8; 
+  font-size: 0.75rem; 
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+.monitor-status-bar .stat-item .value { 
+  font-weight: 700;
+  font-size: 1.125rem;
+  line-height: 1.2;
+}
+.monitor-status-bar .stat-item .value.ok { color: #22c55e; }
+.monitor-status-bar .stat-item .value.warn { color: #f59e0b; }
+.monitor-status-bar .stat-item .value.err { color: #ef4444; }
+
+.monitor-panel {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  height: 100%;
+}
+.monitor-panel:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+}
+.monitor-panel .panel-header {
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  font-size: 1rem;
+  background: linear-gradient(to right, #f8fafc, #f1f5f9);
+  border-bottom: 1px solid #e5e7eb;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.monitor-panel .panel-header::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  border-radius: 2px;
+}
+.monitor-panel .panel-body { 
+  padding: 1.25rem; 
+}
+
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+}
+.health-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 0.75rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.health-item:hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.health-item .status-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-bottom: 0.5rem;
+  position: relative;
+}
+.health-item .status-dot.ok { 
+  background: #22c55e; 
+  box-shadow: 0 0 12px rgba(34,197,94,0.6);
+}
+.health-item .status-dot.ok::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(34,197,94,0.3);
+  animation: pulse 2s infinite;
+}
+.health-item .status-dot.warn { 
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245,158,11,0.4);
+}
+.health-item .status-dot.err { 
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239,68,68,0.4);
+}
+.health-item .status-dot.unknown { 
+  background: #94a3b8;
+}
+.health-item .name { 
+  font-size: 0.875rem; 
+  color: #475569;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.health-item .time { 
+  font-size: 0.75rem; 
+  color: #94a3b8;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+.monitor-log-table { 
+  font-size: 0.875rem; 
+}
+.monitor-log-table thead {
+  background: #f8fafc;
+}
+.monitor-log-table thead th {
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  padding: 0.75rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+.monitor-log-table td { 
+  vertical-align: middle;
+  padding: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+.monitor-log-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+.monitor-log-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+.monitor-log-table .log-detail-toggle { 
+  cursor: pointer; 
+  color: #2563eb;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.monitor-log-table .log-detail-toggle:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.monitor-log-drawer {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 480px;
+  max-width: 95vw;
+  height: 100vh;
+  background: #fff;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+  z-index: 1050;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.monitor-log-drawer.open { transform: translateX(0); }
+.monitor-log-drawer .drawer-header {
+  padding: 1.25rem;
+  background: linear-gradient(to right, #f8fafc, #f1f5f9);
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.monitor-log-drawer .drawer-header strong {
+  font-size: 1.125rem;
+  color: #1e293b;
+}
+.monitor-log-drawer .drawer-body { 
+  padding: 1.25rem; 
+}
+.monitor-log-drawer .tech-details { 
+  margin-top: 1rem; 
+}
+.monitor-log-drawer .tech-details summary { 
+  cursor: pointer; 
+  color: #64748b; 
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.5rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+.monitor-log-drawer .tech-details summary:hover {
+  background: #f1f5f9;
+}
+.monitor-overlay { 
+  position: fixed; 
+  inset: 0; 
+  background: rgba(0,0,0,0.4); 
+  z-index: 1040; 
+  display: none;
+  backdrop-filter: blur(2px);
+  transition: opacity 0.3s ease;
+}
+.monitor-overlay.open { display: block; }
+
+.filter-row { 
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 0.75rem; 
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+.filter-row input, .filter-row select { 
+  font-size: 0.875rem; 
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+.filter-row input:focus, .filter-row select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+.filter-row .btn-primary {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1.25rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+.filter-row .btn-primary:hover {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+}
+
+/* 图表容器优化 */
+#latencyChart {
+  max-height: 200px;
+}
+
+/* 错误列表样式 */
+#recentErrors {
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+#recentErrors > div {
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: #fff;
+  border-radius: 6px;
+  border-left: 3px solid #ef4444;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .monitor-status-bar {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  .monitor-status-bar .stat-item {
+    min-width: auto;
+    flex: 1 1 calc(50% - 0.5rem);
+  }
+  .health-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.75rem;
+  }
+  .monitor-log-drawer {
+    width: 100vw;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid pb-4 monitor-console">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h4 class="mb-1" style="color: #1e293b; font-weight: 700;">系统监控</h4>
+      <p class="text-muted small mb-0">运维/治理控制台 · 可用性/性能/错误/作业/依赖/安全 · 一页定位问题与钻取日志</p>
+    </div>
+  </div>
+
+  <!-- 1) 顶部态势条 -->
+  <div class="monitor-status-bar">
+    <div class="stat-item" style="min-width: 180px;">
+      <span class="label">时间窗口</span>
+      <div class="time-window-group">
+        <button type="button" data-window="15m" class="active">15 分钟</button>
+        <button type="button" data-window="1h">1 小时</button>
+        <button type="button" data-window="24h">24 小时</button>
+      </div>
+    </div>
+    <div class="stat-item">
+      <span class="label">请求量</span>
+      <span class="value" id="statRequestCount">--</span>
+    </div>
+    <div class="stat-item">
+      <span class="label">错误率</span>
+      <span class="value" id="statErrorRate">--</span>
+    </div>
+    <div class="stat-item">
+      <span class="label">P95 延迟</span>
+      <span class="value" id="statP95">--</span>
+    </div>
+    <div class="stat-item">
+      <span class="label">失败作业</span>
+      <span class="value" id="statFailedJobs">--</span>
+    </div>
+    <div class="stat-item">
+      <span class="label">数据库状态</span>
+      <span class="value" id="statDbStatus">--</span>
+    </div>
+    <div class="stat-item">
+      <span class="label">未处理告警</span>
+      <span class="value" id="statAlerts">--</span>
+    </div>
+  </div>
+
+  <!-- 2) 四个面板 -->
+  <div class="row">
+    <div class="col-lg-6 mb-3">
+      <!-- A 服务健康 -->
+      <div class="monitor-panel">
+        <div class="panel-header">
+          <i class="ri-heart-pulse-line mr-1"></i>
+          服务健康
+        </div>
+        <div class="panel-body">
+          <div class="health-grid" id="healthGrid">
+            <div class="text-muted small d-flex align-items-center justify-content-center" style="min-height: 100px;">
+              <i class="ri-loader-4-line mr-2" style="animation: spin 1s linear infinite;"></i>
+              加载中...
+            </div>
+          </div>
+          <div class="small text-muted mt-3 pt-2 border-top">
+            <i class="ri-time-line mr-1"></i>
+            最近检查：<span id="healthCheckedAt" class="font-weight-semibold">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6 mb-3">
+      <!-- B 性能与错误 -->
+      <div class="monitor-panel">
+        <div class="panel-header">
+          <i class="ri-speed-line mr-1"></i>
+          性能与错误
+        </div>
+        <div class="panel-body">
+          <div class="mb-3">
+            <canvas id="latencyChart" height="100"></canvas>
+          </div>
+          <div class="mt-3 pt-3 border-top">
+            <div class="d-flex align-items-center mb-2">
+              <i class="ri-error-warning-line mr-1" style="color: #ef4444;"></i>
+              <strong class="small" style="color: #475569;">最近错误</strong>
+            </div>
+            <div id="recentErrors" class="small"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-lg-6 mb-3">
+      <!-- C 作业与流水线 -->
+      <div class="monitor-panel">
+        <div class="panel-header">
+          <i class="ri-task-line mr-1"></i>
+          作业与流水线
+        </div>
+        <div class="panel-body">
+          <div id="jobsSummary" class="small">
+            <div class="text-muted d-flex align-items-center">
+              <i class="ri-loader-4-line mr-2" style="animation: spin 1s linear infinite;"></i>
+              加载中...
+            </div>
+          </div>
+          <div class="mt-3 pt-3 border-top">
+            <div class="d-flex align-items-center mb-2">
+              <i class="ri-alert-line mr-1" style="color: #f59e0b;"></i>
+              <strong class="small" style="color: #475569;">失败 Top 原因</strong>
+            </div>
+            <ul id="failedReasons" class="small mb-0 pl-3" style="list-style: none;">
+              <li class="text-muted">暂无数据</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6 mb-3">
+      <!-- D 安全与审计 -->
+      <div class="monitor-panel">
+        <div class="panel-header">
+          <i class="ri-shield-check-line mr-1"></i>
+          安全与审计
+        </div>
+        <div class="panel-body">
+          <div id="securitySummary" class="small">
+            <div class="text-muted d-flex align-items-center">
+              <i class="ri-loader-4-line mr-2" style="animation: spin 1s linear infinite;"></i>
+              加载中...
+            </div>
+          </div>
+          <div class="mt-3 pt-3 border-top">
+            <a href="/admin/audit_logs" class="btn btn-sm btn-primary" target="_blank" style="background: linear-gradient(135deg, #2563eb, #3b82f6); border: none; border-radius: 8px; padding: 0.5rem 1rem; font-weight: 500;">
+              <i class="ri-file-list-3-line mr-1"></i>
+              查看操作日志
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3) 底部日志与追踪 -->
+  <div class="monitor-panel">
+    <div class="panel-header">
+      <i class="ri-file-list-3-line mr-1"></i>
+      日志与追踪
+    </div>
+    <div class="panel-body">
+      <div class="filter-row">
+        <input type="datetime-local" id="filterTimeFrom" class="form-control form-control-sm" style="width: auto; min-width: 180px;" placeholder="开始时间">
+        <input type="datetime-local" id="filterTimeTo" class="form-control form-control-sm" style="width: auto; min-width: 180px;" placeholder="结束时间">
+        <select id="filterLevel" class="form-control form-control-sm" style="width: auto; min-width: 120px;">
+          <option value="">全部级别</option>
+          <option value="ERROR">ERROR</option>
+          <option value="WARN">WARN</option>
+          <option value="INFO">INFO</option>
+        </select>
+        <input type="text" id="filterModule" class="form-control form-control-sm" placeholder="模块" style="width: auto; min-width: 120px;">
+        <input type="text" id="filterRequestId" class="form-control form-control-sm" placeholder="Request ID" style="width: auto; min-width: 150px;">
+        <input type="text" id="filterUser" class="form-control form-control-sm" placeholder="用户" style="width: auto; min-width: 120px;">
+        <button type="button" id="btnSearchLogs" class="btn btn-sm btn-primary">
+          <i class="ri-search-line mr-1"></i>
+          搜索
+        </button>
+      </div>
+      <div class="table-responsive mt-3">
+        <table class="table table-sm monitor-log-table">
+          <thead>
+            <tr>
+              <th style="width: 150px;">时间</th>
+              <th style="width: 80px;">级别</th>
+              <th style="width: 120px;">操作类型</th>
+              <th style="width: 100px;">操作人</th>
+              <th>详情</th>
+              <th style="width: 80px;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody">
+            <tr>
+              <td colspan="6" class="text-center text-muted py-4">
+                <i class="ri-loader-4-line mr-2" style="animation: spin 1s linear infinite;"></i>
+                加载中...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+</style>
+
+<!-- 日志详情抽屉 -->
+<div id="logOverlay" class="monitor-overlay"></div>
+<div id="logDrawer" class="monitor-log-drawer">
+  <div class="drawer-header">
+    <strong>
+      <i class="ri-file-text-line mr-1"></i>
+      日志详情
+    </strong>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnCloseDrawer" style="border-radius: 8px; padding: 0.375rem 0.75rem;">
+      <i class="ri-close-line mr-1"></i>
+      关闭
+    </button>
+  </div>
+  <div class="drawer-body">
+    <div id="drawerContent"></div>
+    <details class="tech-details mt-3">
+      <summary>
+        <i class="ri-code-s-slash-line mr-1"></i>
+        技术信息（可折叠）
+      </summary>
+      <pre id="drawerTechInfo" class="small bg-light p-3 mt-2 rounded" style="white-space: pre-wrap; word-break: break-all; border: 1px solid #e5e7eb; font-family: 'Microsoft YaHei', '微软雅黑', 'Consolas', 'Monaco', monospace; font-size: 0.85rem; line-height: 1.6;"></pre>
+    </details>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const WIN = { 15: "15m", 60: "1h", 1440: "24h" };
+  let currentWindow = "15m";
+  let latencyChart = null;
+
+  function esc(s) {
+    return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function setTimeWindowButtons(active) {
+    document.querySelectorAll(".time-window-group button").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.window === active);
+    });
+  }
+
+  async function fetchJson(url) {
+    const res = await fetch(url, { cache: "no-store", headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return await res.json();
+  }
+
+  async function loadSummary() {
+    try {
+      const data = await fetchJson("/api/monitor/summary?window=" + encodeURIComponent(currentWindow));
+      if (!data.ok) throw new Error(data.message || "加载失败");
+      const d = data.data || {};
+      document.getElementById("statRequestCount").textContent = Number(d.request_count || 0).toLocaleString("zh-CN");
+      const errRate = Number(d.error_rate || 0);
+      const errEl = document.getElementById("statErrorRate");
+      errEl.textContent = (errRate * 100).toFixed(2) + "%";
+      errEl.className = "value " + (errRate > 0.05 ? "err" : errRate > 0.01 ? "warn" : "ok");
+      document.getElementById("statP95").textContent = (Number(d.p95_latency_ms) || 0).toFixed(0) + " ms";
+      document.getElementById("statFailedJobs").textContent = Number(d.failed_jobs_count || 0).toLocaleString("zh-CN");
+      const dbEl = document.getElementById("statDbStatus");
+      dbEl.textContent = (d.db_status || "ok") === "ok" ? "正常" : "异常";
+      dbEl.className = "value " + ((d.db_status || "ok") === "ok" ? "ok" : "err");
+      const alEl = document.getElementById("statAlerts");
+      alEl.textContent = Number(d.unhandled_alerts_count || 0);
+      alEl.className = "value " + (Number(d.unhandled_alerts_count) > 0 ? "warn" : "ok");
+    } catch (e) {
+      console.error("loadSummary", e);
+    }
+  }
+
+  async function loadHealth() {
+    try {
+      const data = await fetchJson("/api/monitor/health");
+      if (!data.ok) throw new Error(data.message || "加载失败");
+      const d = data.data || {};
+      const services = d.services || [];
+      const names = { web: "Web", api: "API", db: "数据库", tax: "税控", bank: "银行", erp: "ERP" };
+      document.getElementById("healthGrid").innerHTML = services.map(s => {
+        const status = (s.status || "unknown").toLowerCase();
+        const dotClass = status === "ok" ? "ok" : status === "error" || status === "degraded" ? "err" : "unknown";
+        return `<div class="health-item">
+          <span class="status-dot ${dotClass}"></span>
+          <span class="name">${esc(names[s.name] || s.name)}</span>
+          <span class="time">${esc(s.last_check || "")}</span>
+        </div>`;
+      }).join("");
+      document.getElementById("healthCheckedAt").textContent = d.checked_at || "--";
+    } catch (e) {
+      document.getElementById("healthGrid").innerHTML = '<span class="text-danger small">加载失败</span>';
+    }
+  }
+
+  async function loadErrors() {
+    try {
+      const data = await fetchJson("/api/monitor/errors?window=" + encodeURIComponent(currentWindow) + "&limit=20");
+      if (!data.ok) throw new Error(data.message || "加载失败");
+      const d = data.data || {};
+      const trend = d.latency_trend || [];
+      if (latencyChart) {
+        latencyChart.data.labels = trend.map(t => t.ts ? t.ts.slice(11, 19) : "");
+        latencyChart.data.datasets[0].data = trend.map(t => t.value_ms || 0);
+        latencyChart.update();
+      } else {
+        const ctx = document.getElementById("latencyChart").getContext("2d");
+        latencyChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: trend.map(t => t.ts ? t.ts.slice(11, 19) : ""),
+            datasets: [{ 
+              label: "延迟 (ms)", 
+              data: trend.map(t => t.value_ms || 0), 
+              borderColor: "#2563eb",
+              backgroundColor: "rgba(37, 99, 235, 0.1)",
+              borderWidth: 2,
+              fill: true,
+              tension: 0.4,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointBackgroundColor: "#2563eb",
+              pointBorderColor: "#fff",
+              pointBorderWidth: 2
+            }]
+          },
+          options: { 
+            responsive: true, 
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top',
+                labels: {
+                  usePointStyle: true,
+                  padding: 15,
+                  font: {
+                    size: 12,
+                    weight: '500'
+                  }
+                }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: {
+                  size: 13,
+                  weight: '600'
+                },
+                bodyFont: {
+                  size: 12
+                },
+                borderColor: '#2563eb',
+                borderWidth: 1,
+                cornerRadius: 8
+              }
+            },
+            scales: { 
+              y: { 
+                beginAtZero: true,
+                grid: {
+                  color: 'rgba(0, 0, 0, 0.05)'
+                },
+                ticks: {
+                  font: {
+                    size: 11
+                  },
+                  color: '#64748b'
+                }
+              },
+              x: {
+                grid: {
+                  display: false
+                },
+                ticks: {
+                  font: {
+                    size: 11
+                  },
+                  color: '#64748b'
+                }
+              }
+            }
+          }
+        });
+      }
+      const errs = d.recent_errors || [];
+      document.getElementById("recentErrors").innerHTML = errs.length
+        ? errs.slice(0, 5).map(e => {
+            const time = e.created_at ? e.created_at.slice(11, 19) : '';
+            const detail = esc((e.detail || "").slice(0, 80));
+            return `<div class="mb-2 p-2" style="background: #fff; border-radius: 6px; border-left: 3px solid #ef4444;">
+              <div class="d-flex justify-content-between align-items-start mb-1">
+                <span class="font-weight-semibold" style="color: #1e293b; font-size: 0.8rem;">${esc(e.action_type || '未知')}</span>
+                <span class="text-muted" style="font-size: 0.75rem;">${time}</span>
+              </div>
+              <div style="color: #64748b; font-size: 0.8rem; line-height: 1.4;">${detail}</div>
+            </div>`;
+          }).join("")
+        : '<div class="text-center text-muted py-3"><i class="ri-checkbox-circle-line mr-1"></i>暂无最近错误</div>';
+    } catch (e) {
+      document.getElementById("recentErrors").innerHTML = '<span class="text-danger small">加载失败</span>';
+    }
+  }
+
+  async function loadJobs() {
+    try {
+      const data = await fetchJson("/api/monitor/jobs?window=" + encodeURIComponent(currentWindow));
+      if (!data.ok) throw new Error(data.message || "加载失败");
+      const d = data.data || {};
+      const jobs = d.jobs || [];
+      document.getElementById("jobsSummary").innerHTML = jobs.length
+        ? jobs.map(j => {
+            const successRate = ((j.success_rate || 0) * 100).toFixed(1);
+            const rateColor = successRate >= 95 ? '#22c55e' : successRate >= 80 ? '#f59e0b' : '#ef4444';
+            return `<div class="mb-2 p-2" style="background: #f8fafc; border-radius: 8px; border-left: 3px solid ${rateColor};">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="font-weight-semibold" style="color: #1e293b; font-size: 0.875rem;">${esc(j.name || '未知作业')}</span>
+                <span style="color: ${rateColor}; font-weight: 600; font-size: 0.875rem;">${successRate}%</span>
+              </div>
+              <div class="text-muted small mt-1">
+                <i class="ri-time-line mr-1"></i>
+                平均耗时: ${j.avg_duration_ms || 0}ms
+              </div>
+            </div>`;
+          }).join("")
+        : '<div class="text-muted small">暂无作业数据</div>';
+      const reasons = d.failed_top_reasons || [];
+      document.getElementById("failedReasons").innerHTML = reasons.length
+        ? reasons.map(r => `<li class="mb-2 p-2" style="background: #fef2f2; border-radius: 6px; border-left: 3px solid #ef4444;">
+          <span class="font-weight-semibold" style="color: #1e293b;">${esc(r.reason || '未知原因')}</span>
+          <span class="badge badge-danger ml-2" style="background: #ef4444; border-radius: 4px; padding: 0.25rem 0.5rem;">${r.count}</span>
+        </li>`).join("")
+        : '<li class="text-muted small"><i class="ri-checkbox-circle-line mr-1"></i>暂无失败记录</li>';
+    } catch (e) {
+      document.getElementById("jobsSummary").innerHTML = '<span class="text-danger small">加载失败</span>';
+    }
+  }
+
+  async function loadSecurity() {
+    try {
+      const alerts = await fetchJson("/api/monitoring/alerts");
+      const errData = await fetchJson("/api/monitor/errors?window=24h&limit=50");
+      const errs = (errData.data || {}).recent_errors || [];
+      const loginFails = errs.filter(e => /LOGIN_FAIL|LOGIN_LOCK/i.test(e.action_type || ""));
+      const forbid403 = errs.filter(e => /403|拦截|无权限/i.test(e.detail || ""));
+      let html = `<div class="mb-3">
+        <div class="d-flex justify-content-between align-items-center p-2 mb-2" style="background: #fef2f2; border-radius: 8px; border-left: 3px solid #ef4444;">
+          <div>
+            <i class="ri-shield-cross-line mr-1" style="color: #ef4444;"></i>
+            <span class="font-weight-semibold" style="color: #1e293b; font-size: 0.875rem;">登录失败/锁定</span>
+          </div>
+          <span class="badge badge-danger" style="background: #ef4444; border-radius: 4px; padding: 0.25rem 0.75rem; font-size: 0.875rem;">${loginFails.length}</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-center p-2" style="background: #fef2f2; border-radius: 8px; border-left: 3px solid #ef4444;">
+          <div>
+            <i class="ri-lock-line mr-1" style="color: #ef4444;"></i>
+            <span class="font-weight-semibold" style="color: #1e293b; font-size: 0.875rem;">403 拦截</span>
+          </div>
+          <span class="badge badge-danger" style="background: #ef4444; border-radius: 4px; padding: 0.25rem 0.75rem; font-size: 0.875rem;">${forbid403.length}</span>
+        </div>
+      </div>`;
+      html += `<div class="text-muted small" style="color: #64748b;">
+        <i class="ri-information-line mr-1"></i>
+        关键治理变更详见操作日志
+      </div>`;
+      document.getElementById("securitySummary").innerHTML = html;
+    } catch (e) {
+      document.getElementById("securitySummary").innerHTML = '<span class="text-danger small">加载失败</span>';
+    }
+  }
+
+  function buildLogsUrl() {
+    const params = new URLSearchParams();
+    const from = document.getElementById("filterTimeFrom").value;
+    const to = document.getElementById("filterTimeTo").value;
+    const level = document.getElementById("filterLevel").value;
+    const module = document.getElementById("filterModule").value;
+    const reqId = document.getElementById("filterRequestId").value;
+    const user = document.getElementById("filterUser").value;
+    if (from) params.set("time_from", from.replace("T", " "));
+    if (to) params.set("time_to", to.replace("T", " "));
+    if (level) params.set("level", level);
+    if (module) params.set("module", module);
+    if (reqId) params.set("request_id", reqId);
+    if (user) params.set("user", user);
+    params.set("limit", "100");
+    return "/api/monitor/logs?" + params.toString();
+  }
+
+  let logsCache = [];
+  async function loadLogs() {
+    try {
+      const data = await fetchJson(buildLogsUrl());
+      if (!data.ok) throw new Error(data.message || "加载失败");
+      logsCache = (data.data || {}).logs || [];
+      const tbody = document.getElementById("logTableBody");
+      const levelBadges = {
+        'ERROR': '<span class="badge" style="background: #ef4444; color: #fff; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">ERROR</span>',
+        'WARN': '<span class="badge" style="background: #f59e0b; color: #fff; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">WARN</span>',
+        'INFO': '<span class="badge" style="background: #3b82f6; color: #fff; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">INFO</span>',
+        'DEBUG': '<span class="badge" style="background: #64748b; color: #fff; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">DEBUG</span>'
+      };
+      tbody.innerHTML = logsCache.length
+        ? logsCache.map((log, idx) => {
+            const detail = (log.detail || "").slice(0, 80);
+            const time = log.created_at ? log.created_at.slice(11, 19) : log.created_at || '-';
+            const levelBadge = levelBadges[log.level] || `<span class="badge" style="background: #94a3b8; color: #fff; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">${esc(log.level || 'INFO')}</span>`;
+            return `<tr>
+              <td style="color: #64748b; font-size: 0.875rem;">${time}</td>
+              <td>${levelBadge}</td>
+              <td style="color: #475569; font-weight: 500;">${esc(log.action_type || '-')}</td>
+              <td style="color: #475569;">${esc(log.operator || '-')}</td>
+              <td style="color: #64748b; font-size: 0.85rem;">${esc(detail)}</td>
+              <td><a href="#" class="log-detail-toggle" data-idx="${idx}" style="color: #2563eb; font-weight: 500;">
+                <i class="ri-eye-line mr-1"></i>详情
+              </a></td>
+            </tr>`;
+          }).join("")
+        : "<tr><td colspan='6' class='text-center text-muted py-4'><i class='ri-inbox-line mr-1'></i>暂无日志</td></tr>";
+      tbody.querySelectorAll(".log-detail-toggle").forEach(a => {
+        a.addEventListener("click", (e) => {
+          e.preventDefault();
+          const idx = parseInt(a.dataset.idx, 10);
+          if (!isNaN(idx) && logsCache[idx]) openLogDrawer(logsCache[idx]);
+        });
+      });
+    } catch (e) {
+      document.getElementById("logTableBody").innerHTML = "<tr><td colspan='6' class='text-danger'>加载失败</td></tr>";
+    }
+  }
+
+  function openLogDrawer(log) {
+    const levelColors = {
+      'ERROR': '#ef4444',
+      'WARN': '#f59e0b',
+      'INFO': '#3b82f6',
+      'DEBUG': '#64748b'
+    };
+    const levelColor = levelColors[log.level] || '#64748b';
+    document.getElementById("drawerContent").innerHTML = `
+      <div class="mb-3 p-3" style="background: #f8fafc; border-radius: 12px; border-left: 4px solid ${levelColor};">
+        <div class="mb-2">
+          <span class="badge" style="background: ${levelColor}; color: #fff; padding: 0.375rem 0.75rem; border-radius: 6px; font-weight: 600;">
+            ${esc(log.level || 'INFO')}
+          </span>
+        </div>
+        <div class="row mb-2">
+          <div class="col-6">
+            <div class="small text-muted mb-1">时间</div>
+            <div class="font-weight-semibold" style="color: #1e293b;">${esc(log.created_at || '-')}</div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted mb-1">操作人</div>
+            <div class="font-weight-semibold" style="color: #1e293b;">${esc(log.operator || '-')}</div>
+          </div>
+        </div>
+        <div class="mb-2">
+          <div class="small text-muted mb-1">操作类型</div>
+          <div class="font-weight-semibold" style="color: #1e293b;">${esc(log.action_type || '-')}</div>
+        </div>
+        <div>
+          <div class="small text-muted mb-1">目标</div>
+          <div class="font-weight-semibold" style="color: #1e293b;">${esc(log.target_type || '-')} #${esc(log.target_id || '-')}</div>
+        </div>
+      </div>
+      <div class="mb-3">
+        <div class="small text-muted mb-2 font-weight-semibold">详情</div>
+        <div class="p-3" style="background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb; color: #475569; line-height: 1.6; word-break: break-word; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', '微软雅黑', sans-serif;">
+          ${esc(log.detail || "-")}
+        </div>
+      </div>`;
+    document.getElementById("drawerTechInfo").textContent = JSON.stringify(log, null, 2);
+    document.getElementById("logDrawer").classList.add("open");
+    document.getElementById("logOverlay").classList.add("open");
+  }
+
+  function closeLogDrawer() {
+    document.getElementById("logDrawer").classList.remove("open");
+    document.getElementById("logOverlay").classList.remove("open");
+  }
+
+  function refreshAll() {
+    loadSummary();
+    loadHealth();
+    loadErrors();
+    loadJobs();
+    loadSecurity();
+  }
+
+  document.querySelectorAll(".time-window-group button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentWindow = btn.dataset.window || "15m";
+      setTimeWindowButtons(currentWindow);
+      refreshAll();
+    });
+  });
+  document.getElementById("btnSearchLogs").addEventListener("click", loadLogs);
+  document.getElementById("btnCloseDrawer").addEventListener("click", closeLogDrawer);
+  document.getElementById("logOverlay").addEventListener("click", closeLogDrawer);
+
+  refreshAll();
+  loadLogs();
+  setInterval(refreshAll, 60000);
+})();
+</script>
+{% endblock %}

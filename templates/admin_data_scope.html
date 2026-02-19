@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+
+{% block title %}数据范围策略 - 深度审计{% endblock %}
+{% block page_title %}数据范围策略{% endblock %}
+
+{% block content %}
+<div class="container-fluid pb-3">
+  <div class="card card-outline card-primary mb-0">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+      <strong>角色数据范围策略</strong>
+      <div class="d-flex align-items-center gap-3">
+        <input type="text" id="dataScopeSearch" class="form-control form-control-sm" style="width: 180px;" placeholder="搜索角色名..." />
+        <button id="reloadDataScopeBtn" class="btn btn-sm btn-outline-primary">刷新</button>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div id="dataScopeMsg" class="small text-muted px-3 pt-2 mb-0"></div>
+      <div class="table-responsive data-scope-table-wrap">
+        <table class="table table-sm table-striped table-hover mb-0">
+          <thead class="data-scope-thead">
+            <tr>
+              <th style="width: 50px;">ID</th>
+              <th>角色</th>
+              <th>策略类型</th>
+              <th>生效范围</th>
+              <th>更新人</th>
+              <th>更新时间</th>
+              <th style="width: 140px;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="dataScopeTableBody">
+            {% for role in roles %}
+            <tr data-role-id="{{ role.id }}">
+              <td>{{ role.id }}</td>
+              <td>{{ role.role_name }}</td>
+              <td>{{ role.scope_type_cn or "本部" }}</td>
+              <td>{{ role.effective_scope or "—" }}</td>
+              <td>{{ role.updated_by or "—" }}</td>
+              <td>{{ role.updated_at or "—" }}</td>
+              <td>
+                <button type="button" class="btn btn-sm btn-outline-primary data-scope-btn-config js-config-scope" data-role-id="{{ role.id }}">配置</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary data-scope-btn-history js-history-scope" data-role-id="{{ role.id }}">历史</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 配置抽屉 -->
+<div class="modal fade" id="dataScopeConfigDrawer" tabindex="-1" role="dialog" aria-labelledby="dataScopeConfigDrawerTitle">
+  <div class="modal-dialog modal-dialog-slide modal-lg" role="document">
+    <div class="modal-content h-100">
+      <div class="modal-header">
+        <h5 class="modal-title" id="dataScopeConfigDrawerTitle">配置数据范围</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="drawerRoleId" value="" />
+        <p class="small text-muted mb-2" id="drawerRoleName"></p>
+        <div class="form-group">
+          <label>策略类型</label>
+          <div class="d-flex flex-wrap gap-3">
+            <label class="mb-0"><input type="radio" name="drawerPolicyType" value="ALL" /> 全量</label>
+            <label class="mb-0"><input type="radio" name="drawerPolicyType" value="DEPT" /> 本部</label>
+            <label class="mb-0"><input type="radio" name="drawerPolicyType" value="SELF" /> 本人</label>
+            <label class="mb-0"><input type="radio" name="drawerPolicyType" value="CUSTOM" /> 自定义</label>
+          </div>
+        </div>
+        <div id="drawerSubTypeWrap" class="form-group" style="display: none;">
+          <label>范围</label>
+          <div id="drawerSubTypeDept" style="display: none;">
+            <label class="mr-3"><input type="radio" name="drawerSubDept" value="DEPT" /> 本部门</label>
+            <label class="mb-0"><input type="radio" name="drawerSubDept" value="DEPT_TREE" /> 本部门+下级</label>
+          </div>
+          <div id="drawerSubTypeSelf" style="display: none;">
+            <label class="mr-3"><input type="radio" name="drawerSubSelf" value="SELF" /> 本人</label>
+            <label class="mb-0"><input type="radio" name="drawerSubSelf" value="SELF_SUB" /> 本人+下属</label>
+          </div>
+          <div id="drawerSubTypeCustom" style="display: none;">
+            <label class="mr-3"><input type="radio" name="drawerSubCustom" value="DEPT_WHITELIST" /> 指定部门</label>
+            <label class="mb-0"><input type="radio" name="drawerSubCustom" value="USER_WHITELIST" /> 指定人员</label>
+          </div>
+        </div>
+        <div id="drawerDeptPicker" class="form-group" style="display: none;">
+          <label>部门（多选）</label>
+          <select id="drawerDeptIds" class="form-control form-control-sm" multiple style="min-height: 80px;">
+            {% for d in departments %}
+            <option value="{{ d.id }}">{{ d.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div id="drawerUserPicker" class="form-group" style="display: none;">
+          <label>人员（多选）</label>
+          <select id="drawerUserIds" class="form-control form-control-sm" multiple style="min-height: 80px;">
+            {% for u in users %}
+            <option value="{{ u.id }}">{{ u.username }} ({{ u.employee_name or u.id }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>覆盖预览</label>
+          <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="drawerPreviewBtn">预览</button>
+            <span id="drawerPreviewResult" class="small text-muted"></span>
+          </div>
+        </div>
+        <hr />
+        <p class="small text-muted">变更原因为必填项（审计要求）。</p>
+        <div class="form-group">
+          <label>变更原因码 <span class="text-danger">*</span></label>
+          <select id="drawerReasonCode" class="form-control form-control-sm" required>
+            {% for opt in (role_change_reason_options or []) %}
+            <option value="{{ opt.value }}">{{ opt.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>变更原因说明</label>
+          <textarea id="drawerReasonNote" class="form-control form-control-sm" rows="2" placeholder="选填"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" id="drawerSaveConfirm">确认保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 历史弹窗 -->
+<div class="modal fade" id="dataScopeHistoryModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">数据范围变更历史</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="dataScopeHistoryList"></div>
+        <div class="mt-2 small text-muted">回滚需填写变更原因。</div>
+        <div class="form-group mt-2">
+          <label>回滚原因码</label>
+          <select id="dataScopeRollbackReasonCode" class="form-control form-control-sm">
+            {% for opt in (role_change_reason_options or []) %}
+            <option value="{{ opt.value }}">{{ opt.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>回滚原因说明</label>
+          <textarea id="dataScopeRollbackReasonNote" class="form-control form-control-sm" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 预览覆盖弹窗 -->
+<div class="modal fade" id="dataScopePreviewModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">预览覆盖</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="dataScopePreviewCount" class="mb-2"></p>
+        <p id="dataScopePreviewHint" class="small text-muted mb-2"></p>
+        <ul id="dataScopePreviewSample" class="list-unstyled small"></ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+.data-scope-table-wrap { max-height: 70vh; overflow: auto; }
+.data-scope-thead { position: sticky; top: 0; z-index: 1; background: var(--skill-color-surface, #f8fafc); box-shadow: 0 1px 0 rgba(0,0,0,.08); }
+.data-scope-thead th { white-space: nowrap; }
+.data-scope-btn-config { margin-right: 6px; }
+.data-scope-btn-config:hover, .data-scope-btn-history:hover { 
+  transform: translateY(-1px); 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+}
+#reloadDataScopeBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+}
+#dataScopeConfigDrawer .btn-primary:hover { background-color: var(--skill-color-secondary-hover, #1D4ED8); border-color: var(--skill-color-secondary-hover); }
+#dataScopeConfigDrawer .btn-secondary:hover { background-color: #e2e8f0; border-color: #cbd5e1; }
+.modal-dialog-slide { margin: 0 0 0 auto; max-width: 520px; height: 100vh; }
+.modal-dialog-slide .modal-content { border-radius: 0; border-left: 1px solid #dee2e6; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const POLICY_TO_SCOPE = { "ALL": "ALL", "DEPT": "DEPT", "SELF": "SELF", "CUSTOM": null };
+  const body = document.getElementById("dataScopeTableBody");
+  const msg = document.getElementById("dataScopeMsg");
+  const reloadBtn = document.getElementById("reloadDataScopeBtn");
+  const searchInput = document.getElementById("dataScopeSearch");
+
+  const state = {
+    roles: Array.isArray({{ roles | tojson }}) ? {{ roles | tojson }} : [],
+    departments: Array.isArray({{ departments | tojson }}) ? {{ departments | tojson }} : [],
+    users: Array.isArray({{ users | tojson }}) ? {{ users | tojson }} : [],
+  };
+
+  function setMessage(text, isError) {
+    if (!msg) return;
+    msg.textContent = String(text || "");
+    msg.className = isError ? "small text-danger px-3 pt-2 mb-0" : "small text-muted px-3 pt-2 mb-0";
+  }
+
+  function getDrawerScopeType() {
+    const policy = document.querySelector("input[name=drawerPolicyType]:checked");
+    if (!policy) return "DEPT";
+    const v = (policy.value || "").trim().toUpperCase();
+    if (v === "ALL") return "ALL";
+    if (v === "DEPT") {
+      const sub = document.querySelector("input[name=drawerSubDept]:checked");
+      return (sub && sub.value) ? sub.value : "DEPT";
+    }
+    if (v === "SELF") {
+      const sub = document.querySelector("input[name=drawerSubSelf]:checked");
+      return (sub && sub.value) ? sub.value : "SELF";
+    }
+    if (v === "CUSTOM") {
+      const sub = document.querySelector("input[name=drawerSubCustom]:checked");
+      return (sub && sub.value) ? sub.value : "DEPT_WHITELIST";
+    }
+    return "DEPT";
+  }
+
+  function getDrawerDeptIds() {
+    const sel = document.getElementById("drawerDeptIds");
+    if (!sel || !sel.multiple) return [];
+    return Array.from(sel.selectedOptions).map(o => parseInt(o.value, 10)).filter(n => !isNaN(n));
+  }
+
+  function getDrawerUserIds() {
+    const sel = document.getElementById("drawerUserIds");
+    if (!sel || !sel.multiple) return [];
+    return Array.from(sel.selectedOptions).map(o => parseInt(o.value, 10)).filter(n => !isNaN(n));
+  }
+
+  function syncDrawerUi() {
+    const policy = document.querySelector("input[name=drawerPolicyType]:checked");
+    const v = policy ? (policy.value || "").trim().toUpperCase() : "";
+    document.getElementById("drawerSubTypeWrap").style.display = (v === "DEPT" || v === "SELF" || v === "CUSTOM") ? "block" : "none";
+    document.getElementById("drawerSubTypeDept").style.display = v === "DEPT" ? "block" : "none";
+    document.getElementById("drawerSubTypeSelf").style.display = v === "SELF" ? "block" : "none";
+    document.getElementById("drawerSubTypeCustom").style.display = v === "CUSTOM" ? "block" : "none";
+    const scope = getDrawerScopeType();
+    document.getElementById("drawerDeptPicker").style.display = scope === "DEPT_WHITELIST" ? "block" : "none";
+    document.getElementById("drawerUserPicker").style.display = scope === "USER_WHITELIST" ? "block" : "none";
+  }
+
+  document.querySelectorAll("input[name=drawerPolicyType]").forEach(el => {
+    el.addEventListener("change", syncDrawerUi);
+  });
+  document.querySelectorAll("input[name=drawerSubDept], input[name=drawerSubSelf], input[name=drawerSubCustom]").forEach(el => {
+    el.addEventListener("change", syncDrawerUi);
+  });
+
+  function openConfigDrawer(roleId) {
+    const role = state.roles.find(r => Number(r.id) === Number(roleId));
+    if (!role) return;
+    document.getElementById("drawerRoleId").value = roleId;
+    document.getElementById("drawerRoleName").textContent = "角色：" + (role.role_name || "—");
+    const st = String(role.scope_type || role.data_scope || "DEPT").trim().toUpperCase();
+    if (st === "ALL") document.querySelector("input[name=drawerPolicyType][value=ALL]").checked = true;
+    else if (st === "DEPT" || st === "DEPT_TREE") {
+      document.querySelector("input[name=drawerPolicyType][value=DEPT]").checked = true;
+      const sub = document.querySelector("input[name=drawerSubDept][value=" + st + "]");
+      if (sub) sub.checked = true;
+    } else if (st === "SELF" || st === "SELF_SUB") {
+      document.querySelector("input[name=drawerPolicyType][value=SELF]").checked = true;
+      const sub = document.querySelector("input[name=drawerSubSelf][value=" + st + "]");
+      if (sub) sub.checked = true;
+    } else if (st === "DEPT_WHITELIST" || st === "USER_WHITELIST") {
+      document.querySelector("input[name=drawerPolicyType][value=CUSTOM]").checked = true;
+      const sub = document.querySelector("input[name=drawerSubCustom][value=" + st + "]");
+      if (sub) sub.checked = true;
+    } else {
+      document.querySelector("input[name=drawerPolicyType][value=DEPT]").checked = true;
+    }
+    const deptSel = document.getElementById("drawerDeptIds");
+    const userSel = document.getElementById("drawerUserIds");
+    (role.dept_ids || []).forEach(id => {
+      const opt = deptSel && deptSel.querySelector("option[value='" + id + "']");
+      if (opt) opt.selected = true;
+    });
+    (role.user_ids || []).forEach(id => {
+      const opt = userSel && userSel.querySelector("option[value='" + id + "']");
+      if (opt) opt.selected = true;
+    });
+    document.getElementById("drawerPreviewResult").textContent = "";
+    syncDrawerUi();
+    $("#dataScopeConfigDrawer").modal("show");
+  }
+
+  async function drawerPreview() {
+    const roleId = document.getElementById("drawerRoleId").value;
+    if (!roleId) return;
+    const scopeType = getDrawerScopeType();
+    const deptIds = getDrawerDeptIds();
+    const userIds = getDrawerUserIds();
+    const params = new URLSearchParams({ role_id: roleId, scope_type: scopeType });
+    if (deptIds.length) params.set("dept_ids", deptIds.join(","));
+    if (userIds.length) params.set("user_ids", userIds.join(","));
+    try {
+      const res = await fetch("/api/admin/data_scope/preview?" + params.toString(), { headers: { Accept: "application/json" } });
+      const data = await res.json();
+      if (!data.ok || !data.preview) throw new Error(data.message || "预览失败");
+      const p = data.preview;
+      document.getElementById("drawerPreviewResult").textContent = "覆盖用户数： " + (p.user_count ?? 0) + (p.hint ? "；" + p.hint : "");
+    } catch (err) {
+      document.getElementById("drawerPreviewResult").textContent = "预览失败";
+    }
+  }
+
+  document.getElementById("drawerPreviewBtn").addEventListener("click", drawerPreview);
+
+  document.getElementById("drawerSaveConfirm").addEventListener("click", async function() {
+    const roleId = document.getElementById("drawerRoleId").value;
+    if (!roleId) return;
+    const reasonCode = document.getElementById("drawerReasonCode").value;
+    if (!reasonCode) { setMessage("请选择变更原因码", true); return; }
+    if (!confirm("确认提交保存？保存后将写入审计日志。")) return;
+    const scopeType = getDrawerScopeType();
+    const deptIds = getDrawerDeptIds();
+    const userIds = getDrawerUserIds();
+    const payload = {
+      scope_type: scopeType,
+      dept_ids: deptIds,
+      user_ids: userIds,
+      change_reason_code: reasonCode,
+      change_reason_note: document.getElementById("drawerReasonNote").value || "",
+    };
+    try {
+      const res = await fetch("/api/admin/data_scope/" + roleId, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.message || "保存失败");
+      setMessage("角色 #" + roleId + " 数据范围已保存");
+      $("#dataScopeConfigDrawer").modal("hide");
+      await loadRoles();
+    } catch (err) {
+      setMessage("保存失败: " + err.message, true);
+    }
+  });
+
+  async function loadHistory(roleId) {
+    try {
+      const res = await fetch("/api/admin/data_scope/" + roleId + "/history?limit=30", { headers: { Accept: "application/json" } });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.message || "加载失败");
+      const listEl = document.getElementById("dataScopeHistoryList");
+      const logs = data.logs || [];
+      listEl.innerHTML = logs.length === 0
+        ? "<p class=\"text-muted small\">暂无历史记录</p>"
+        : "<table class=\"table table-sm\"><thead><tr><th>时间</th><th>操作人</th><th>原因</th><th>操作</th></tr></thead><tbody>"
+          + logs.map(l => {
+              return "<tr><td>" + (l.created_at || "-") + "</td><td>" + (l.operator || "-") + "</td><td>" + (l.change_reason_note || l.change_reason_code || "-") + "</td><td><button type=\"button\" class=\"btn btn-sm btn-secondary js-rollback\" data-log-id=\"" + (l.id || "") + "\" data-role-id=\"" + roleId + "\">回滚</button></td></tr>";
+            }).join("") + "</tbody></table>";
+      listEl.querySelectorAll(".js-rollback").forEach(btn => {
+        btn.onclick = function() {
+          const logId = this.getAttribute("data-log-id");
+          const rid = this.getAttribute("data-role-id");
+          doRollback(rid, logId);
+        };
+      });
+      $("#dataScopeHistoryModal").modal("show");
+    } catch (err) {
+      setMessage("加载历史失败: " + err.message, true);
+    }
+  }
+
+  async function doRollback(roleId, logId) {
+    const reasonCode = document.getElementById("dataScopeRollbackReasonCode").value;
+    const reasonNote = document.getElementById("dataScopeRollbackReasonNote").value;
+    if (!reasonCode) { setMessage("请选择回滚原因码", true); return; }
+    try {
+      const res = await fetch("/api/admin/data_scope/" + roleId + "/rollback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ log_id: logId, change_reason_code: reasonCode, change_reason_note: reasonNote }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.message || "回滚失败");
+      setMessage("已回滚角色 #" + roleId + " 数据范围");
+      $("#dataScopeHistoryModal").modal("hide");
+      await loadRoles();
+    } catch (err) {
+      setMessage("回滚失败: " + err.message, true);
+    }
+  }
+
+  async function loadRoles() {
+    const search = searchInput ? (searchInput.value || "").trim() : "";
+    const url = search ? "/api/admin/data_scope?search=" + encodeURIComponent(search) : "/api/admin/data_scope";
+    try {
+      const res = await fetch(url, { cache: "no-store", headers: { Accept: "application/json" } });
+      const payload = await res.json();
+      if (!res.ok || !payload || !payload.ok) throw new Error(payload?.message || "HTTP " + res.status);
+      state.roles = Array.isArray(payload.roles) ? payload.roles : [];
+      renderRows();
+      setMessage("已加载 " + state.roles.length + " 个角色策略");
+    } catch (err) {
+      setMessage("加载失败: " + err.message, true);
+    }
+  }
+
+  function renderRows() {
+    if (!body) return;
+    if (!state.roles.length) {
+      body.innerHTML = "<tr><td colspan=\"7\" class=\"text-center text-muted py-3\">暂无角色数据</td></tr>";
+      return;
+    }
+    body.innerHTML = state.roles.map(role => {
+      const roleId = Number(role.id) || 0;
+      return "<tr data-role-id=\"" + roleId + "\">" +
+        "<td>" + roleId + "</td>" +
+        "<td>" + (role.role_name || "-") + "</td>" +
+        "<td>" + (role.scope_type_cn || "本部") + "</td>" +
+        "<td>" + (role.effective_scope || "—") + "</td>" +
+        "<td>" + (role.updated_by || "—") + "</td>" +
+        "<td>" + (role.updated_at || "—") + "</td>" +
+        "<td>" +
+        "<button type=\"button\" class=\"btn btn-sm btn-outline-primary data-scope-btn-config js-config-scope\" data-role-id=\"" + roleId + "\">配置</button> " +
+        "<button type=\"button\" class=\"btn btn-sm btn-outline-secondary data-scope-btn-history js-history-scope\" data-role-id=\"" + roleId + "\">历史</button>" +
+        "</td></tr>";
+    }).join("");
+  }
+
+  body.addEventListener("click", function(e) {
+    const t = e.target;
+    if (!t || !t.classList) return;
+    const roleId = t.getAttribute("data-role-id");
+    if (!roleId) return;
+    const rid = parseInt(roleId, 10);
+    if (t.classList.contains("js-config-scope")) openConfigDrawer(rid);
+    else if (t.classList.contains("js-history-scope")) loadHistory(rid);
+  });
+
+  if (searchInput) {
+    let searchTimer;
+    searchInput.addEventListener("input", function() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadRoles, 300);
+    });
+  }
+  reloadBtn.addEventListener("click", loadRoles);
+  renderRows();
+  loadRoles();
+})();
+</script>
+{% endblock %}

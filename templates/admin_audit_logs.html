@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+
+{% block title %}治理审计日志 - 深度审计{% endblock %}
+{% block page_title %}治理审计日志{% endblock %}
+
+{% block content %}
+<div class="container-fluid pb-3">
+  <div class="card card-outline card-primary mb-0">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>治理审计日志</strong>
+      <button id="reloadAuditLogsBtn" class="btn btn-sm btn-outline-secondary">刷新</button>
+    </div>
+    <div class="card-body">
+      <div class="form-row mb-2">
+        <div class="col-md-3 col-sm-6 mb-2 mb-sm-0">
+          <select id="actionFilter" class="form-control form-control-sm">
+            <option value="">全部操作</option>
+          </select>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-2 mb-sm-0">
+          <input id="operatorFilter" class="form-control form-control-sm" placeholder="操作人筛选…" />
+        </div>
+      </div>
+      <div id="auditLogsMsg" class="small text-muted mb-2"></div>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped table-hover mb-0">
+          <thead>
+            <tr>
+              <th style="width:160px">时间</th>
+              <th style="width:110px">操作人</th>
+              <th style="width:140px">操作</th>
+              <th style="width:150px">对象</th>
+              <th style="width:70px">结果</th>
+              <th style="width:130px">来源/IP</th>
+              <th style="width:70px">详情</th>
+            </tr>
+          </thead>
+          <tbody id="auditLogsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ---- 抽屉 ---- #}
+<div id="auditDrawerBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1040" onclick="window._closeAuditDrawer()"></div>
+<div id="auditDrawer" style="display:none;position:fixed;top:0;right:0;width:520px;max-width:92vw;height:100vh;background:#fff;z-index:1050;box-shadow:-4px 0 24px rgba(0,0,0,.15);overflow-y:auto;transition:transform .2s">
+  <div class="p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0">审计详情</h5>
+      <button class="btn btn-sm btn-outline-secondary" onclick="window._closeAuditDrawer()">&times;</button>
+    </div>
+    <div id="auditDrawerBody"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const body = document.getElementById("auditLogsTableBody");
+  const msg = document.getElementById("auditLogsMsg");
+  const reloadBtn = document.getElementById("reloadAuditLogsBtn");
+  const actionFilter = document.getElementById("actionFilter");
+  const operatorFilter = document.getElementById("operatorFilter");
+  const drawer = document.getElementById("auditDrawer");
+  const drawerBackdrop = document.getElementById("auditDrawerBackdrop");
+  const drawerBody = document.getElementById("auditDrawerBody");
+
+  const state = { logs: [] };
+
+  /* ---- 目标类型中文 ---- */
+  const targetTypeCn = {
+    user: "用户", role: "角色", permission: "权限", department: "部门",
+    invoice: "单据", risk_case: "风险案件", risk_event: "风险事件",
+    rule: "规则", system_settings: "系统设置",
+  };
+  function targetLabel(t, id) {
+    const cn = targetTypeCn[String(t||"").toLowerCase()] || String(t||"-");
+    const idText = id ? `#${id}` : "";
+    return `${cn}${idText}`;
+  }
+
+  /* ---- 工具函数 ---- */
+  function esc(v) {
+    return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  }
+  function setMsg(text, err) {
+    if (!msg) return;
+    msg.textContent = String(text||"");
+    msg.className = err ? "small text-danger mb-2" : "small text-muted mb-2";
+  }
+
+  /* ---- 筛选 ---- */
+  function filtered() {
+    const act = String(actionFilter.value||"").toUpperCase();
+    const op = String(operatorFilter.value||"").trim().toLowerCase();
+    return state.logs.filter(r => {
+      if (act && String(r.action_code||"").toUpperCase() !== act) return false;
+      if (op && !String(r.operator||"").toLowerCase().includes(op)) return false;
+      return true;
+    });
+  }
+
+  /* ---- 动态填充筛选器 ---- */
+  function rebuildFilterOptions() {
+    const seen = new Set();
+    const opts = [];
+    for (const r of state.logs) {
+      const code = String(r.action_code||"").toUpperCase();
+      if (!code || seen.has(code)) continue;
+      seen.add(code);
+      opts.push({ code, cn: r.action_cn || code });
+    }
+    opts.sort((a,b) => a.cn.localeCompare(b.cn, "zh"));
+    const prev = actionFilter.value;
+    actionFilter.innerHTML = '<option value="">全部操作</option>' +
+      opts.map(o => `<option value="${esc(o.code)}">${esc(o.cn)}</option>`).join("");
+    actionFilter.value = prev;
+  }
+
+  /* ---- 渲染表格 ---- */
+  function render() {
+    const rows = filtered();
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">暂无审计日志</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map((r, idx) => `
+      <tr>
+        <td>${esc(r.created_at||"-")}</td>
+        <td>${esc(r.operator||"-")}</td>
+        <td><span class="badge badge-light">${esc(r.action_cn||r.action_code||"-")}</span></td>
+        <td>
+          <a href="#" class="text-primary" onclick="window._openAuditDrawer(${idx});return false">
+            ${esc(targetLabel(r.target_type, r.target_id))}
+          </a>
+        </td>
+        <td><span class="badge badge-success">成功</span></td>
+        <td>${esc(r.client_ip||"-")}</td>
+        <td>
+          <a href="#" class="text-primary" onclick="window._openAuditDrawer(${idx});return false">
+            <i class="fas fa-eye"></i>
+          </a>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  /* ---- 抽屉 ---- */
+  window._openAuditDrawer = function(idx) {
+    const rows = filtered();
+    const r = rows[idx];
+    if (!r) return;
+    drawerBody.innerHTML = buildDrawerHtml(r);
+    drawer.style.display = "block";
+    drawerBackdrop.style.display = "block";
+  };
+  window._closeAuditDrawer = function() {
+    drawer.style.display = "none";
+    drawerBackdrop.style.display = "none";
+  };
+
+  /* ---- 翻译字段名 ---- */
+  function translateKey(key) {
+    const translations = {
+      'approval_stage': '审批阶段',
+      'approval_status': '审批状态',
+      'queue_owner_id': '当前处理人',
+      'risk_level': '风险等级',
+      'action': '操作动作',
+      'comment': '审批意见',
+      'status': '状态',
+      'updated_keys': '更新字段',
+      'action_code': '操作代码',
+      'log_id': '日志ID',
+      'username': '用户名',
+      'email': '邮箱',
+      'role': '角色',
+      'department': '部门',
+      'status': '状态',
+      'name': '名称',
+      'description': '描述'
+    };
+    return translations[key] || key;
+  }
+
+  /* ---- 格式化值 ---- */
+  function formatValue(key, value) {
+    if (value === null || value === undefined || value === '') return '-';
+    
+    const statusMap = {
+      'PENDING': '待审批',
+      'APPROVED': '已通过',
+      'REJECTED': '已驳回',
+      'RETURNED': '已退回',
+      'L1': '一级审批',
+      'L2': '二级审批',
+      'DONE': '已完成',
+      'HIGH': '高风险',
+      'MEDIUM': '中风险',
+      'LOW': '低风险',
+      'APPROVE': '通过',
+      'REJECT': '驳回',
+      'RETURN': '退回',
+      'ASSIGN': '分配',
+      'ACTIVE': '启用',
+      'INACTIVE': '停用'
+    };
+    
+    const upperValue = String(value).toUpperCase();
+    if (statusMap[upperValue]) {
+      return `<span class="badge badge-secondary">${statusMap[upperValue]}</span>`;
+    }
+    
+    if (Array.isArray(value)) {
+      return value.map(v => `<span class="badge badge-light text-dark mr-1">${esc(v)}</span>`).join('');
+    }
+    
+    return esc(String(value));
+  }
+
+  /* ---- 格式化快照 ---- */
+  function formatSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return '-';
+    const entries = Object.entries(snapshot);
+    if (!entries.length) return '-';
+    
+    return entries.map(([key, value]) => {
+      const label = translateKey(key);
+      const displayValue = formatValue(key, value);
+      return `<tr><td class="text-muted" style="width:140px">${label}</td><td>${displayValue}</td></tr>`;
+    }).join('');
+  }
+
+  function buildDrawerHtml(r) {
+    const sections = [];
+
+    /* 摘要 */
+    sections.push(`
+      <div class="mb-3">
+        <div class="font-weight-bold mb-1">操作摘要</div>
+        <table class="table table-sm table-bordered mb-0">
+          <tr><td class="text-muted" style="width:100px">操作</td><td>${esc(r.action_cn)}</td></tr>
+          <tr><td class="text-muted">操作人</td><td>${esc(r.operator)}</td></tr>
+          <tr><td class="text-muted">时间</td><td>${esc(r.created_at)}</td></tr>
+          <tr><td class="text-muted">对象</td><td>${esc(targetLabel(r.target_type, r.target_id))}</td></tr>
+          <tr><td class="text-muted">来源IP</td><td>${esc(r.client_ip||"-")}</td></tr>
+        </table>
+      </div>
+    `);
+
+    /* 原因 */
+    if (r.reason_code || r.reason_text) {
+      const reasonMap = {
+        'POLICY_MATCH': '符合政策',
+        'POLICY_EXCEPTION': '政策例外',
+        'NEED_MORE_INFO': '需要更多信息',
+        'DUPLICATE_SUSPECT': '疑似重复',
+        'MANUAL_OVERRIDE': '人工干预'
+      };
+      const reasonCn = reasonMap[r.reason_code] || r.reason_cn || r.reason_code;
+      sections.push(`
+        <div class="mb-3">
+          <div class="font-weight-bold mb-1">变更原因</div>
+          <div class="border rounded p-2 bg-light">
+            ${reasonCn ? `<span class="badge badge-info mr-1">${esc(reasonCn)}</span>` : ""}
+            ${r.reason_text ? `<div class="mt-1">${esc(r.reason_text)}</div>` : ""}
+          </div>
+        </div>
+      `);
+    }
+
+    /* diff */
+    const diff = r.diff || {};
+    const details = diff.details || {};
+    const changedKeys = [].concat(diff.changed_fields||[], diff.added_fields||[], diff.removed_fields||[]);
+    if (changedKeys.length) {
+      let diffRows = changedKeys.map(k => {
+        const d = details[k] || {};
+        const label = translateKey(k);
+        return `<tr>
+          <td>${label}</td>
+          <td class="text-danger">${formatValue(k, d.before)}</td>
+          <td class="text-success">${formatValue(k, d.after)}</td>
+        </tr>`;
+      }).join("");
+      sections.push(`
+        <div class="mb-3">
+          <div class="font-weight-bold mb-1">变更对比</div>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0">
+              <thead><tr><th>字段</th><th>变更前</th><th>变更后</th></tr></thead>
+              <tbody>${diffRows}</tbody>
+            </table>
+          </div>
+        </div>
+      `);
+    } else if (r.detail) {
+      sections.push(`
+        <div class="mb-3">
+          <div class="font-weight-bold mb-1">详情</div>
+          <div class="border rounded p-2 bg-light text-break">${esc(r.detail)}</div>
+        </div>
+      `);
+    }
+
+    /* 操作前后快照 */
+    const hasBefore = r.snapshot_before && typeof r.snapshot_before === 'object' && Object.keys(r.snapshot_before).length;
+    const hasAfter = r.snapshot_after && typeof r.snapshot_after === 'object' && Object.keys(r.snapshot_after).length;
+    
+    if (hasBefore) {
+      sections.push(`
+        <div class="mb-3">
+          <div class="font-weight-bold mb-1">操作前状态</div>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0">
+              ${formatSnapshot(r.snapshot_before)}
+            </table>
+          </div>
+        </div>
+      `);
+    }
+    
+    if (hasAfter) {
+      sections.push(`
+        <div class="mb-3">
+          <div class="font-weight-bold mb-1">操作后状态</div>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0">
+              ${formatSnapshot(r.snapshot_after)}
+            </table>
+          </div>
+        </div>
+      `);
+    }
+
+    /* 技术信息（折叠） */
+    const techParts = [];
+    if (r.action_code) techParts.push(`<tr><td class="text-muted" style="width:120px">操作代码</td><td><code>${esc(r.action_code)}</code></td></tr>`);
+    if (r.id) techParts.push(`<tr><td class="text-muted">日志ID</td><td>${r.id}</td></tr>`);
+    if (r.trace_id) techParts.push(`<tr><td class="text-muted">追踪ID</td><td><code class="small">${esc(r.trace_id)}</code></td></tr>`);
+
+    if (techParts.length) {
+      sections.push(`
+        <div class="mb-3">
+          <a data-toggle="collapse" href="#techCollapse" class="text-muted small" style="cursor:pointer">
+            <i class="fas fa-caret-right mr-1"></i>技术信息
+          </a>
+          <div class="collapse mt-1" id="techCollapse">
+            <table class="table table-sm table-bordered mb-0">${techParts.join("")}</table>
+          </div>
+        </div>
+      `);
+    }
+
+    /* 跳转监控追踪 */
+    if (r.trace_id) {
+      const monUrl = `/monitoring/dashboard?request_id=${encodeURIComponent(r.trace_id)}`;
+      sections.push(`
+        <div class="mb-3">
+          <a href="${monUrl}" class="btn btn-sm btn-outline-primary" target="_blank">
+            <i class="fas fa-external-link-alt mr-1"></i>查看追踪（运行日志）
+          </a>
+        </div>
+      `);
+    }
+
+    return sections.join("");
+  }
+
+  /* ---- URL 参数 ---- */
+  function urlParams() {
+    const p = new URLSearchParams(window.location.search);
+    return {
+      target_type: p.get("target_type") || "",
+      target_id: p.get("target_id") || "",
+      action_type: p.get("action_type") || "",
+    };
+  }
+
+  /* ---- 加载数据 ---- */
+  async function load() {
+    const { target_type, target_id, action_type } = urlParams();
+    let url = "/api/admin/audit_logs?limit=800";
+    if (target_type) url += "&target_type=" + encodeURIComponent(target_type);
+    if (target_id) url += "&target_id=" + encodeURIComponent(target_id);
+    if (action_type) url += "&action_type=" + encodeURIComponent(action_type);
+    try {
+      const res = await fetch(url, { cache: "no-store", headers: { Accept: "application/json" } });
+      const data = await res.json();
+      if (!res.ok || !data || data.ok !== true) throw new Error(data?.message || `HTTP ${res.status}`);
+      state.logs = Array.isArray(data.logs) ? data.logs : [];
+      rebuildFilterOptions();
+      render();
+      setMsg(`已加载 ${state.logs.length} 条治理审计日志（按时间倒序）`);
+    } catch (e) {
+      setMsg(`加载失败: ${e.message}`, true);
+    }
+  }
+
+  reloadBtn.addEventListener("click", load);
+  actionFilter.addEventListener("change", render);
+  operatorFilter.addEventListener("input", render);
+
+  const { action_type } = urlParams();
+  if (action_type) {
+    actionFilter.value = action_type.toUpperCase();
+  }
+
+  load();
+})();
+</script>
+{% endblock %}

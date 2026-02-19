@@ -1,0 +1,213 @@
+{% if change_reasons is not defined %}
+{% set change_reasons = [
+  ("DATA_COMPLETION", "数据补全"),
+  ("DATA_CORRECTION", "数据更正"),
+  ("SUBMIT_REVIEW", "提交复核"),
+  ("RETURN_FOR_COMPLETION", "打回补录"),
+  ("RERUN_AI_RISK", "重跑识别/重算风险"),
+  ("MANUAL_OVERRIDE", "人工覆盖"),
+  ("POLICY_EXCEPTION", "制度例外"),
+  ("NEED_MORE_INFO", "需补充信息")
+] %}
+{% endif %}
+
+<div class="modal fade" id="evidenceModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">证据中心</h5>
+        <div class="d-flex align-items-center" style="gap:8px;">
+          <a id="evAuditChainLink" href="#" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" style="display:none;">智能审计链</a>
+          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="evidenceInvoiceId" value="">
+
+        <section class="evidence-section evidence-header">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0">凭证概览</h6>
+            <div class="d-flex align-items-center" style="gap:8px;">
+              <span id="evRecordStateBadge" class="status-badge neutral">-</span>
+              <span id="evApprovalStatusBadge" class="status-badge neutral">-</span>
+            </div>
+          </div>
+          <div class="row align-items-center">
+            <div class="col-md-7">
+              <div class="d-flex align-items-baseline evidence-kpis flex-wrap" style="gap:16px;">
+                <div>
+                  <div class="kpi-label">金额</div>
+                  <div id="evAmountKpi" class="kpi-value-lg">¥0.00</div>
+                </div>
+                <div>
+                  <div class="kpi-label">开票日期</div>
+                  <div id="evInvoiceDateKpi" class="kpi-value-md">-</div>
+                </div>
+                <div>
+                  <div class="kpi-label">报销人</div>
+                  <div id="evApplicantKpi" class="kpi-value-md">-</div>
+                </div>
+                <div>
+                  <div class="kpi-label">部门</div>
+                  <div id="evDepartmentKpi" class="kpi-value-md">-</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-5">
+              <div class="row small evidence-meta">
+                <div class="col-6 mb-1"><span class="meta-label">文件名：</span><span id="evFilename">-</span></div>
+                <div class="col-6 mb-1"><span class="meta-label">类型：</span><span id="evFileType">-</span></div>
+                <div class="col-6 mb-1"><span class="meta-label">页数：</span><span id="evPageCount">-</span></div>
+                <div class="col-6 mb-1"><span class="meta-label">上传时间：</span><span id="evUploadedAt">-</span></div>
+                <div class="col-6 mb-1"><span class="meta-label">上传人：</span><span id="evUploadedBy">-</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="evidence-section">
+          <h6>凭证要素（可校正）</h6>
+          <div class="form-row">
+            <div class="form-group col-md-4">
+              <label>金额</label>
+              <div class="input-group">
+                <div class="input-group-prepend"><span class="input-group-text">¥</span></div>
+                <input id="evAmount" class="form-control" placeholder="例如 1680.00">
+              </div>
+              <div class="input-help">金额来源：OCR/人工录入</div>
+            </div>
+            <div class="form-group col-md-4">
+              <label>开票日期</label>
+              <input id="evInvoiceDate" type="date" class="form-control" placeholder="YYYY-MM-DD">
+              <div class="input-help">格式：YYYY-MM-DD</div>
+            </div>
+            <div class="form-group col-md-4">
+              <label>报销人</label>
+              <input id="evApplicant" class="form-control" placeholder="请输入报销人">
+              <div class="input-help">用于关联员工档案</div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-md-4">
+              <label>部门</label>
+              <input id="evDepartment" class="form-control" placeholder="请输入部门">
+              <div class="input-help">与预算体系保持一致</div>
+            </div>
+            <div class="form-group col-md-5">
+              <label>变更原因（必填）</label>
+              <select
+                id="evStructuredReason"
+                name="change_reason_code"
+                class="form-control enterprise-select"
+                placeholder="请选择变更原因"
+                data-clear-button="1"
+              >
+                <option value="">请选择</option>
+                {% for code, label in change_reasons %}
+                <option value="{{ code }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+              <div id="evStructuredReasonHint" class="invalid-feedback d-block small text-muted" style="display:none;">请选择变更原因</div>
+            </div>
+            <div class="form-group col-md-3 d-flex align-items-end">
+              <button id="evStructuredSave" class="btn btn-primary w-100" disabled title="选择变更原因后保存要素">保存要素</button>
+            </div>
+          </div>
+          <div class="small text-muted">保存后将写入审计日志（修改前/修改后/变更原因）。</div>
+        </section>
+
+        <section class="evidence-section">
+          <h6 class="mb-2">
+            <button class="btn btn-link px-0" type="button" data-toggle="collapse" data-target="#evTechnicalCollapse" aria-expanded="false" aria-controls="evTechnicalCollapse">
+              技术信息（可展开）
+            </button>
+          </h6>
+          <div id="evTechnicalCollapse" class="collapse">
+            <div class="pt-1">
+              <h6 class="mt-2">文件与验真信息</h6>
+              <div class="row small">
+                <div class="col-12 mb-1" id="evFileHashRow"><strong>文件哈希：</strong><code id="evFileHash">-</code></div>
+              </div>
+              <div class="row small">
+                <div class="col-md-3 mb-1"><strong>验真状态：</strong><span id="evVerifyStatus">暂无</span></div>
+                <div class="col-md-3 mb-1"><strong>验真时间：</strong><span id="evCheckedAt">暂无</span></div>
+                <div class="col-md-3 mb-1"><strong>验真次数：</strong><span id="evCheckCount">0</span></div>
+                <div class="col-md-3 mb-1"><strong>请求编号：</strong><span id="evRequestId">暂无</span></div>
+              </div>
+
+              <h6 class="mt-3">风险与规则</h6>
+              <div class="row small">
+                <div class="col-md-4 mb-1"><strong>命中规则：</strong><span id="evRuleName">-</span></div>
+                <div class="col-md-2 mb-1"><strong>规则版本：</strong><span id="evRuleVersion">-</span></div>
+                <div class="col-md-2 mb-1"><strong>阈值：</strong><span id="evThreshold">-</span></div>
+                <div class="col-md-2 mb-1"><strong>实际值：</strong><span id="evActual">-</span></div>
+                <div class="col-md-2 mb-1"><strong>偏差比例：</strong><span id="evRatio">-</span></div>
+                <div class="col-md-12 mb-1"><strong>处理建议：</strong><span id="evSuggestion">-</span></div>
+                <div class="col-md-12 mb-1"><strong>规则摘要：</strong><span id="evRuleSummary">-</span></div>
+              </div>
+
+              <h6 class="mt-3">审批流转记录</h6>
+              <div class="row small">
+                <div class="col-md-3 mb-1"><strong>当前环节：</strong><span id="evApprovalStage">暂无</span></div>
+                <div class="col-md-3 mb-1"><strong>审批状态：</strong><span id="evApprovalStatus">暂无</span></div>
+                <div class="col-md-3 mb-1"><strong>一级审批人：</strong><span id="evFirstApprover">暂无</span></div>
+                <div class="col-md-3 mb-1"><strong>一级审批时间：</strong><span id="evFirstTime">暂无</span></div>
+                <div class="col-md-3 mb-1"><strong>二级审批人：</strong><span id="evSecondApprover">暂无</span></div>
+                <div class="col-md-3 mb-1"><strong>二级审批时间：</strong><span id="evSecondTime">暂无</span></div>
+              </div>
+
+              <h6 class="mt-3">审计日志（最近 N 条）</h6>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                  <thead>
+                    <tr>
+                      <th style="width:130px;">时间</th>
+                      <th style="width:100px;">动作</th>
+                      <th style="width:110px;">操作者</th>
+                      <th style="width:130px;">原因码</th>
+                      <th style="width:100px;">IP地址</th>
+                      <th style="width:140px;">追踪ID</th>
+                      <th>变更详情</th>
+                    </tr>
+                  </thead>
+                  <tbody id="evAuditBody"><tr><td colspan="7" class="text-center text-muted">暂无</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="evidence-section mb-0">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0">票据信息</h6>
+            <span id="evInvoiceStatusBadge" class="status-badge neutral">待验真</span>
+          </div>
+          <div class="row">
+            <div class="col-lg-8">
+              <div id="evInvoiceSummary" class="row small invoice-summary-grid">
+                <div class="col-sm-6 mb-1"><strong>发票代码：</strong><span id="evInvoiceCode">-</span></div>
+                <div class="col-sm-6 mb-1"><strong>发票号码：</strong><span id="evInvoiceNo">-</span></div>
+                <div class="col-sm-6 mb-1"><strong>开票日期：</strong><span id="evInvoiceDateText">-</span></div>
+                <div class="col-sm-6 mb-1"><strong>价税合计：</strong><span id="evInvoiceTotal">-</span></div>
+                <div class="col-sm-6 mb-1"><strong>税额：</strong><span id="evInvoiceTax">-</span></div>
+                <div class="col-sm-6 mb-1"><strong>销方名称：</strong><span id="evSellerName">-</span></div>
+                <div class="col-sm-6 mb-1"><strong>购方名称：</strong><span id="evBuyerName">-</span></div>
+                <div class="col-sm-6 mb-1"><strong>验真状态：</strong><span id="evInvoiceVerify">-</span></div>
+              </div>
+              <div id="evInvoiceEmpty" class="empty-state d-none mt-2">暂无票据信息/请先验真或上传发票</div>
+            </div>
+            <div class="col-lg-4">
+              <div class="invoice-preview" id="evInvoicePreview">
+                <div class="empty-state">暂无预览</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="modal-footer">
+        <a id="evGotoApproval" class="btn btn-sm btn-outline-primary d-none" target="_blank" rel="noopener">去审批处理</a>
+        <button class="btn btn-sm btn-light" data-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>

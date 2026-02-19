@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登录 - 深度审计</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%230066FF'/%3E%3Cstop offset='100%25' style='stop-color:%2300D4FF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M16 2L6 6v7c0 6.5 4 12 10 15 6-3 10-8.5 10-15V6L16 2z' stroke='url(%23g)' stroke-width='1.8' fill='none' stroke-linejoin='round'/%3E%3Crect x='12' y='11' width='8' height='8' rx='1.5' fill='url(%23g)' opacity='0.9'/%3E%3Cpath d='M10 13h-2M10 16h-2M10 19h-2' stroke='url(%23g)' stroke-width='1.5' stroke-linecap='round' opacity='0.7'/%3E%3Cpath d='M22 13h2M22 16h2M22 19h2' stroke='url(%23g)' stroke-width='1.5' stroke-linecap='round' opacity='0.7'/%3E%3Cpath d='M14 15l1.5 1.5 3-3' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+</head>
+<body class="login-page">
+  {% if error %}
+  <div class="login-global-error" id="loginGlobalError" role="alert">{{ error }}</div>
+  {% endif %}
+  <header class="login-header">
+    <div class="login-header-brand">
+      <span class="login-logo" aria-hidden="true">
+        <svg width="48" height="48" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="auditGradLogin" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#0066FF;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#00D4FF;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+          <!-- 盾牌外框 - 代表风控保护 -->
+          <path d="M16 2L6 6v7c0 6.5 4 12 10 15 6-3 10-8.5 10-15V6L16 2z" stroke="url(#auditGradLogin)" stroke-width="2" fill="none" stroke-linejoin="round"/>
+          <!-- AI芯片核心 -->
+          <rect x="12" y="11" width="8" height="8" rx="1.5" fill="url(#auditGradLogin)" opacity="0.9"/>
+          <!-- 数据流线条 -->
+          <path d="M10 13h-2M10 16h-2M10 19h-2" stroke="url(#auditGradLogin)" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+          <path d="M22 13h2M22 16h2M22 19h2" stroke="url(#auditGradLogin)" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+          <!-- 审计验证标记 -->
+          <path d="M14 15l1.5 1.5 3-3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+          <!-- 审计验证标记 -->
+          <path d="M14 15l1.5 1.5 3-3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <div>
+        <h1 class="login-product-name">深度审计</h1>
+        <p class="login-product-sub">AI财务风控与审计平台</p>
+      </div>
+    </div>
+    <span class="login-header-safe" aria-label="安全登录"><span class="login-header-safe-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>安全登录</span>
+  </header>
+  <div class="login-trust-bar" role="complementary" aria-label="平台信任与合规">
+    <span class="login-trust-item">全链路审计</span>
+    <span class="login-trust-dot" aria-hidden="true"></span>
+    <span class="login-trust-item">合规可追溯</span>
+    <span class="login-trust-dot" aria-hidden="true"></span>
+    <span class="login-trust-item">数据安全</span>
+  </div>
+  <main class="login-main">
+    <div class="login-container">
+      <section class="login-left">
+        <h2 class="login-value-prop">智能风控 · 全链路审计</h2>
+        <p class="login-value-sub">一站式票据验真与风险处置</p>
+        <ul class="login-capabilities">
+          <li class="login-cap-item">
+            <span class="login-cap-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span>
+            <div class="login-cap-text">
+              <span class="login-cap-title">票据验真</span>
+              <span class="login-cap-desc">支持发票、凭证多源核验</span>
+            </div>
+          </li>
+          <li class="login-cap-item">
+            <span class="login-cap-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+            <div class="login-cap-text">
+              <span class="login-cap-title">风险分派</span>
+              <span class="login-cap-desc">规则引擎自动分派与处置</span>
+            </div>
+          </li>
+          <li class="login-cap-item">
+            <span class="login-cap-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span>
+            <div class="login-cap-text">
+              <span class="login-cap-title">审计留痕</span>
+              <span class="login-cap-desc">全链路操作可追溯</span>
+            </div>
+          </li>
+          <li class="login-cap-item">
+            <span class="login-cap-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+            <div class="login-cap-text">
+              <span class="login-cap-title">审批闭环</span>
+              <span class="login-cap-desc">企业级审批流程可配置可追溯</span>
+            </div>
+          </li>
+        </ul>
+        <div class="login-highlights" role="complementary" aria-label="平台亮点">
+          <span class="login-highlight-item"><span class="login-highlight-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>审计记录可追溯</span>
+          <span class="login-highlight-sep" aria-hidden="true"></span>
+          <span class="login-highlight-item"><span class="login-highlight-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>规则引擎驱动</span>
+          <span class="login-highlight-sep" aria-hidden="true"></span>
+          <span class="login-highlight-item"><span class="login-highlight-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span>多源票据核验</span>
+        </div>
+      </section>
+      <section class="login-right">
+        <div class="login-card">
+          <div class="login-card-accent" aria-hidden="true"></div>
+          <h2 class="login-card-title">账号登录</h2>
+          <form method="post" action="/login" class="login-form" id="loginForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="next" value="{{ next_path or '/dashboard' }}">
+
+            {% if multi_tenant %}
+            <div class="login-field login-field-tenant">
+              <label for="tenant">租户/组织</label>
+              <input id="tenant" name="tenant" type="text" class="login-input" list="tenant-list" placeholder="搜索或选择，默认最近使用" autocomplete="off" aria-label="租户或组织">
+              <datalist id="tenant-list">
+                <option value="默认组织">
+              </datalist>
+            </div>
+            {% endif %}
+
+            <div class="login-field">
+              <label for="username">用户名</label>
+              <input id="username" name="username" type="text" class="login-input" placeholder="请输入用户名" required autocomplete="username">
+            </div>
+
+            <div class="login-field">
+              <label for="password">密码</label>
+              <div class="login-password-wrap">
+                <input id="password" name="password" type="password" class="login-input" placeholder="请输入密码" required autocomplete="current-password">
+                <button type="button" class="login-toggle-pwd" id="togglePwd" aria-label="显示密码" title="显示密码">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+              {% if error %}
+              <span class="login-field-error" role="alert">{{ error }}</span>
+              {% endif %}
+            </div>
+
+            <div class="login-options">
+              <label class="login-remember">
+                <input type="checkbox" name="remember" value="1" aria-label="记住我">
+                <span>记住我</span>
+              </label>
+              <span class="login-forgot-text">联系管理员重置</span>
+            </div>
+
+            <p class="login-pwd-hint">密码由管理员统一分配与重置</p>
+
+            <button type="submit" class="login-btn" id="loginBtn">
+              <span class="login-btn-text">登录</span>
+              <span class="login-btn-loading" aria-hidden="true">登录中…</span>
+            </button>
+          </form>
+
+          <p class="login-audit-notice"><span class="login-audit-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> 登录行为将记录至审计日志</p>
+        </div>
+      </section>
+    </div>
+  </main>
+  <footer class="login-footer" role="contentinfo">
+    <span class="login-footer-trust">
+      <span class="login-footer-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>等保合规
+    </span>
+    <span class="login-footer-dot" aria-hidden="true"></span>
+    <span class="login-footer-trust">
+      <span class="login-footer-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>数据安全
+    </span>
+    <span class="login-footer-dot" aria-hidden="true"></span>
+    <span class="login-footer-trust">
+      <span class="login-footer-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span>审计留痕
+    </span>
+    <span class="login-footer-copy">© 深度审计 2026</span>
+  </footer>
+
+  <script>
+    (function() {
+      var form = document.getElementById('loginForm');
+      var btn = document.getElementById('loginBtn');
+      var togglePwd = document.getElementById('togglePwd');
+      var passwordInput = document.getElementById('password');
+      var globalErr = document.getElementById('loginGlobalError');
+
+      if (togglePwd && passwordInput) {
+        togglePwd.addEventListener('click', function() {
+          var type = passwordInput.getAttribute('type');
+          var isPassword = type === 'password';
+          passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+          togglePwd.setAttribute('aria-label', isPassword ? '隐藏密码' : '显示密码');
+          togglePwd.setAttribute('title', isPassword ? '隐藏密码' : '显示密码');
+        });
+      }
+      if (globalErr) {
+        setTimeout(function() { globalErr.style.display = 'none'; }, 3000);
+      }
+      if (form && btn) {
+        form.addEventListener('submit', function() {
+          btn.classList.add('is-loading');
+          btn.disabled = true;
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

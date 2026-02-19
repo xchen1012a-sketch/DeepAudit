@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}风险案件详情 - 深度审计{% endblock %}
+{% block page_title %}风险案件详情{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tom-select/tom-select.css', v=static_version) }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid pb-3">
+  {% if not case %}
+  <div class="card card-outline card-danger">
+    <div class="card-body">
+      <h5 class="mb-2">案件不存在</h5>
+      <p class="text-muted mb-0">请确认案件编号是否正确。</p>
+    </div>
+  </div>
+  {% else %}
+  {% set current_operator = ((nav_user or {}).get('employee_name') or (nav_user or {}).get('username') or (nav_user or {}).get('employee_no') or '') %}
+  {% set risk_level_code = (case.risk_level or 'UNKNOWN')|upper %}
+  {% set risk_level_text_map = {'HIGH': '高风险', 'MEDIUM': '中风险', 'LOW': '低风险', 'UNKNOWN': '未知'} %}
+  {% set risk_level_badge_map = {'HIGH': 'badge-danger', 'MEDIUM': 'badge-warning', 'LOW': 'badge-secondary', 'UNKNOWN': 'badge-light'} %}
+  {% set status_code = (case.status or 'OPEN')|upper %}
+  {% set status_summary_code = 'CLOSED' if status_code == 'CLOSED' else 'OPEN' %}
+  {% set status_text_map = {'OPEN': '进行中', 'CLOSED': '已结案'} %}
+  {% set status_badge_map = {'OPEN': 'badge-info', 'CLOSED': 'badge-secondary'} %}
+  {% set initial_case_payload = {
+    'id': case.id,
+    'event_id': case.event_id or '',
+    'invoice_id': case.invoice_id or '',
+    'status': case.status or '',
+    'risk_level': case.risk_level or '',
+    'risk_score': case.risk_score if case.risk_score is not none else '',
+    'assigned_to': case.assigned_to or '',
+    'created_at': case.created_at or '',
+    'closed_at': case.closed_at or '',
+    'resolution_note': case.resolution_note or '',
+    'trace_id': case.trace_id or '',
+    'department': case.department or ''
+  } %}
+
+  <div id="risk-case-detail-page" data-current-operator="{{ current_operator }}">
+    <div class="card card-outline card-primary mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center flex-wrap">
+          <strong class="mr-3">案件 #<span id="summaryCaseNo">{{ case.id }}</span></strong>
+          <span id="summaryRiskBadge" class="badge {{ risk_level_badge_map.get(risk_level_code, 'badge-light') }}">{{ risk_level_text_map.get(risk_level_code, '未知') }}</span>
+          <span class="risk-code-en small text-muted ml-1" id="summaryRiskCode">({{ risk_level_code }})</span>
+        </div>
+        <button
+          id="viewLedgerBtn"
+          type="button"
+          class="btn btn-sm btn-outline-primary"
+          data-trace-id="{{ case.trace_id or '' }}"
+          {% if not case.trace_id %}disabled{% endif %}
+        >
+          查看 AI 审计链
+        </button>
+      </div>
+      <div class="card-body py-3">
+        <div class="row">
+          <div class="col-lg-2 col-md-4 mb-2">
+            <div class="small text-muted">风险分</div>
+            <div class="font-weight-bold" id="summaryRiskScore">{{ case.risk_score if case.risk_score is not none else '-' }}</div>
+          </div>
+          <div class="col-lg-2 col-md-4 mb-2">
+            <div class="small text-muted">单据ID</div>
+            <div class="font-weight-bold" id="summaryInvoiceId">{{ case.invoice_id or '-' }}</div>
+          </div>
+          <div class="col-lg-2 col-md-4 mb-2">
+            <div class="small text-muted">状态</div>
+            <div>
+              <span id="summaryStatusBadge" class="badge {{ status_badge_map.get(status_summary_code, 'badge-light') }}">{{ status_text_map.get(status_summary_code, '进行中') }}</span>
+              <span class="risk-code-en small text-muted ml-1" id="summaryStatusCode">({{ status_summary_code }})</span>
+            </div>
+          </div>
+          <div class="col-lg-2 col-md-4 mb-2">
+            <div class="small text-muted">指派人</div>
+            <div class="font-weight-bold" id="summaryAssignee">{{ case.assigned_to or '-' }}</div>
+          </div>
+          <div class="col-lg-4 col-md-8 mb-2">
+            <div class="small text-muted">最新进展</div>
+            <div class="font-weight-bold" id="summaryLatestProgress">-</div>
+          </div>
+        </div>
+        <details class="risk-detail-tech-details mt-2">
+          <summary class="small">技术信息（可展开）</summary>
+          <div class="risk-detail-tech-grid">
+            <div class="risk-detail-tech-item">
+              <span class="risk-detail-tech-label">链路标识（Trace ID）</span>
+              <code id="summaryTraceId">{{ case.trace_id or '-' }}</code>
+            </div>
+            <div class="risk-detail-tech-item">
+              <span class="risk-detail-tech-label">事件编号</span>
+              <span id="summaryEventId">{{ case.event_id or '-' }}</span>
+            </div>
+            <div class="risk-detail-tech-item">
+              <span class="risk-detail-tech-label">创建时间</span>
+              <span id="summaryCreatedAt">{{ case.created_at or '-' }}</span>
+            </div>
+            <div class="risk-detail-tech-item">
+              <span class="risk-detail-tech-label">结案时间</span>
+              <span id="summaryClosedAt">{{ case.closed_at or '-' }}</span>
+            </div>
+            <div class="risk-detail-tech-item risk-detail-tech-item-full">
+              <span class="risk-detail-tech-label">结案说明</span>
+              <span id="summaryResolution">{{ case.resolution_note or '-' }}</span>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="card card-outline card-info mb-3" id="reviewActionCard">
+      <div class="card-header d-flex align-items-center"><strong>人工审核操作</strong></div>
+      <div id="caseClosedNotice" class="alert alert-secondary py-2 mx-3 mt-2 mb-3 d-none"><span class="alert-icon"><i class="ri-information-line"></i></span><span class="alert-body">已结案仅可查看</span></div>
+      <div class="card-body" id="reviewActionBody">
+        <div id="caseActionMsg" class="small text-muted mb-2">请选择动作并提交变更。</div>
+        <div class="form-row">
+          <div class="form-group col-lg-3 col-md-6">
+            <label class="mb-1" for="reviewActionType">动作</label>
+            <select id="reviewActionType" class="custom-select">
+              <option value="CLAIM">签收</option>
+              <option value="TRANSFER">转派</option>
+              <option value="FALSE_POSITIVE">误报</option>
+              <option value="CLOSE">结案</option>
+              <option value="ADJUST_SCORE">调分</option>
+            </select>
+          </div>
+
+          <div class="form-group col-lg-3 col-md-6 d-none" id="reviewAssignWrap">
+            <label class="mb-1" for="reviewAssignTo">指派人</label>
+            <input id="reviewAssignTo" class="form-control" placeholder="输入接收人姓名" value="{{ case.assigned_to or '' }}">
+            <div id="reviewAssignError" class="invalid-feedback d-none">请填写指派人</div>
+          </div>
+
+          <div class="form-group col-lg-3 col-md-6 d-none" id="reviewScoreWrap">
+            <label class="mb-1" for="reviewTargetScore">目标分</label>
+            <input id="reviewTargetScore" type="number" min="0" max="100" step="1" class="form-control" value="{{ case.risk_score if case.risk_score is not none else 0 }}">
+            <div id="reviewScoreError" class="invalid-feedback d-none">目标分需在 0-100 之间</div>
+          </div>
+
+          <div class="form-group col-lg-3 col-md-6 d-none" id="reviewCloseWrap">
+            <label class="mb-1" for="reviewResolutionNote">结案说明</label>
+            <input id="reviewResolutionNote" class="form-control" placeholder="请填写结案说明">
+            <div id="reviewCloseError" class="invalid-feedback d-none">请填写结案说明</div>
+          </div>
+
+          <div class="form-group col-lg-4 col-md-6">
+            <label class="mb-1" for="reviewReasonCode">处理原因 <span class="text-danger">*</span></label>
+            <select id="reviewReasonCode" class="custom-select enterprise-select" data-clear-button="0">
+              <option value="">请选择处理原因</option>
+              <option value="MANUAL_OVERRIDE">人工覆盖</option>
+              <option value="DATA_CORRECTION">数据修正</option>
+              <option value="POLICY_EXCEPTION">制度例外</option>
+              <option value="NEED_MORE_INFO">需要补充信息</option>
+              <option value="SYSTEM_AUTO">系统自动处理</option>
+            </select>
+            <div id="reviewReasonError" class="invalid-feedback d-none">请选择处理原因</div>
+          </div>
+
+          <div class="form-group col-lg-8 col-md-12">
+            <label class="mb-1" for="reviewReasonNote">补充说明（可选）</label>
+            <textarea id="reviewReasonNote" rows="2" class="form-control" placeholder="填写处理补充说明，将写入审计留痕"></textarea>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-1">
+          <div id="reviewActionHint" class="small text-muted">签收将把案件分配给当前操作人。</div>
+          <button id="reviewSubmitBtn" class="btn btn-primary">提交变更</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-outline card-secondary mb-0">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>案件操作留痕</strong>
+        <button id="toggleAllActionsBtn" type="button" class="btn btn-xs btn-outline-secondary d-none">展开全部</button>
+      </div>
+      <div class="card-body table-responsive p-0">
+        <table class="table table-sm table-striped mb-0">
+          <thead>
+            <tr>
+              <th style="width: 90px;">ID</th>
+              <th style="width: 220px;">动作</th>
+              <th style="width: 180px;">操作人</th>
+              <th>备注</th>
+              <th style="width: 180px;">时间</th>
+            </tr>
+          </thead>
+          <tbody id="caseActionTableBody">
+            <tr>
+              <td colspan="5" class="text-center text-muted py-3">加载中...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script id="riskCaseDetailInit" type="application/json">{{ {'case': initial_case_payload, 'actions': actions, 'operator': current_operator}|tojson }}</script>
+  {% endif %}
+</div>
+
+<div class="modal fade ai-modal-shell" id="ledgerModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+    <div class="modal-content ai-modal-content">
+      <div class="modal-header ai-modal-header">
+        <div class="ai-modal-title-wrap">
+          <h5 class="modal-title mb-0">AI 审计链详情</h5>
+          <div class="ai-modal-subtitle">审计链路信息与技术留痕</div>
+        </div>
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body ai-modal-body">
+        <div id="ledgerError" class="alert alert-danger d-none py-2 px-3 mb-3"></div>
+        <div class="risk-ledger-modal-wrap">
+          <div class="risk-ledger-head-card">
+            <div class="risk-ledger-head-left">
+              <div class="risk-ledger-title">审计摘要</div>
+              <div class="risk-ledger-subtitle">模型输出与风险判定结果</div>
+            </div>
+            <div id="ledgerRiskLevelBadge" class="risk-ledger-level-badge is-unknown">风险等级：未知</div>
+          </div>
+
+          <div class="risk-ledger-meta-grid">
+            <div class="risk-ledger-meta-item">
+              <span class="risk-ledger-meta-label">审计时间</span>
+              <strong id="ledgerCreatedAt">-</strong>
+            </div>
+            <div class="risk-ledger-meta-item">
+              <span class="risk-ledger-meta-label">风险分</span>
+              <strong id="ledgerRiskScore">-</strong>
+            </div>
+            <div class="risk-ledger-meta-item">
+              <span class="risk-ledger-meta-label">单据编号</span>
+              <strong id="ledgerInvoiceId">-</strong>
+            </div>
+          </div>
+
+          <section class="risk-ledger-summary-card">
+            <div class="risk-ledger-summary-label">结论</div>
+            <div id="ledgerConclusion" class="risk-ledger-summary-text">-</div>
+          </section>
+          <section class="risk-ledger-summary-card">
+            <div class="risk-ledger-summary-label">建议</div>
+            <div id="ledgerSuggestion" class="risk-ledger-summary-text">-</div>
+          </section>
+          <section class="risk-ledger-summary-card">
+            <div class="risk-ledger-summary-label">命中规则</div>
+            <ul id="ledgerRulesHit" class="risk-ledger-rules-list"></ul>
+          </section>
+
+          <details class="risk-ledger-tech-details" id="ledgerTechDetails">
+            <summary>技术信息（可展开）</summary>
+            <div class="risk-ledger-tech-grid">
+              <div class="risk-ledger-tech-item">
+                <span class="risk-ledger-tech-label">数据来源（provider）</span>
+                <div class="risk-ledger-tech-value-wrap">
+                  <code id="ledgerProvider">-</code>
+                </div>
+              </div>
+              <div class="risk-ledger-tech-item">
+                <span class="risk-ledger-tech-label">模型版本（prompt_version）</span>
+                <div class="risk-ledger-tech-value-wrap">
+                  <code id="ledgerPromptVersion">-</code>
+                </div>
+              </div>
+              <div class="risk-ledger-tech-item">
+                <span class="risk-ledger-tech-label">风险等级（risk_level）</span>
+                <div class="risk-ledger-tech-value-wrap">
+                  <code id="ledgerRiskLevelCode">-</code>
+                </div>
+              </div>
+              <div class="risk-ledger-tech-item">
+                <span class="risk-ledger-tech-label">链路标识（Trace ID）</span>
+                <div class="risk-ledger-tech-value-wrap">
+                  <code id="ledgerTraceId">-</code>
+                  <button type="button" class="btn btn-sm btn-outline-secondary risk-copy-btn" data-copy-target="ledgerTraceId" title="复制">复制</button>
+                </div>
+              </div>
+              <div class="risk-ledger-tech-item">
+                <span class="risk-ledger-tech-label">前序哈希（hash_prev）</span>
+                <div class="risk-ledger-tech-value-wrap">
+                  <code id="ledgerHashPrev">-</code>
+                  <button type="button" class="btn btn-sm btn-outline-secondary risk-copy-btn" data-copy-target="ledgerHashPrev" title="复制">复制</button>
+                </div>
+              </div>
+              <div class="risk-ledger-tech-item">
+                <span class="risk-ledger-tech-label">当前哈希（hash_curr）</span>
+                <div class="risk-ledger-tech-value-wrap">
+                  <code id="ledgerHashCurr">-</code>
+                  <button type="button" class="btn btn-sm btn-outline-secondary risk-copy-btn" data-copy-target="ledgerHashCurr" title="复制">复制</button>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/tom-select/tom-select.complete.min.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/enterprise_select.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/status_i18n.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/risk_case_detail.js', v=static_version) }}"></script>
+{% endblock %}

@@ -1,0 +1,184 @@
+﻿{% extends "base.html" %}
+
+{% block title %}凭证台账中心 / Ledger Center - 深度审计{% endblock %}
+{% block page_title %}凭证台账中心 / Ledger Center{% endblock %}
+
+{% block content %}
+<div class="container-fluid pb-3">
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb bg-transparent px-0 py-1 mb-0">
+      <li class="breadcrumb-item"><a href="/dashboard">管理总览</a></li>
+      <li class="breadcrumb-item active" aria-current="page">凭证台账中心 / Ledger Center</li>
+    </ol>
+  </nav>
+
+  <div class="card card-outline card-primary mb-3">
+    <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+      <div>
+        <h5 class="mb-1">Voucher / Invoice 凭证视角</h5>
+        <div class="small text-muted">默认展示近7天，可切换全量。</div>
+      </div>
+      <div class="mt-2 mt-md-0 d-flex align-items-center">
+        <form method="get" action="/ledger-center" class="form-inline mr-2">
+          <label for="rangeSelect" class="mr-2 mb-0 small text-muted">范围</label>
+          <select id="rangeSelect" name="range" class="form-control form-control-sm mr-2">
+            <option value="7d" {% if range_key == '7d' %}selected{% endif %}>近7天</option>
+            <option value="all" {% if range_key == 'all' %}selected{% endif %}>全量</option>
+          </select>
+          <button type="submit" class="btn btn-sm btn-outline-primary">应用</button>
+        </form>
+        <a href="/export" class="btn btn-sm btn-outline-success">导出</a>
+      </div>
+    </div>
+  </div>
+
+  {% if not rows %}
+  <div class="card card-outline card-secondary">
+    <div class="card-body text-center py-4">
+      <h6 class="mb-2">当前范围内暂无台账数据</h6>
+      <p class="text-muted mb-3">可先生成演示批次或上传新凭证。</p>
+      <a href="/dashboard" class="btn btn-sm btn-outline-secondary">去生成演示批次</a>
+      <a href="/upload" class="btn btn-sm btn-primary">去上传凭证</a>
+    </div>
+  </div>
+  {% else %}
+  <div class="card card-outline card-secondary mb-0">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>凭证台账列表</strong>
+      <span class="badge badge-light">共 {{ row_count }} 条</span>
+    </div>
+    <div class="card-body table-responsive p-0">
+      <table class="table table-sm table-striped mb-0">
+        <thead>
+          <tr>
+            <th style="width: 120px;">document_no</th>
+            <th style="width: 120px;">invoice_date</th>
+            <th style="width: 180px;">employee/department</th>
+            <th style="width: 160px;">vendor</th>
+            <th style="width: 140px;">expense_type</th>
+            <th style="width: 120px;">amount</th>
+            <th style="width: 120px;">verify_status</th>
+            <th style="width: 120px;">approval_status</th>
+            <th style="width: 100px;">risk_level</th>
+            <th style="width: 300px;">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr data-invoice-id="{{ row.id }}">
+            <td>{{ row.document_no }}</td>
+            <td>{{ row.invoice_date }}</td>
+            <td>{{ row.employee_department }}</td>
+            <td>{{ row.vendor }}</td>
+            <td>{{ row.expense_type }}</td>
+            <td>{{ row.amount }}</td>
+            <td>
+              {% set vs = (row.verify_status or '')|upper %}
+              {% if vs == 'PASSED' %}
+                <span class="badge badge-success">PASSED</span>
+              {% elif vs == 'FAILED' %}
+                <span class="badge badge-danger">FAILED</span>
+              {% else %}
+                <span class="badge badge-secondary">{{ vs or 'PENDING' }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% set aps = (row.approval_status or '')|upper %}
+              {% if aps == 'APPROVED' %}
+                <span class="badge badge-success">APPROVED</span>
+              {% elif aps == 'REJECTED' %}
+                <span class="badge badge-danger">REJECTED</span>
+              {% else %}
+                <span class="badge badge-warning">{{ aps or 'PENDING' }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% set rl = (row.risk_level or '')|upper %}
+              {% if rl == 'HIGH' %}
+                <span class="badge badge-danger">HIGH</span>
+              {% elif rl == 'MEDIUM' %}
+                <span class="badge badge-warning">MEDIUM</span>
+              {% elif rl == 'LOW' %}
+                <span class="badge badge-success">LOW</span>
+              {% else %}
+                <span class="badge badge-light">{{ rl or '-' }}</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="/invoice/{{ row.id }}/raw" target="_blank" class="btn btn-xs btn-outline-secondary">查看凭证</a>
+              <button type="button" class="btn btn-xs btn-outline-primary js-trigger-ai" data-id="{{ row.id }}">触发AI</button>
+              <button type="button" class="btn btn-xs btn-outline-info js-trigger-verify" data-id="{{ row.id }}">触发验真</button>
+              <a href="/export" class="btn btn-xs btn-outline-success">导出</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  async function postJson(url, payload = {}) {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.msg || data?.message || `HTTP ${response.status}`);
+    }
+    return data;
+  }
+
+  document.querySelectorAll(".js-trigger-ai").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const invoiceId = Number(btn.getAttribute("data-id") || 0);
+      if (invoiceId <= 0) return;
+      btn.disabled = true;
+      try {
+        const payload = await postJson(`/invoice/${invoiceId}/ai`, {});
+        if (String(payload?.status || "").toLowerCase() !== "success") {
+          throw new Error(payload?.message || "AI returned non-success status");
+        }
+        if (typeof window.showToast === "function") {
+          window.showToast(`单据 #${invoiceId} AI 处理完成`, "success", 1500);
+        }
+      } catch (error) {
+        if (typeof window.showToast === "function") {
+          window.showToast(`单据 #${invoiceId} AI 处理失败: ${error.message}`, "danger", 2000);
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  document.querySelectorAll(".js-trigger-verify").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const invoiceId = Number(btn.getAttribute("data-id") || 0);
+      if (invoiceId <= 0) return;
+      btn.disabled = true;
+      try {
+        await postJson(`/api/invoices/${invoiceId}/verify`, {});
+        if (typeof window.showToast === "function") {
+          window.showToast(`单据 #${invoiceId} 验真完成`, "success", 1500);
+        }
+        window.setTimeout(() => window.location.reload(), 300);
+      } catch (error) {
+        if (typeof window.showToast === "function") {
+          window.showToast(`单据 #${invoiceId} 验真失败: ${error.message}`, "danger", 2200);
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

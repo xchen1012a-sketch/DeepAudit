@@ -1,0 +1,832 @@
+{% extends "base.html" %}
+
+{% block title %}{{ '待补录工作台' if active_tab == 'draft' else '凭证台账中心' }} - 深度审计{% endblock %}
+{% block page_title %}{{ '待补录工作台' if active_tab == 'draft' else '凭证台账中心' }}{% endblock %}
+
+{% block head %}
+<meta name="page-debug" content="ledger">
+<meta name="page-debug-route" content="{{ (page_debug or {}).get('route', '-') }}">
+<meta name="page-debug-template" content="{{ (page_debug or {}).get('template', '-') }}">
+<meta name="page-debug-api" content="{{ (page_debug or {}).get('api_version', '-') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tom-select/tom-select.css', v=_static_version) }}">
+<style>
+/* ===== Shared Styles ===== */
+.ledger-key-col { font-weight: 800; color: #0f172a; }
+.ledger-amount-strong { font-weight: 800; color: #0f172a; }
+.risk-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; }
+.risk-pill.high { background: #fef2f2; color: #991b1b; border: 1px solid #fecdd3; }
+.risk-pill.medium { background: #fff7ed; color: #92400e; border: 1px solid #fed7aa; }
+.risk-pill.low { background: #ecfdf3; color: #166534; border: 1px solid #bbf7d0; }
+.verify-pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; }
+.verify-pill.pass { background: #ecfdf3; color: #166534; border: 1px solid #bbf7d0; }
+.verify-pill.fail { background: #fef2f2; color: #991b1b; border: 1px solid #fecdd3; }
+.verify-pill.pending { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.table .main-link { font-weight: 800; color: #0f172a; }
+.table .main-link:hover { text-decoration: underline; }
+.table .copy-btn { color: #475569; font-size: 12px; padding: 0 6px; }
+
+{% if active_tab != 'draft' %}
+/* ===== LEDGER (已入账) Theme ===== */
+.kpi-grid .kpi-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+  border: 1px solid #e5edf8;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+}
+.kpi-grid .kpi-label { color: #556987; letter-spacing: 0.02em; text-transform: none; font-size: 12px; }
+.kpi-grid .kpi-value-lg { font-size: 30px; font-weight: 800; line-height: 1.2; color: #0f172a; text-shadow: none; }
+.kpi-grid .kpi-sub { color: #6b7280; font-size: 12px; }
+.kpi-grid .col-md-3:nth-child(1) .kpi-value-lg { color: #0f6bff; }
+.kpi-grid .col-md-3:nth-child(2) .kpi-value-lg { color: #0ea5e9; }
+.kpi-grid .col-md-3:nth-child(3) .kpi-value-lg { color: #d97706; }
+.kpi-grid .col-md-3:nth-child(4) .kpi-value-lg { color: #0f9d58; }
+.ledger-view-badge {
+  display: inline-flex; align-items: center; padding: 6px 12px;
+  background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px;
+  font-size: 12px; font-weight: 500; color: #475569; white-space: nowrap;
+}
+.ledger-view-badge i { font-size: 14px; color: #64748b; }
+.ledger-view-text { font-weight: 600; color: #1e293b; margin-left: 4px; }
+{% endif %}
+
+{% if active_tab == 'draft' %}
+/* ===== DRAFT (待补录) — 低饱和度、护眼配色（ui-ux-pro-max） ===== */
+.draft-hero {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #64748b;
+  border-radius: 12px;
+  padding: 24px 28px 20px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+.draft-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.draft-hero-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.draft-hero-icon {
+  width: 42px; height: 42px;
+  display: flex; align-items: center; justify-content: center;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #475569;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.draft-hero h4 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+.draft-hero-desc {
+  color: #64748b;
+  font-size: 13px;
+  margin-top: 4px;
+}
+.draft-nav-tabs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.draft-nav-tabs .btn {
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 16px;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+.draft-nav-tabs .btn-draft-active {
+  background: #1e293b;
+  border: 1px solid #1e293b;
+  color: #fff;
+}
+.draft-nav-tabs .btn-draft-active:hover {
+  background: #334155;
+  border-color: #334155;
+  color: #fff;
+}
+
+/* Draft Stats — 白底灰边，数字用深灰/蓝灰 */
+.draft-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+@media (max-width: 767.98px) {
+  .draft-stats { grid-template-columns: repeat(2, 1fr); }
+}
+.draft-stat-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+  transition: box-shadow 0.2s;
+  cursor: default;
+}
+.draft-stat-card:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+.draft-stat-icon {
+  width: 36px; height: 36px;
+  margin: 0 auto 8px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  font-size: 16px;
+}
+.draft-stat-icon.is-total { background: #f1f5f9; color: #475569; }
+.draft-stat-icon.is-amount { background: #f1f5f9; color: #475569; }
+.draft-stat-icon.is-missing { background: #f8fafc; color: #64748b; }
+.draft-stat-icon.is-ready { background: #f0fdf4; color: #15803d; }
+.draft-stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+.draft-stat-value.is-amount { color: #0f172a; }
+.draft-stat-value.is-missing { color: #64748b; }
+.draft-stat-value.is-ready { color: #15803d; }
+.draft-stat-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+/* Progress — 浅灰轨道 + 柔和绿 */
+.draft-progress-wrap {
+  margin-top: 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+}
+.draft-progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.draft-progress-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+.draft-progress-pct {
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+}
+.draft-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.draft-progress-fill {
+  height: 100%;
+  background: #64748b;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+/* Filter Card — 白底灰边 */
+.draft-filter-card {
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff;
+}
+.draft-filter-card .card-header {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+.draft-filter-card .card-header strong {
+  color: #0f172a;
+}
+
+/* Table — 白底，表头浅灰 */
+.draft-table-wrap {
+  border: 1px solid #e2e8f0 !important;
+  background: #fff;
+}
+.draft-table-wrap .card-header {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+.draft-table-wrap .card-header strong {
+  color: #0f172a;
+}
+.draft-table-wrap .table thead {
+  background: #f8fafc;
+}
+.draft-table-wrap .table thead th {
+  color: #475569;
+  font-weight: 600;
+  font-size: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+.draft-table-wrap .table tbody tr {
+  transition: background 0.15s;
+}
+.draft-table-wrap .table tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* 待填写 — 灰虚线，无动画 */
+.draft-field-missing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+.draft-field-missing i {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* 补录进度标签 — 低饱和度 */
+.draft-completeness {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.draft-completeness.is-complete {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+.draft-completeness.is-partial {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+.draft-completeness.is-empty {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+.draft-completeness-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.draft-completeness.is-complete .draft-completeness-dot { background: #22c55e; }
+.draft-completeness.is-partial .draft-completeness-dot { background: #94a3b8; }
+.draft-completeness.is-empty .draft-completeness-dot { background: #94a3b8; }
+
+/* 操作按钮 — 描边为主 */
+.draft-action-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.draft-action-group .btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+.btn-draft-post {
+  background: #0f172a;
+  border: 1px solid #0f172a;
+  color: #fff;
+}
+.btn-draft-post:hover:not(:disabled):not(.disabled) {
+  background: #1e293b;
+  border-color: #1e293b;
+  color: #fff;
+}
+.btn-draft-post:disabled, .btn-draft-post.disabled {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+.btn-draft-edit {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+.btn-draft-edit:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.draft-batch-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.draft-batch-bar .btn {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 5px 14px;
+}
+
+/* Empty state */
+.draft-empty-state {
+  text-align: center;
+  padding: 48px 24px;
+}
+.draft-empty-icon {
+  width: 72px; height: 72px;
+  margin: 0 auto 16px;
+  display: flex; align-items: center; justify-content: center;
+  background: #f1f5f9;
+  border-radius: 16px;
+  font-size: 28px;
+  color: #64748b;
+}
+.draft-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+.draft-empty-desc {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 16px;
+}
+{% endif %}
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:none" id="TEMPLATE_STAMP">STAMP: invoices_page@templates/ledger/invoices_page.html@20260217_01</div>
+{% if request.args.get('debug_stamp') == '1' %}
+<div id="TEMPLATE_STAMP_VISIBLE" style="position:sticky;top:0;z-index:9998;background:#1d4ed8;color:#fff;padding:6px 12px;margin-bottom:8px;font:700 12px/1.2 monospace;">
+  STAMP: invoices_page@templates/ledger/invoices_page.html@20260217_01
+  </div>
+{% endif %}
+
+{% set risk_label_map = {"HIGH": "高风险", "MEDIUM": "关注", "LOW": "正常"} %}
+{% set verify_label_map = {"PASS": "通过", "PASSED": "通过", "FAIL": "不通过", "FAILED": "不通过", "PENDING": "未验真", "UNKNOWN": "未验真"} %}
+
+<div id="ledger-enterprise-v2" class="container-fluid pb-3" data-page-limit="{{ page_limit or 20 }}">
+
+{% if active_tab == 'draft' %}
+  {# ===== DRAFT HERO - Task Queue Style ===== #}
+  {% set _total = ledger_kpi.total_count or 0 %}
+  {% set ns = namespace(missing=0, ready=0) %}
+  {% for row in invoices %}
+    {% set has_amount = row.amount and row.amount|string|trim not in ['', '0', '0.00', 'None'] %}
+    {% set has_date = row.invoice_date and row.invoice_date|string|trim not in ['', 'None'] %}
+    {% if has_amount and has_date %}
+      {% set ns.ready = ns.ready + 1 %}
+    {% else %}
+      {% set ns.missing = ns.missing + 1 %}
+    {% endif %}
+  {% endfor %}
+  {% set _missing_count = ns.missing %}
+  {% set _ready_count = ns.ready %}
+  {% set _pct = ((_ready_count / _total * 100)|int) if _total > 0 else 0 %}
+
+  <div class="draft-hero mb-3">
+    <div class="draft-hero-top">
+      <div class="draft-hero-title">
+        <div class="draft-hero-icon">
+          <i class="ri-edit-box-line"></i>
+        </div>
+        <div>
+          <h4>待补录工作台</h4>
+          <div class="draft-hero-desc">以下单据缺少金额或日期等关键信息，请补全后入账并进入审批流程</div>
+        </div>
+      </div>
+      <div class="draft-nav-tabs">
+        <a href="{{ url_for('ledger.invoices_page', tab='ledger', **filters) }}" class="btn btn-sm btn-outline-secondary">
+          <i class="ri-book-2-line mr-1"></i>已入账
+        </a>
+        <a href="{{ url_for('ledger.invoices_page', tab='draft', **filters) }}" class="btn btn-sm btn-draft-active">
+          <i class="ri-edit-box-line mr-1"></i>待补录
+        </a>
+      </div>
+    </div>
+
+    <div class="draft-stats">
+      <div class="draft-stat-card">
+        <div class="draft-stat-icon is-total"><i class="ri-file-list-3-line"></i></div>
+        <div class="draft-stat-value">{{ _total }}</div>
+        <div class="draft-stat-label">待处理单据</div>
+      </div>
+      <div class="draft-stat-card">
+        <div class="draft-stat-icon is-amount"><i class="ri-money-cny-circle-line"></i></div>
+        <div class="draft-stat-value is-amount" id="kpiAmount" data-amount="{{ ledger_kpi.total_amount or 0 }}">¥0.00</div>
+        <div class="draft-stat-label">涉及金额</div>
+      </div>
+      <div class="draft-stat-card">
+        <div class="draft-stat-icon is-missing"><i class="ri-error-warning-line"></i></div>
+        <div class="draft-stat-value is-missing">{{ _missing_count }}</div>
+        <div class="draft-stat-label">信息缺失</div>
+      </div>
+      <div class="draft-stat-card">
+        <div class="draft-stat-icon is-ready"><i class="ri-checkbox-circle-line"></i></div>
+        <div class="draft-stat-value is-ready">{{ _ready_count }}</div>
+        <div class="draft-stat-label">可入账</div>
+      </div>
+    </div>
+
+    {% if _total > 0 %}
+    <div class="draft-progress-wrap">
+      <div class="draft-progress-head">
+        <span class="draft-progress-label">补录完成度</span>
+        <span class="draft-progress-pct">{{ _pct }}%</span>
+      </div>
+      <div class="draft-progress-bar">
+        <div class="draft-progress-fill" style="width: {{ _pct }}%;"></div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+{% else %}
+  {# ===== LEDGER HERO - Original Blue Theme ===== #}
+  <div class="card card-outline card-primary mb-3">
+    <div class="card-body">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+        <div>
+          <h4 class="mb-1">企业凭证台账中心</h4>
+          <div class="small text-muted">已入账单据可查询、证据查看与导出。</div>
+        </div>
+        <div class="d-flex align-items-center" style="gap:10px;">
+          <a href="{{ url_for('ledger.invoices_page', tab='ledger', **filters) }}" class="btn btn-sm btn-primary">已入账</a>
+          <a href="{{ url_for('ledger.invoices_page', tab='draft', **filters) }}" class="btn btn-sm btn-outline-secondary">待补录</a>
+          <span class="ledger-view-badge">
+            <i class="ri-eye-line mr-1"></i><span class="ledger-view-text">已入账</span>
+          </span>
+        </div>
+      </div>
+      <div class="row kpi-grid text-center">
+        <div class="col-md-3 col-6 mb-2">
+          <div class="kpi-card h-100">
+            <div class="kpi-label">已入账笔数</div>
+            <div class="kpi-value-lg">{{ ledger_kpi.total_count or 0 }}</div>
+            <div class="kpi-sub">当前筛选下的单据数量</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6 mb-2">
+          <div class="kpi-card h-100">
+            <div class="kpi-label">已入账金额</div>
+            <div class="kpi-value-lg" id="kpiAmount" data-amount="{{ ledger_kpi.total_amount or 0 }}">¥0.00</div>
+            <div class="kpi-sub">含币种换算为人民币</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6 mb-2">
+          <div class="kpi-card h-100">
+            <div class="kpi-label">异常命中笔数</div>
+            <div class="kpi-value-lg text-warning">{{ ledger_kpi.abnormal_count or 0 }}</div>
+            <div class="kpi-sub">高风险 / 关注</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6 mb-2">
+          <div class="kpi-card h-100">
+            <div class="kpi-label">未验真笔数</div>
+            <div class="kpi-value-lg text-info">{{ ledger_kpi.unverified_count or 0 }}</div>
+            <div class="kpi-sub">待验真或未知</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+  {% if filter_by_id is defined and filter_by_id %}
+  <div class="alert alert-info d-flex align-items-center justify-content-between flex-wrap mb-3" style="gap:8px;">
+    <span class="d-flex align-items-center" style="gap:10px;">
+      <span class="alert-icon"><i class="ri-filter-3-line"></i></span>
+      <span>当前按单据/案件筛选，仅展示匹配的一条。</span>
+    </span>
+    <a href="{{ url_for('ledger.invoices_page', tab=active_tab or 'ledger') }}" class="btn btn-sm btn-outline-primary">查看全部 / 清除筛选</a>
+  </div>
+  {% endif %}
+
+  <div class="card card-outline {{ 'draft-filter-card' if active_tab == 'draft' else 'card-secondary' }} query-panel mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px;">
+      <strong>{{ '快速筛选' if active_tab == 'draft' else '筛选区' }}</strong>
+      <div class="small text-muted">{{ '按日期、类别、关键字快速定位待补录单据' if active_tab == 'draft' else '入账日期、费用、风险、验真、关键字' }}</div>
+    </div>
+    <div class="card-body">
+      <form id="ledgerSearchForm" class="ledger-search-form" method="get" action="{{ url_for('ledger.invoices_page') }}">
+        <input type="hidden" name="tab" value="{{ active_tab or 'ledger' }}">
+        <div class="form-row query-main-row">
+          <div class="form-group col-md-3">
+            <label>{{ '上传日期' if active_tab == 'draft' else '入账日期' }}</label>
+            <div class="ledger-range">
+              <input type="date" name="ledger_date_start" class="form-control" value="{{ filters.ledger_date_start }}">
+              <span class="ledger-range-sep">至</span>
+              <input type="date" name="ledger_date_end" class="form-control" value="{{ filters.ledger_date_end }}">
+            </div>
+          </div>
+          <div class="form-group col-md-3">
+            <label>费用类别</label>
+            <select name="expense_category" id="filterExpenseCategory" class="form-control ledger-native-select">
+              <option value="">全部</option>
+              {% for cat in filter_options.expense_categories %}
+              <option value="{{ cat }}" {{ 'selected' if filters.expense_category == cat else '' }}>{{ cat }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group col-md-2">
+            <label>风险研判</label>
+            <select name="risk_level" class="form-control ledger-native-select">
+              <option value="">全部</option>
+              <option value="LOW" {{ 'selected' if filters.risk_level == 'LOW' else '' }}>正常</option>
+              <option value="MEDIUM" {{ 'selected' if filters.risk_level == 'MEDIUM' else '' }}>关注</option>
+              <option value="HIGH" {{ 'selected' if filters.risk_level == 'HIGH' else '' }}>高风险</option>
+            </select>
+          </div>
+          <div class="form-group col-md-2">
+            <label>验真状态</label>
+            <select name="verify_status" class="form-control ledger-native-select">
+              <option value="">全部</option>
+              <option value="PASS" {{ 'selected' if filters.verify_status == 'PASS' else '' }}>通过</option>
+              <option value="FAIL" {{ 'selected' if filters.verify_status == 'FAIL' else '' }}>不通过</option>
+              <option value="PENDING" {{ 'selected' if filters.verify_status == 'PENDING' else '' }}>未验真</option>
+            </select>
+          </div>
+          <div class="form-group col-md-2">
+            <label>关键字</label>
+            <input type="text" name="keyword" class="form-control" value="{{ filters.keyword }}" placeholder="单据编号 / 供应商 / 报销人">
+          </div>
+        </div>
+        <div class="query-actions">
+          <button type="submit" class="btn {{ 'btn-secondary' if active_tab == 'draft' else 'btn-primary' }} btn-sm">查询</button>
+          <a href="{{ url_for('ledger.invoices_page', tab=active_tab or 'ledger') }}" class="btn btn-light btn-sm">重置</a>
+          {% if active_tab != 'draft' %}
+          <a id="btnExportLedger" href="{{ url_for('invoices.export_excel', **filters) }}" class="btn btn-success btn-sm">导出台账</a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+
+{% if active_tab == 'draft' %}
+  {# ===== DRAFT TABLE — Task Queue Layout ===== #}
+  <div class="card draft-table-wrap">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px;">
+      <div class="d-flex align-items-center" style="gap:12px;">
+        <strong><i class="ri-draft-line mr-1"></i>补录任务队列</strong>
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:999px;font-size:11px;font-weight:600;color:#475569;">
+          {{ invoices|length }} 条待处理
+        </span>
+      </div>
+      <div class="d-flex align-items-center" style="gap:10px;">
+        <div class="draft-batch-bar">
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="btnBatchSupplement" title="批量为选中单据补录金额/日期">
+            <i class="ri-edit-2-line mr-1"></i>批量补录
+          </button>
+          <button type="button" class="btn btn-outline-danger btn-sm" id="btnBatchReturn" title="批量打回选中单据">
+            <i class="ri-arrow-go-back-line mr-1"></i>批量打回
+          </button>
+        </div>
+        <div class="ledger-toolbar">
+          <label for="ledgerPageSize" class="mb-0 small text-muted">每页</label>
+          <select id="ledgerPageSize" class="form-control form-control-sm" style="width:90px;">
+            {% for size in page_size_options or [10, 20, 50, 100, 200] %}
+            <option value="{{ size }}" {{ 'selected' if (page_limit or 20) == size else '' }}>{{ size }} 条</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="card-body table-responsive p-0">
+      <table class="table table-sm mb-0" id="ledgerTable">
+        <thead>
+          <tr>
+            <th style="width:36px;"><input type="checkbox" id="selectAll" title="全选"></th>
+            <th style="width:140px;">单据编号</th>
+            <th style="width:100px;">上传日期</th>
+            <th style="width:110px;">报销人</th>
+            <th style="width:100px;">部门</th>
+            <th style="width:120px;">费用类别</th>
+            <th style="width:120px;" class="text-right">金额</th>
+            <th style="width:120px;">开票日期</th>
+            <th style="width:100px;">补录进度</th>
+            <th style="width:100px;">风险研判</th>
+            <th style="width:200px;" class="text-center">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in invoices %}
+          {% set risk_level = (row.risk_level or row.ai_risk_level or 'LOW')|upper %}
+          {% set verify_status = (row.verify_status or 'PENDING')|upper %}
+          {% set risk_class = 'high' if risk_level == 'HIGH' else ('medium' if risk_level == 'MEDIUM' else 'low') %}
+          {% set has_amount = row.amount and row.amount|string|trim not in ['', '0', '0.00', 'None'] %}
+          {% set has_date = row.invoice_date and row.invoice_date|string|trim not in ['', 'None'] %}
+          {% set completeness = 'complete' if (has_amount and has_date) else ('partial' if (has_amount or has_date) else 'empty') %}
+          {% set completeness_text = '可入账' if completeness == 'complete' else ('部分缺失' if completeness == 'partial' else '待补录') %}
+          <tr data-id="{{ row.id }}" data-state="{{ row.record_state }}">
+            <td><input type="checkbox" class="row-check" value="{{ row.id }}"></td>
+            <td class="ledger-key-col">
+              <div class="d-flex align-items-center">
+                <a href="javascript:void(0);" class="main-link js-evidence" data-id="{{ row.id }}" title="打开证据中心">{{ row.reference_no or row.id }}</a>
+                <button type="button" class="btn btn-link btn-sm copy-btn js-copy-ref" data-ref="{{ row.reference_no or row.id }}" title="复制编号">复制</button>
+              </div>
+            </td>
+            <td>{{ (row.created_at or '-')[:10] }}</td>
+            <td>{{ row.applicant or '-' }}</td>
+            <td>{{ row.department or '-' }}</td>
+            <td>{{ row.item_name or '-' }}</td>
+            <td class="text-right">
+              {% if has_amount %}
+              <span class="ledger-amount ledger-amount-strong js-amount" data-amount="{{ row.amount }}">¥0.00</span>
+              {% else %}
+              <span class="draft-field-missing">
+                <i class="ri-error-warning-line"></i>待填写
+              </span>
+              {% endif %}
+            </td>
+            <td>
+              {% if has_date %}
+              <span style="color:#0f172a;font-weight:600;">{{ row.invoice_date[:10] if row.invoice_date else '-' }}</span>
+              {% else %}
+              <span class="draft-field-missing">
+                <i class="ri-calendar-todo-line"></i>待填写
+              </span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="draft-completeness is-{{ completeness }}">
+                <span class="draft-completeness-dot"></span>
+                {{ completeness_text }}
+              </span>
+            </td>
+            <td>
+              <span class="risk-pill {{ risk_class }}">{{ risk_label_map.get(risk_level, '正常') }}</span>
+            </td>
+            <td class="text-center">
+              <div class="draft-action-group">
+                <button class="btn btn-sm btn-draft-edit js-evidence" data-id="{{ row.id }}" title="补录要素信息">
+                  <i class="ri-edit-line mr-1"></i>补录
+                </button>
+                {% if completeness == 'complete' %}
+                <button class="btn btn-sm btn-draft-post js-action" data-id="{{ row.id }}" data-action="POST_LEDGER" title="确认入账">
+                  <i class="ri-check-double-line mr-1"></i>入账
+                </button>
+                {% else %}
+                <button class="btn btn-sm btn-draft-post disabled" disabled title="请先补全金额和日期">
+                  <i class="ri-lock-line mr-1"></i>入账
+                </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not invoices %}
+          <tr>
+            <td colspan="11" class="text-center p-0">
+              <div class="draft-empty-state">
+                {% if filter_by_id is defined and filter_by_id %}
+                <div class="draft-empty-icon"><i class="ri-search-eye-line"></i></div>
+                <div class="draft-empty-title">未找到匹配的待补录单据</div>
+                <div class="draft-empty-desc">当前筛选条件未匹配到结果，请调整筛选条件重试</div>
+                <a href="{{ url_for('ledger.invoices_page', tab='draft') }}" class="btn btn-sm btn-secondary">查看全部待补录</a>
+                {% else %}
+                <div class="draft-empty-icon"><i class="ri-checkbox-circle-line"></i></div>
+                <div class="draft-empty-title">所有单据已补录完成</div>
+                <div class="draft-empty-desc">当前没有需要补录的单据，做得不错</div>
+                <a href="{{ url_for('ledger.invoices_page', tab='ledger') }}" class="btn btn-sm btn-primary">查看已入账台账</a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+{% else %}
+  {# ===== LEDGER TABLE — Original ===== #}
+  <div class="card card-outline card-secondary">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px;">
+      <div class="d-flex align-items-center" style="gap:12px;">
+        <strong>台账列表</strong>
+        <span class="badge badge-light">已入账</span>
+      </div>
+      <div class="ledger-toolbar">
+        <label for="ledgerPageSize" class="mb-0 small text-muted">每页显示</label>
+        <select id="ledgerPageSize" class="form-control form-control-sm" style="width:90px;">
+          {% for size in page_size_options or [10, 20, 50, 100, 200] %}
+          <option value="{{ size }}" {{ 'selected' if (page_limit or 20) == size else '' }}>{{ size }} 条</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="card-body table-responsive p-0">
+      <table class="table table-sm table-hover mb-0" id="ledgerTable">
+        <thead>
+          <tr>
+            <th style="width:140px;">单据编号</th>
+            <th style="width:120px;">入账日期</th>
+            <th style="width:120px;">费用类别</th>
+            <th style="width:110px;">报销人</th>
+            <th style="width:110px;">部门</th>
+            <th style="width:150px;">供应商</th>
+            <th style="width:110px;" class="text-right">金额</th>
+            <th style="width:120px;">风险研判</th>
+            <th style="width:120px;">验真状态</th>
+            <th style="width:200px;" class="text-center">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in invoices %}
+          {% set risk_level = (row.risk_level or row.ai_risk_level or 'LOW')|upper %}
+          {% set verify_status = (row.verify_status or 'PENDING')|upper %}
+          {% set risk_class = 'high' if risk_level == 'HIGH' else ('medium' if risk_level == 'MEDIUM' else 'low') %}
+          {% set verify_class = 'pass' if verify_status in ['PASS','PASSED'] else ('fail' if verify_status in ['FAIL','FAILED'] else 'pending') %}
+          <tr data-id="{{ row.id }}" data-state="{{ row.record_state }}">
+            <td class="ledger-key-col">
+              <div class="d-flex align-items-center">
+                <a href="javascript:void(0);" class="main-link js-evidence" data-id="{{ row.id }}" title="打开证据中心">{{ row.reference_no or row.id }}</a>
+                <button type="button" class="btn btn-link btn-sm copy-btn js-copy-ref" data-ref="{{ row.reference_no or row.id }}" title="复制编号">复制</button>
+              </div>
+            </td>
+            <td>{{ (row.created_at or '-')[:10] }}</td>
+            <td>{{ row.item_name or '-' }}</td>
+            <td>{{ row.applicant or '-' }}</td>
+            <td>{{ row.department or '-' }}</td>
+            <td>{{ row.merchant_name or '-' }}</td>
+            <td class="text-right">
+              <span class="ledger-amount ledger-amount-strong js-amount" data-amount="{{ row.amount }}">¥0.00</span>
+            </td>
+            <td>
+              <span class="risk-pill {{ risk_class }}">{{ risk_label_map.get(risk_level, '正常') }}</span>
+            </td>
+            <td>
+              <span class="verify-pill {{ verify_class }}">{{ verify_label_map.get(verify_status, '未验真') }}</span>
+            </td>
+            <td class="text-center">
+              <div class="table-actions" style="justify-content:center;">
+                <button class="btn btn-sm btn-outline-primary js-evidence" data-id="{{ row.id }}" title="凭证详情、要素校正、审批流转">
+                  <i class="ri-file-search-line mr-1"></i>证据中心
+                </button>
+                <a class="btn btn-sm btn-outline-secondary" href="/audit_chain/invoice/{{ row.id }}" target="_blank" rel="noopener" title="智能审计链时间线">
+                  <i class="ri-flow-chart mr-1"></i>审计追踪
+                </a>
+                <a class="btn btn-sm btn-outline-success" href="{{ url_for('invoices.export_excel', reference_no=row.reference_no) }}">
+                  <i class="ri-download-2-line mr-1"></i>导出
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not invoices %}
+          <tr>
+            <td colspan="10" class="text-center py-4">
+              {% if filter_by_id is defined and filter_by_id %}
+              <p class="text-muted mb-2">无结果：未找到匹配的已入账单据。</p>
+              <a href="{{ url_for('ledger.invoices_page', tab='ledger') }}" class="btn btn-sm btn-outline-primary">查看全部 / 清除筛选</a>
+              {% else %}
+              <span class="text-muted">当前筛选下暂无已入账记录</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+</div>
+
+{% include "ledger/evidence_drawer.html" %}
+{% include "ledger/ledger_modals.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/status_i18n.js', v=app_version, stamp='20260217_01') }}"></script>
+<script src="{{ url_for('static', filename='vendor/tom-select/tom-select.complete.min.js', v=_static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/enterprise_select.js', v=_static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/ledger_page.js', v=app_version, stamp='20260217_01') }}"></script>
+{% endblock %}

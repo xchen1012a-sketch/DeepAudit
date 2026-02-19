@@ -1,0 +1,130 @@
+{% if change_reasons is not defined %}
+{% set change_reasons = [
+  ("DATA_COMPLETION", "数据补全"),
+  ("DATA_CORRECTION", "数据更正"),
+  ("SUBMIT_REVIEW", "提交复核"),
+  ("RETURN_FOR_COMPLETION", "打回补录"),
+  ("RERUN_AI_RISK", "重跑识别/重算风险"),
+  ("MANUAL_OVERRIDE", "人工覆盖"),
+  ("POLICY_EXCEPTION", "制度例外"),
+  ("NEED_MORE_INFO", "需补充信息")
+] %}
+{% endif %}
+
+<!-- 批量打回补录 -->
+<div class="modal fade" id="batchReturnModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">批量打回补录</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <p id="batchReturnHint" class="text-muted small mb-3">已选择 0 条单据，确认后将统一打回补录并写入审计日志。</p>
+        <div class="form-group">
+          <label>变更原因（必选）</label>
+          <select id="batchReturnReason" class="form-control ledger-native-select">
+            <option value="">请选择</option>
+            {% for code, label in change_reasons %}
+            <option value="{{ code }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div id="batchReturnReasonHint" class="invalid-feedback d-block small" style="display:none;">请选择变更原因</div>
+        </div>
+        <div class="form-group">
+          <label>打回说明（必填）</label>
+          <textarea id="batchReturnComment" class="form-control" rows="3" placeholder="请填写打回原因或补充要求"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" id="batchReturnSubmit">确认打回</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 批量补录 -->
+<div class="modal fade" id="batchSupplementModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">批量补录</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">为选中的待补录单据统一填写金额或开票日期，可选补录后自动入账。</p>
+        <div class="form-row">
+          <div class="form-group col-md-6">
+            <label>金额</label>
+            <input type="text" id="batchSupplementAmount" class="form-control" placeholder="例如 1680.00">
+          </div>
+          <div class="form-group col-md-6">
+            <label>开票日期</label>
+            <input type="date" id="batchSupplementDate" class="form-control">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>变更原因（必选）</label>
+          <select id="batchSupplementReason" class="form-control ledger-native-select">
+            <option value="">请选择</option>
+            {% for code, label in change_reasons %}
+            <option value="{{ code }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div id="batchSupplementReasonHint" class="invalid-feedback d-block small" style="display:none;">请选择变更原因</div>
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <textarea id="batchSupplementComment" class="form-control" rows="2" placeholder="可选"></textarea>
+        </div>
+        <div class="form-group mb-0">
+          <div class="custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input" id="batchSupplementPostLedger" checked>
+            <label class="custom-control-label" for="batchSupplementPostLedger">补录后自动入账</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" id="batchSupplementSubmit">确认补录</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 单条操作确认（入账/打回/重跑等） -->
+<div class="modal fade" id="ledgerActionModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="ledgerActionTitle">操作确认</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="ledgerActionId" value="">
+        <input type="hidden" id="ledgerActionType" value="">
+        <input type="hidden" id="ledgerActionSource" value="table">
+        <div class="form-group">
+          <label>变更原因（必选）</label>
+          <select id="ledgerActionReason" class="form-control ledger-native-select">
+            <option value="">请选择</option>
+            {% for code, label in change_reasons %}
+            <option value="{{ code }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div id="ledgerActionReasonHint" class="invalid-feedback d-block small" style="display:none;">请选择变更原因</div>
+        </div>
+        <div class="form-group" id="ledgerActionCommentWrap">
+          <label>补充说明</label>
+          <textarea id="ledgerActionComment" class="form-control" rows="2" placeholder="打回补录时必填"></textarea>
+        </div>
+        <p id="ledgerActionHint" class="small text-muted mb-0">请选择变更原因并确认提交。</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" id="ledgerActionSubmit">确认</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,1067 @@
+{% extends "base.html" %}
+
+{% block title %}系统设置 - 深度审计{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div class="flex-grow-1">
+                    <h3 class="text-dark font-weight-bold mb-1">系统配置总览</h3>
+                    <p class="text-muted mb-0">管理风控规则、组织权限与通知集成配置，保存后立即生效。</p>
+                </div>
+                <a href="/admin/audit_logs?target_type=system_settings&action_type=SETTINGS_UPDATE" 
+                   class="btn btn-outline-secondary btn-sm rounded-pill px-3" 
+                   title="查看系统设置与治理动作变更记录">
+                    <i class="ri-file-list-3-line mr-1"></i>变更记录
+                </a>
+            </div>
+            <div id="settingsFeedback" class="alert d-none py-2 px-3 mb-0" role="alert"></div>
+            
+            <!-- 设置概览条 -->
+            <div class="settings-overview-bar card shadow-sm border-0 mb-3">
+                <div class="card-body py-3">
+                    <div class="row align-items-center">
+                        <div class="col-lg-4 col-md-12 mb-2 mb-lg-0">
+                            <div class="d-flex align-items-center">
+                                <span class="text-muted small mr-2">配置进度：</span>
+                                <div class="progress flex-grow-1 mr-2" style="height: 20px;">
+                                    <div id="configProgressBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <span id="configProgressText" class="text-dark small font-weight-bold">0/3</span>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 col-md-12 mb-2 mb-lg-0">
+                            <div id="riskWarnings" class="risk-warnings">
+                                <!-- 高风险未配置提示将在这里显示 -->
+                            </div>
+                        </div>
+                        <div class="col-lg-4 col-md-12 text-lg-right">
+                            <div id="recentChange" class="recent-change text-muted small">
+                                <!-- 最近变更将在这里显示 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mb-3">
+            <div class="card shadow-sm border-0 setting-card position-relative">
+                <span id="orgStatusBadge" class="status-badge badge badge-success">已生效</span>
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="flex-grow-1">
+                            <h5 class="font-weight-bold text-dark mb-1">组织与权限</h5>
+                            <p class="text-muted mb-2 small">角色权限、审批链路、部门可见范围配置</p>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <small class="text-secondary">风险级别：</small>
+                                <span id="orgRiskLevel" class="badge badge-secondary">--</span>
+                                <small class="text-secondary ml-2">影响范围：</small>
+                                <span id="orgImpactScope" class="badge badge-light">--</span>
+                            </div>
+                            <small id="orgSummary" class="text-secondary">加载中...</small>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm rounded-pill px-3" data-toggle="modal" data-target="#orgModal">进入配置</button>
+                    </div>
+                    <div class="settings-metrics mt-3 pt-3 border-top">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="metric-item clickable-metric" onclick="drillDownToConfig('roles')" title="点击查看角色配置">
+                                    <span class="metric-label text-muted small">角色数</span>
+                                    <strong id="orgRoleCount" class="metric-value d-block">--</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="metric-item clickable-metric" onclick="drillDownToConfig('departments')" title="点击查看部门配置">
+                                    <span class="metric-label text-muted small">部门数</span>
+                                    <strong id="orgDeptCount" class="metric-value d-block">--</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="metric-item clickable-metric" onclick="drillDownToConfig('roles', 'data_scope')" title="点击查看数据范围策略配置">
+                                    <span class="metric-label text-muted small">数据范围策略覆盖率</span>
+                                    <strong id="orgDataScopeCoverage" class="metric-value d-block">--</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-link btn-sm p-0 text-primary" onclick="viewAuditLogs('org')">
+                            <i class="ri-file-list-3-line mr-1"></i>查看审计记录
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-12 mb-3">
+            <div class="card shadow-sm border-0 setting-card position-relative">
+                <span id="riskStatusBadge" class="status-badge badge badge-success">已生效</span>
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="flex-grow-1">
+                            <h5 class="font-weight-bold text-dark mb-1">风控策略配置</h5>
+                            <p class="text-muted mb-2 small">设置单笔限额、住宿标准、敏感词库及自动拦截策略</p>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <small class="text-secondary">风险级别：</small>
+                                <span id="riskRiskLevel" class="badge badge-secondary">--</span>
+                                <small class="text-secondary ml-2">影响范围：</small>
+                                <span id="riskImpactScope" class="badge badge-light">--</span>
+                            </div>
+                            <small id="riskSummary" class="text-secondary">加载中...</small>
+                        </div>
+                        <button class="btn btn-primary btn-sm rounded-pill px-4" data-toggle="modal" data-target="#riskModal">
+                            <i class="ri-settings-4-line mr-1"></i> 配置规则
+                        </button>
+                    </div>
+                    <div class="settings-metrics mt-3 pt-3 border-top">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="metric-item clickable-metric" onclick="drillDownToConfig('governance_rules', 'enabled')" title="点击查看已启用的治理规则">
+                                    <span class="metric-label text-muted small">启用规则数</span>
+                                    <strong id="riskEnabledRulesCount" class="metric-value d-block">--</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="metric-item clickable-metric" onclick="drillDownToConfig('governance_rules')" title="点击查看治理规则历史">
+                                    <span class="metric-label text-muted small">最近更新时间</span>
+                                    <strong id="riskLatestUpdate" class="metric-value d-block">--</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-link btn-sm p-0 text-primary" onclick="viewPolicyHistory()">
+                            <i class="ri-history-line mr-1"></i>查看策略历史
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-12 mb-3">
+            <div class="card shadow-sm border-0 setting-card position-relative">
+                <span id="integrationStatusBadge" class="status-badge badge badge-success">已生效</span>
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="flex-grow-1">
+                            <h5 class="font-weight-bold text-dark mb-1">通知与集成</h5>
+                            <p class="text-muted mb-2 small">邮件/短信策略、企业微信提醒、回调地址配置</p>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <small class="text-secondary">风险级别：</small>
+                                <span id="integrationRiskLevel" class="badge badge-secondary">--</span>
+                                <small class="text-secondary ml-2">影响范围：</small>
+                                <span id="integrationImpactScope" class="badge badge-light">--</span>
+                            </div>
+                            <small id="integrationSummary" class="text-secondary">加载中...</small>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm rounded-pill px-3" data-toggle="modal" data-target="#integrationModal">查看状态</button>
+                    </div>
+                    <div class="settings-metrics mt-3 pt-3 border-top">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="metric-item clickable-metric" onclick="drillDownToConfig('integration', 'email')" title="点击查看邮件配置">
+                                    <span class="metric-label text-muted small">邮件状态</span>
+                                    <strong id="integrationEmailStatus" class="metric-value d-block">--</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-item clickable-metric" onclick="drillDownToConfig('integration', 'wecom')" title="点击查看企业微信配置">
+                                    <span class="metric-label text-muted small">企业微信状态</span>
+                                    <strong id="integrationWecomStatus" class="metric-value d-block">--</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-item clickable-metric" onclick="drillDownToConfig('integration', 'webhook')" title="点击查看回调配置">
+                                    <span class="metric-label text-muted small">回调配置</span>
+                                    <strong id="integrationWebhookStatus" class="metric-value d-block">--</strong>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-item">
+                                    <span class="metric-label text-muted small">最近测试结果</span>
+                                    <strong id="integrationLastTest" class="metric-value d-block">--</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-link btn-sm p-0 text-primary" onclick="testNotification()">
+                            <i class="ri-send-plane-line mr-1"></i>测试推送
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="riskModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg modal-rounded">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title font-weight-bold pl-2">
+                    <i class="ri-shield-flash-line text-primary mr-2"></i>核心风控规则引擎
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="riskForm">
+                    <div class="form-group mb-4">
+                        <label class="font-weight-bold text-secondary small text-uppercase">金额阈值控制 (CNY)</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="small text-muted">单笔报销预警线</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light border-0">¥</span>
+                                    </div>
+                                    <input id="amountWarningThreshold" type="number" min="0" class="form-control bg-light border-0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small text-muted">一线城市住宿标准/晚</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light border-0">¥</span>
+                                    </div>
+                                    <input id="tier1HotelLimit" type="number" min="0" class="form-control bg-light border-0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4 border-light">
+
+                    <div class="form-group mb-4">
+                        <label class="font-weight-bold text-secondary small text-uppercase mb-3">AI 语义审计 - 敏感词库</label>
+                        <div id="sensitiveWordsList" class="d-flex flex-wrap gap-2 mb-2"></div>
+                        <div class="input-group mt-2">
+                            <input id="newSensitiveWord" type="text" class="form-control" placeholder="输入新敏感词 (如: 游戏充值)">
+                            <div class="input-group-append">
+                                <button id="addSensitiveWordBtn" class="btn btn-outline-secondary" type="button">添加</button>
+                            </div>
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="ri-information-line"></i> 命中敏感词会提升风险等级并进入复核队列。
+                        </small>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <div class="custom-control custom-switch py-2">
+                            <input type="checkbox" class="custom-control-input" id="blockDuplicateSwitch">
+                            <label class="custom-control-label font-weight-bold" for="blockDuplicateSwitch">启用重复报销自动拦截</label>
+                            <p class="text-muted small mb-0 ml-0">通过发票代码+号码唯一性校验，防止一票多报。</p>
+                        </div>
+                        <div class="custom-control custom-switch py-2">
+                            <input type="checkbox" class="custom-control-input" id="detectSerialSwitch">
+                            <label class="custom-control-label font-weight-bold" for="detectSerialSwitch">启用连号发票侦测</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 pb-4 px-4">
+                <button type="button" class="btn btn-light text-muted font-weight-bold" data-dismiss="modal">取消</button>
+                <button id="saveRiskBtn" type="button" class="btn btn-primary px-4 font-weight-bold shadow-sm">
+                    <i class="ri-save-3-line mr-1"></i> 保存策略
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="orgModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg modal-rounded">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title font-weight-bold pl-2">
+                    <i class="ri-team-line text-primary mr-2"></i>组织与权限
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="custom-control custom-switch py-2">
+                    <input type="checkbox" class="custom-control-input" id="orgRoleAccess">
+                    <label class="custom-control-label font-weight-bold" for="orgRoleAccess">启用角色权限控制</label>
+                </div>
+                <div class="form-group mt-3">
+                    <label class="small text-muted">审批链路模板</label>
+                    <select id="orgApprovalChain" class="custom-select">
+                        <option value="department_manager">部门负责人审批</option>
+                        <option value="department_finance">部门负责人 + 财务复核</option>
+                        <option value="department_finance_ceo">部门负责人 + 财务 + 总经理</option>
+                    </select>
+                </div>
+                <div class="custom-control custom-switch py-2">
+                    <input type="checkbox" class="custom-control-input" id="orgCrossDept">
+                    <label class="custom-control-label font-weight-bold" for="orgCrossDept">允许跨部门可见</label>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 pb-4 px-4">
+                <button type="button" class="btn btn-light text-muted font-weight-bold" data-dismiss="modal">取消</button>
+                <button id="saveOrgBtn" type="button" class="btn btn-primary px-4 font-weight-bold shadow-sm">
+                    <i class="ri-save-3-line mr-1"></i> 保存配置
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="integrationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg modal-rounded">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title font-weight-bold pl-2">
+                    <i class="ri-notification-4-line text-primary mr-2"></i>通知与集成
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="custom-control custom-switch py-2">
+                    <input type="checkbox" class="custom-control-input" id="integrationEmailSwitch">
+                    <label class="custom-control-label font-weight-bold" for="integrationEmailSwitch">启用邮件通知</label>
+                </div>
+                <div class="custom-control custom-switch py-2">
+                    <input type="checkbox" class="custom-control-input" id="integrationSmsSwitch">
+                    <label class="custom-control-label font-weight-bold" for="integrationSmsSwitch">启用短信通知</label>
+                </div>
+                <div class="custom-control custom-switch py-2">
+                    <input type="checkbox" class="custom-control-input" id="integrationWecomSwitch">
+                    <label class="custom-control-label font-weight-bold" for="integrationWecomSwitch">启用企业微信通知</label>
+                </div>
+                <div class="form-group mt-3 mb-0">
+                    <label class="small text-muted">回调地址</label>
+                    <input id="integrationWebhookUrl" type="url" class="form-control" placeholder="请输入回调地址（如：https://example.com/webhook）">
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 pb-4 px-4">
+                <button type="button" class="btn btn-light text-muted font-weight-bold" data-dismiss="modal">取消</button>
+                <button id="saveIntegrationBtn" type="button" class="btn btn-primary px-4 font-weight-bold shadow-sm">
+                    <i class="ri-save-3-line mr-1"></i> 保存配置
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const SETTINGS_MODAL_IDS = ["#riskModal", "#orgModal", "#integrationModal"];
+
+    const state = {
+        risk: {
+            amount_warning_threshold: 5000,
+            tier1_hotel_limit: 600,
+            sensitive_words: ["KTV", "按摩", "礼品卡", "茅台"],
+            block_duplicate: true,
+            detect_serial: true
+        },
+        org: {
+            role_based_access: true,
+            approval_chain: "department_manager",
+            cross_department_visibility: false
+        },
+        integration: {
+            email_enabled: true,
+            sms_enabled: false,
+            wecom_enabled: true,
+            webhook_url: ""
+        }
+    };
+
+    function clearModalArtifacts() {
+        document.querySelectorAll(".modal-backdrop").forEach(function (node) {
+            if (node && node.parentNode) {
+                node.parentNode.removeChild(node);
+            }
+        });
+        document.body.classList.remove("modal-open");
+        document.body.classList.remove("settings-modal-open");
+        document.body.style.removeProperty("padding-right");
+    }
+
+    function ensureModalOnBody(selector) {
+        const modal = document.querySelector(selector);
+        if (modal && modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+    }
+
+    function bindModalSafeLayer() {
+        clearModalArtifacts();
+        SETTINGS_MODAL_IDS.forEach(function (selector) {
+            ensureModalOnBody(selector);
+            const $modal = $(selector);
+            $modal.on("show.bs.modal", function () {
+                clearModalArtifacts();
+                document.body.classList.add("settings-modal-open");
+                ensureModalOnBody(selector);
+            });
+            $modal.on("shown.bs.modal", function () {
+                const backdrops = document.querySelectorAll(".modal-backdrop");
+                const latestBackdrop = backdrops.length ? backdrops[backdrops.length - 1] : null;
+                if (latestBackdrop) {
+                    latestBackdrop.style.zIndex = "2090";
+                }
+                this.style.zIndex = "2100";
+            });
+            $modal.on("hidden.bs.modal", function () {
+                clearModalArtifacts();
+            });
+        });
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    var ALERT_ICONS = {
+        success: "ri-checkbox-circle-line",
+        info: "ri-information-line",
+        warning: "ri-error-warning-line",
+        danger: "ri-close-circle-line"
+    };
+
+    function showFeedback(type, message) {
+        var box = document.getElementById("settingsFeedback");
+        var icon = ALERT_ICONS[type] || ALERT_ICONS.info;
+        box.className = "alert alert-" + type + " py-2 px-3 mb-0";
+        box.innerHTML =
+            '<span class="alert-icon"><i class="' + icon + '"></i></span>' +
+            '<span class="alert-body">' + escapeHtml(message) + '</span>';
+        box.classList.remove("d-none");
+        window.clearTimeout(showFeedback._timer);
+        showFeedback._timer = window.setTimeout(function () {
+            box.classList.add("d-none");
+        }, 3000);
+    }
+
+    function renderSensitiveWords() {
+        const listEl = document.getElementById("sensitiveWordsList");
+        if (!Array.isArray(state.risk.sensitive_words)) {
+            state.risk.sensitive_words = [];
+        }
+        if (!state.risk.sensitive_words.length) {
+            listEl.innerHTML = '<span class="text-muted small">暂无敏感词，请添加。</span>';
+            return;
+        }
+        listEl.innerHTML = state.risk.sensitive_words.map(function (word, index) {
+            return (
+                `<span class="badge badge-pill badge-light border py-2 px-3 text-muted">` +
+                    `${escapeHtml(word)}` +
+                    `<button type="button" class="word-remove-btn ml-1" data-index="${index}" aria-label="删除 ${escapeHtml(word)}">` +
+                        `<i class="ri-close-line"></i>` +
+                    `</button>` +
+                `</span>`
+            );
+        }).join("");
+    }
+
+    function renderRiskForm() {
+        document.getElementById("amountWarningThreshold").value = state.risk.amount_warning_threshold || 0;
+        document.getElementById("tier1HotelLimit").value = state.risk.tier1_hotel_limit || 0;
+        document.getElementById("blockDuplicateSwitch").checked = !!state.risk.block_duplicate;
+        document.getElementById("detectSerialSwitch").checked = !!state.risk.detect_serial;
+        renderSensitiveWords();
+    }
+
+    function renderOrgForm() {
+        document.getElementById("orgRoleAccess").checked = !!state.org.role_based_access;
+        document.getElementById("orgCrossDept").checked = !!state.org.cross_department_visibility;
+        document.getElementById("orgApprovalChain").value = state.org.approval_chain || "department_manager";
+    }
+
+    function renderIntegrationForm() {
+        document.getElementById("integrationEmailSwitch").checked = !!state.integration.email_enabled;
+        document.getElementById("integrationSmsSwitch").checked = !!state.integration.sms_enabled;
+        document.getElementById("integrationWecomSwitch").checked = !!state.integration.wecom_enabled;
+        document.getElementById("integrationWebhookUrl").value = state.integration.webhook_url || "";
+    }
+
+    function renderSummary() {
+        const riskWords = (state.risk.sensitive_words || []).length;
+        document.getElementById("riskSummary").textContent =
+            `预警线 ¥${state.risk.amount_warning_threshold || 0}，住宿标准 ¥${state.risk.tier1_hotel_limit || 0}，敏感词 ${riskWords} 个`;
+
+        const orgParts = [
+            state.org.role_based_access ? "角色权限已启用" : "角色权限已关闭",
+            state.org.cross_department_visibility ? "跨部门可见" : "部门隔离",
+            `链路: ${state.org.approval_chain || "department_manager"}`
+        ];
+        document.getElementById("orgSummary").textContent = orgParts.join(" | ");
+
+        const channels = [];
+        if (state.integration.email_enabled) channels.push("邮件");
+        if (state.integration.sms_enabled) channels.push("短信");
+        if (state.integration.wecom_enabled) channels.push("企业微信");
+        const channelText = channels.length ? channels.join("/") : "无";
+        const webhookText = state.integration.webhook_url ? "回调地址已配置" : "回调地址未配置";
+        document.getElementById("integrationSummary").textContent = `${channelText} | ${webhookText}`;
+    }
+
+    function setButtonLoading(buttonId, loading) {
+        const btn = document.getElementById(buttonId);
+        if (!btn) return;
+        if (loading) {
+            btn.disabled = true;
+            btn.dataset.originHtml = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1" role="status" aria-hidden="true"></span>保存中';
+            return;
+        }
+        btn.disabled = false;
+        if (btn.dataset.originHtml) {
+            btn.innerHTML = btn.dataset.originHtml;
+        }
+    }
+
+    async function fetchSettings() {
+        const response = await fetch("/api/settings", {
+            method: "GET",
+            headers: { "Accept": "application/json" }
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+            throw new Error(payload.msg || payload.error || "加载设置失败");
+        }
+        return payload.settings || {};
+    }
+
+    async function persistSettings() {
+        const response = await fetch("/api/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Accept": "application/json" },
+            body: JSON.stringify(state)
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+            throw new Error(payload.msg || payload.error || "保存失败");
+        }
+        return payload.settings || {};
+    }
+
+    function readRiskForm() {
+        const words = Array.isArray(state.risk.sensitive_words) ? state.risk.sensitive_words : [];
+        const normalizedWords = [];
+        words.forEach(function (word) {
+            const text = String(word || "").trim();
+            if (!text) return;
+            if (!normalizedWords.includes(text)) {
+                normalizedWords.push(text);
+            }
+        });
+        state.risk = {
+            amount_warning_threshold: Number(document.getElementById("amountWarningThreshold").value || 0),
+            tier1_hotel_limit: Number(document.getElementById("tier1HotelLimit").value || 0),
+            sensitive_words: normalizedWords,
+            block_duplicate: document.getElementById("blockDuplicateSwitch").checked,
+            detect_serial: document.getElementById("detectSerialSwitch").checked
+        };
+    }
+
+    function readOrgForm() {
+        state.org = {
+            role_based_access: document.getElementById("orgRoleAccess").checked,
+            approval_chain: document.getElementById("orgApprovalChain").value || "department_manager",
+            cross_department_visibility: document.getElementById("orgCrossDept").checked
+        };
+    }
+
+    function readIntegrationForm() {
+        state.integration = {
+            email_enabled: document.getElementById("integrationEmailSwitch").checked,
+            sms_enabled: document.getElementById("integrationSmsSwitch").checked,
+            wecom_enabled: document.getElementById("integrationWecomSwitch").checked,
+            webhook_url: String(document.getElementById("integrationWebhookUrl").value || "").trim()
+        };
+    }
+
+    function mergeSettings(loaded) {
+        if (!loaded || typeof loaded !== "object") {
+            return;
+        }
+        state.risk = Object.assign({}, state.risk, loaded.risk || {});
+        state.org = Object.assign({}, state.org, loaded.org || {});
+        state.integration = Object.assign({}, state.integration, loaded.integration || {});
+    }
+
+    document.getElementById("addSensitiveWordBtn").addEventListener("click", function () {
+        const input = document.getElementById("newSensitiveWord");
+        const value = String(input.value || "").trim();
+        if (!value) return;
+        if (!Array.isArray(state.risk.sensitive_words)) {
+            state.risk.sensitive_words = [];
+        }
+        if (state.risk.sensitive_words.includes(value)) {
+            input.value = "";
+            return;
+        }
+        state.risk.sensitive_words.push(value);
+        input.value = "";
+        renderSensitiveWords();
+    });
+
+    document.getElementById("newSensitiveWord").addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            document.getElementById("addSensitiveWordBtn").click();
+        }
+    });
+
+    document.getElementById("sensitiveWordsList").addEventListener("click", function (event) {
+        const btn = event.target.closest(".word-remove-btn");
+        if (!btn) return;
+        const index = Number(btn.getAttribute("data-index"));
+        if (!Number.isInteger(index) || index < 0) {
+            return;
+        }
+        if (!Array.isArray(state.risk.sensitive_words)) {
+            state.risk.sensitive_words = [];
+        }
+        state.risk.sensitive_words.splice(index, 1);
+        renderSensitiveWords();
+    });
+
+    document.getElementById("saveRiskBtn").addEventListener("click", async function () {
+        readRiskForm();
+        setButtonLoading("saveRiskBtn", true);
+        try {
+            const saved = await persistSettings();
+            mergeSettings(saved);
+            renderRiskForm();
+            renderSummary();
+            // 刷新概览数据
+            const overview = await fetchOverview();
+            if (overview) {
+                renderOverview(overview);
+            }
+            $("#riskModal").modal("hide");
+            showFeedback("success", "风控策略已保存并生效。");
+        } catch (error) {
+            showFeedback("danger", `保存失败: ${error.message || error}`);
+        } finally {
+            setButtonLoading("saveRiskBtn", false);
+        }
+    });
+
+    document.getElementById("saveOrgBtn").addEventListener("click", async function () {
+        readOrgForm();
+        setButtonLoading("saveOrgBtn", true);
+        try {
+            const saved = await persistSettings();
+            mergeSettings(saved);
+            renderOrgForm();
+            renderSummary();
+            // 刷新概览数据
+            const overview = await fetchOverview();
+            if (overview) {
+                renderOverview(overview);
+            }
+            $("#orgModal").modal("hide");
+            showFeedback("success", "组织权限配置已保存。");
+        } catch (error) {
+            showFeedback("danger", `保存失败: ${error.message || error}`);
+        } finally {
+            setButtonLoading("saveOrgBtn", false);
+        }
+    });
+
+    document.getElementById("saveIntegrationBtn").addEventListener("click", async function () {
+        readIntegrationForm();
+        setButtonLoading("saveIntegrationBtn", true);
+        try {
+            const saved = await persistSettings();
+            mergeSettings(saved);
+            renderIntegrationForm();
+            renderSummary();
+            // 刷新概览数据
+            const overview = await fetchOverview();
+            if (overview) {
+                renderOverview(overview);
+            }
+            $("#integrationModal").modal("hide");
+            showFeedback("success", "通知与集成配置已保存。");
+        } catch (error) {
+            showFeedback("danger", `保存失败: ${error.message || error}`);
+        } finally {
+            setButtonLoading("saveIntegrationBtn", false);
+        }
+    });
+
+    async function fetchOverview() {
+        try {
+            const response = await fetch("/api/settings/overview", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            const payload = await response.json();
+            if (!response.ok || !payload.ok) {
+                throw new Error(payload.msg || "加载概览失败");
+            }
+            return payload.overview || {};
+        } catch (error) {
+            console.error("加载概览失败", error);
+            return null;
+        }
+    }
+
+    function renderOverview(overview) {
+        if (!overview) return;
+
+        // 渲染配置进度（与模块状态一致）
+        const progress = overview.progress || {};
+        const percentage = progress.percentage || 0;
+        document.getElementById("configProgressBar").style.width = percentage + "%";
+        document.getElementById("configProgressBar").className = `progress-bar ${percentage === 100 ? 'bg-success' : percentage >= 66.7 ? 'bg-warning' : 'bg-danger'}`;
+        document.getElementById("configProgressText").textContent = progress.display_text || `${Math.round(progress.configured || 0)}/${progress.total || 3}`;
+
+        // 渲染高风险提示
+        const warnings = overview.risk_warnings || [];
+        const warningsEl = document.getElementById("riskWarnings");
+        if (warnings.length > 0) {
+            warningsEl.innerHTML = warnings.map(w => 
+                `<span class="badge badge-danger mr-1"><i class="ri-alert-line mr-1"></i>${escapeHtml(w)}</span>`
+            ).join("");
+        } else {
+            warningsEl.innerHTML = '<span class="text-muted small">无高风险提示</span>';
+        }
+
+        // 渲染最近变更
+        const recentChange = overview.recent_change;
+        const recentChangeEl = document.getElementById("recentChange");
+        if (recentChange && recentChange.time) {
+            recentChangeEl.innerHTML = `
+                <span class="text-muted">最近变更：</span>
+                <span>${escapeHtml(recentChange.time)}</span>
+                <span class="text-muted ml-1">by ${escapeHtml(recentChange.operator)}</span>
+            `;
+        } else {
+            recentChangeEl.innerHTML = '<span class="text-muted">暂无变更记录</span>';
+        }
+
+        // 渲染组织与权限状态、风险级别、影响范围和指标
+        const org = overview.org || {};
+        updateStatusBadge("orgStatusBadge", org.status || "未配置");
+        updateRiskLevel("orgRiskLevel", org.risk_level || "低");
+        updateImpactScope("orgImpactScope", org.impact_scope || "部门级");
+        const orgRoleCountEl = document.getElementById("orgRoleCount");
+        const orgDeptCountEl = document.getElementById("orgDeptCount");
+        const orgDataScopeCoverageEl = document.getElementById("orgDataScopeCoverage");
+        if (orgRoleCountEl) orgRoleCountEl.textContent = org.role_count !== undefined ? org.role_count : 0;
+        if (orgDeptCountEl) orgDeptCountEl.textContent = org.dept_count !== undefined ? org.dept_count : 0;
+        if (orgDataScopeCoverageEl) orgDataScopeCoverageEl.textContent = (org.data_scope_coverage !== undefined ? org.data_scope_coverage : 0) + "%";
+
+        // 渲染风控策略状态、风险级别、影响范围和指标
+        const risk = overview.risk || {};
+        updateStatusBadge("riskStatusBadge", risk.status || "未配置");
+        updateRiskLevel("riskRiskLevel", risk.risk_level || "低");
+        updateImpactScope("riskImpactScope", risk.impact_scope || "财务风险");
+        const riskEnabledRulesCountEl = document.getElementById("riskEnabledRulesCount");
+        const riskLatestUpdateEl = document.getElementById("riskLatestUpdate");
+        if (riskEnabledRulesCountEl) riskEnabledRulesCountEl.textContent = risk.enabled_rules_count !== undefined ? risk.enabled_rules_count : 0;
+        if (riskLatestUpdateEl) riskLatestUpdateEl.textContent = risk.latest_update || "从未更新";
+
+        // 渲染通知与集成状态、风险级别、影响范围和指标
+        const integration = overview.integration || {};
+        updateStatusBadge("integrationStatusBadge", integration.status || "未配置");
+        updateRiskLevel("integrationRiskLevel", integration.risk_level || "低");
+        updateImpactScope("integrationImpactScope", integration.impact_scope || "通知延迟");
+        const integrationEmailStatusEl = document.getElementById("integrationEmailStatus");
+        const integrationWecomStatusEl = document.getElementById("integrationWecomStatus");
+        const integrationWebhookStatusEl = document.getElementById("integrationWebhookStatus");
+        const integrationLastTestEl = document.getElementById("integrationLastTest");
+        if (integrationEmailStatusEl) integrationEmailStatusEl.textContent = integration.email_status || "--";
+        if (integrationWecomStatusEl) integrationWecomStatusEl.textContent = integration.wecom_status || "--";
+        if (integrationWebhookStatusEl) integrationWebhookStatusEl.textContent = integration.webhook_status || "--";
+        if (integrationLastTestEl) integrationLastTestEl.textContent = integration.last_test_result || "未测试";
+    }
+
+    function updateStatusBadge(badgeId, status) {
+        const badge = document.getElementById(badgeId);
+        if (!badge) return;
+        
+        let badgeClass = "badge-secondary";
+        let badgeText = "未配置";
+        
+        if (status === "已生效") {
+            badgeClass = "badge-success";
+            badgeText = "已生效";
+        } else if (status === "待完善") {
+            badgeClass = "badge-warning";
+            badgeText = "待完善";
+        }
+        
+        badge.className = `status-badge badge ${badgeClass}`;
+        badge.textContent = badgeText;
+    }
+
+    function updateRiskLevel(elementId, level) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        
+        let badgeClass = "badge-secondary";
+        if (level === "高") {
+            badgeClass = "badge-danger";
+        } else if (level === "中") {
+            badgeClass = "badge-warning";
+        } else {
+            badgeClass = "badge-success";
+        }
+        
+        el.className = `badge ${badgeClass}`;
+        el.textContent = level || "低";
+    }
+
+    function updateImpactScope(elementId, scope) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        el.textContent = scope || "--";
+    }
+
+    // 关键指标钻取功能
+    window.drillDownToConfig = function(configType, filter) {
+        let url = "";
+        let params = new URLSearchParams();
+        
+        switch(configType) {
+            case "roles":
+                url = "/admin/roles";
+                if (filter === "data_scope") {
+                    params.set("filter", "data_scope");
+                }
+                break;
+            case "departments":
+                url = "/admin/departments";
+                break;
+            case "governance_rules":
+                url = "/governance/rules";
+                if (filter === "enabled") {
+                    params.set("enabled", "1");
+                }
+                break;
+            case "integration":
+                url = "/settings";
+                if (filter === "email") {
+                    params.set("tab", "integration");
+                    params.set("focus", "email");
+                } else if (filter === "wecom") {
+                    params.set("tab", "integration");
+                    params.set("focus", "wecom");
+                } else if (filter === "webhook") {
+                    params.set("tab", "integration");
+                    params.set("focus", "webhook");
+                }
+                break;
+            default:
+                url = "/settings";
+        }
+        
+        if (params.toString()) {
+            url += "?" + params.toString();
+        }
+        
+        window.location.href = url;
+    };
+
+    window.viewAuditLogs = function(type) {
+        window.location.href = "/admin/audit_logs?target_type=system_settings&action_type=SETTINGS_UPDATE";
+    };
+
+    window.viewPolicyHistory = function() {
+        window.location.href = "/governance/rules";
+    };
+
+    window.testNotification = async function() {
+        try {
+            showFeedback("info", "正在测试推送...");
+            // TODO: 调用测试推送API
+            setTimeout(() => {
+                showFeedback("success", "测试推送成功");
+            }, 1000);
+        } catch (error) {
+            showFeedback("danger", "测试推送失败: " + error.message);
+        }
+    };
+
+    (async function init() {
+        bindModalSafeLayer();
+        try {
+            const [loaded, overview] = await Promise.all([
+                fetchSettings(),
+                fetchOverview()
+            ]);
+            mergeSettings(loaded);
+            renderRiskForm();
+            renderOrgForm();
+            renderIntegrationForm();
+            renderSummary();
+            if (overview) {
+                renderOverview(overview);
+            }
+        } catch (error) {
+            renderRiskForm();
+            renderOrgForm();
+            renderIntegrationForm();
+            renderSummary();
+            showFeedback("warning", `加载默认配置: ${error.message || error}`);
+        }
+    })();
+})();
+</script>
+
+<style>
+.setting-card { 
+    border-radius: 12px; 
+    transition: box-shadow 0.2s;
+}
+.setting-card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
+}
+.modal-rounded { border-radius: 16px; }
+.gap-2 { gap: 0.5rem; }
+.settings-page-modal {
+    z-index: 2100;
+}
+body.settings-modal-open .modal-backdrop {
+    z-index: 2090 !important;
+}
+body.settings-modal-open #riskModal,
+body.settings-modal-open #orgModal,
+body.settings-modal-open #integrationModal {
+    z-index: 2100 !important;
+}
+body.settings-modal-open #riskModal .modal-content,
+body.settings-modal-open #orgModal .modal-content,
+body.settings-modal-open #integrationModal .modal-content {
+    pointer-events: auto;
+}
+.word-remove-btn {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+/* 设置概览条样式 */
+.settings-overview-bar {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 8px;
+}
+
+/* 状态徽标样式 */
+.status-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    z-index: 10;
+}
+
+/* 指标行样式 */
+.settings-metrics {
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    padding: 0.75rem !important;
+}
+.metric-item {
+    padding: 0.5rem 0;
+}
+.metric-label {
+    display: block;
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+    color: #6c757d;
+}
+.metric-value {
+    font-size: 1.1rem;
+    color: #212529;
+    font-weight: 600;
+}
+
+/* 可点击指标样式 */
+.clickable-metric {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    padding: 0.5rem;
+    margin: -0.5rem;
+}
+
+.clickable-metric:hover {
+    background-color: #e9ecef;
+    transform: translateY(-1px);
+}
+
+.clickable-metric .metric-value {
+    color: #007bff;
+    transition: color 0.2s ease;
+}
+
+.clickable-metric:hover .metric-value {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+    .settings-overview-bar .row > div {
+        margin-bottom: 0.75rem;
+    }
+    .settings-metrics .row > div {
+        margin-bottom: 0.5rem;
+    }
+    .status-badge {
+        position: relative;
+        top: auto;
+        right: auto;
+        display: inline-block;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* 进度条样式 */
+.progress {
+    border-radius: 10px;
+    background-color: #e9ecef;
+}
+.progress-bar {
+    transition: width 0.6s ease;
+    border-radius: 10px;
+}
+
+/* 风险提示样式 */
+.risk-warnings {
+    min-height: 24px;
+    line-height: 1.8;
+}
+.risk-warnings .badge {
+    margin-right: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+/* 最近变更样式 */
+.recent-change {
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}

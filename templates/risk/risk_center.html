@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+
+{% block title %}风险中心 - 深度审计{% endblock %}
+{% block page_title %}风险中心{% endblock %}
+
+{% block head %}
+<!-- TEMPLATE_MARKER: risk_center_v2 -->
+<meta name="page-debug" content="risk">
+<meta name="page-debug-route" content="{{ (page_debug or {}).get('route', '-') }}">
+<meta name="page-debug-template" content="{{ (page_debug or {}).get('template', '-') }}">
+<meta name="page-debug-api" content="{{ (page_debug or {}).get('api_version', '-') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tom-select/tom-select.css', v=static_version) }}">
+<style>
+#risk-center-v2 .risk-center-kpi-card { cursor: pointer; transition: box-shadow 0.2s ease, transform 0.2s ease; }
+/* Risk center card list (approval-workbench style) */
+.rc { --rc-high: #dc2626; --rc-med: #d97706; --rc-low: #16a34a; --rc-unknown: #6b7280; --rc-card-r: 10px; --rc-gap: 12px; }
+.rc-list { display: flex; flex-direction: column; gap: 8px; }
+.rc-item {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: var(--rc-card-r);
+  border-left: 3px solid #e5e7eb;
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+.rc-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.05); border-color: #d1d5db; }
+.rc-item.risk-high { border-left-color: var(--rc-high); }
+.rc-item.risk-medium { border-left-color: var(--rc-med); }
+.rc-item.risk-low { border-left-color: var(--rc-low); }
+.rc-item.risk-unknown { border-left-color: var(--rc-unknown); }
+.rc-item-head {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  flex-wrap: wrap;
+}
+.rc-ref { font-weight: 700; font-size: 14px; color: #0f172a; font-family: "SFMono-Regular", "Consolas", monospace; min-width: 70px; }
+.rc-applicant { font-size: 14px; color: #334155; font-weight: 500; min-width: 60px; }
+.rc-chip {
+  display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+.rc-chip.chip-high { background: #fef2f2; color: #991b1b; }
+.rc-chip.chip-medium { background: #fffbeb; color: #92400e; }
+.rc-chip.chip-low { background: #f0fdf4; color: #166534; }
+.rc-chip.chip-unknown { background: #f3f4f6; color: #4b5563; }
+.rc-status-badge {
+  display: inline-flex; padding: 3px 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.rc-status-badge.st-open { background: #fef2f2; color: #b91c1c; }
+.rc-status-badge.st-assigned { background: #eff6ff; color: #1d4ed8; }
+.rc-status-badge.st-processing { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+.rc-status-badge.st-closed { background: #f1f5f9; color: #64748b; }
+.rc-time { font-size: 12px; color: #94a3b8; white-space: nowrap; }
+.rc-spacer { flex: 1; min-width: 8px; }
+.rc-expand-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: #94a3b8; }
+.rc-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.rc-actions .btn { white-space: nowrap; }
+.rc-item-detail-wrap { border-top: 1px dashed #e5e7eb; margin: 0; }
+.rc-item-detail-summary { padding: 8px 16px; cursor: pointer; list-style: none; font-size: 13px; color: #64748b; }
+.rc-item-detail-summary::-webkit-details-marker { display: none; }
+.rc-item-detail-summary::before { content: '\25B6'; display: inline-block; margin-right: 6px; font-size: 10px; transition: transform .2s ease; }
+.rc-item-detail-wrap[open] .rc-item-detail-summary::before { transform: rotate(90deg); }
+.rc-item-detail { padding: 0 16px 14px 19px; }
+.rc-detail-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px 20px; padding-top: 12px;
+}
+.rc-detail-field .rc-dl { font-size: 12px; color: #94a3b8; margin-bottom: 1px; }
+.rc-detail-field .rc-dv { font-size: 14px; color: #1e293b; font-weight: 500; }
+.rc-detail-links { display: flex; gap: 12px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #f1f5f9; flex-wrap: wrap; }
+.rc-detail-links a { font-size: 13px; color: #2563eb; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; transition: color .15s ease; }
+.rc-detail-links a:hover { color: #1d4ed8; text-decoration: underline; }
+@media (max-width: 768px) {
+  .rc-item-head { gap: 8px; padding: 10px 12px; }
+  .rc-detail-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% set current_operator = ((nav_user or {}).get('employee_name') or (nav_user or {}).get('username') or (nav_user or {}).get('employee_no') or '') %}
+{% set risk_level_map = {
+  "HIGH": "高风险",
+  "MEDIUM": "中风险",
+  "LOW": "低风险",
+  "UNKNOWN": "未知"
+} %}
+{% set risk_level_badge_map = {
+  "HIGH": "badge-danger",
+  "MEDIUM": "badge-warning",
+  "LOW": "badge-secondary",
+  "UNKNOWN": "badge-light"
+} %}
+{% set status_map = {
+  "OPEN": "待分派",
+  "ASSIGNED": "已分派",
+  "PROCESSING": "处理中",
+  "CLOSED": "已结案"
+} %}
+{% set status_badge_map = {
+  "OPEN": "badge-danger",
+  "ASSIGNED": "badge-info",
+  "PROCESSING": "badge-light",
+  "CLOSED": "badge-secondary"
+} %}
+{% set latest_event_map = {
+  "CASE_CREATED": "案件创建",
+  "CASE_ASSIGNED": "案件分派",
+  "CASE_CLOSED": "案件结案",
+  "RULE_HIT": "规则命中",
+  "AI_EXPLAIN": "智能解释完成",
+  "ASSIGN": "案件分派",
+  "CLOSE": "案件结案",
+  "SCORE_ADJUST": "评分调整",
+  "CREATE": "案件创建"
+} %}
+<div id="risk-center-v2" class="container-fluid pb-3" data-current-operator="{{ current_operator }}">
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb bg-transparent px-0 py-1 mb-0">
+      <li class="breadcrumb-item"><a href="/dashboard">管理总览</a></li>
+      <li class="breadcrumb-item active" aria-current="page">风险中心</li>
+    </ol>
+  </nav>
+
+  <div class="row mb-3">
+    <div class="col-xl-3 col-md-6 mb-2 mb-xl-0">
+      <div class="kpi-card enterprise-kpi-card risk-center-kpi-card" title="未结案案件数">
+        <div class="kpi-label">待处理案件</div>
+        <div class="kpi-value">{{ kpis.pending|default(0) }}</div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-2 mb-xl-0">
+      <div class="kpi-card enterprise-kpi-card risk-center-kpi-card" title="高风险案件数">
+        <div class="kpi-label">高风险案件</div>
+        <div class="kpi-value text-danger">{{ kpis.high_risk|default(0) }}</div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-2 mb-xl-0">
+      <div class="kpi-card enterprise-kpi-card risk-center-kpi-card" title="已结案案件数">
+        <div class="kpi-label">已结案</div>
+        <div class="kpi-value text-success">{{ kpis.closed|default(0) }}</div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-2 mb-xl-0">
+      <div class="kpi-card enterprise-kpi-card risk-center-kpi-card" title="已超 SLA 未结案数">
+        <div class="kpi-label">超期未结案</div>
+        <div class="kpi-value {{ 'text-danger' if (kpis.overdue|default(0)) > 0 else '' }}">{{ kpis.overdue|default(0) }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card card-outline card-danger mb-3">
+    <div class="card-body">
+      <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-2">
+        <div>
+          <h5 class="mb-1">案件经营页</h5>
+          <div class="small text-muted">{{ filter_hint }}</div>
+        </div>
+        <div class="mt-2 mt-lg-0">
+          <a href="/risk-center" class="btn btn-sm btn-outline-primary">刷新</a>
+        </div>
+      </div>
+
+      <form method="get" action="/risk-center" class="mt-3">
+        <div class="form-row align-items-end">
+          <div class="form-group col-md-3 mb-2">
+            <label for="riskLevelFilter" class="mb-1">风险等级</label>
+            <select id="riskLevelFilter" name="risk_level" class="form-control form-control-sm">
+              <option value="">全部</option>
+              <option value="HIGH" {% if filter_state.risk_level == 'HIGH' %}selected{% endif %}>高风险</option>
+              <option value="MEDIUM" {% if filter_state.risk_level == 'MEDIUM' %}selected{% endif %}>中风险</option>
+              <option value="LOW" {% if filter_state.risk_level == 'LOW' %}selected{% endif %}>低风险</option>
+            </select>
+          </div>
+          <div class="form-group col-md-3 mb-2">
+            <label for="statusFilter" class="mb-1">状态</label>
+            <select id="statusFilter" name="status" class="form-control form-control-sm">
+              <option value="">全部</option>
+              <option value="OPEN" {% if filter_state.status == 'OPEN' %}selected{% endif %}>待分派</option>
+              <option value="ASSIGNED" {% if filter_state.status == 'ASSIGNED' %}selected{% endif %}>已分派</option>
+              <option value="PROCESSING" {% if filter_state.status == 'PROCESSING' %}selected{% endif %}>处理中</option>
+              <option value="CLOSED" {% if filter_state.status == 'CLOSED' %}selected{% endif %}>已结案</option>
+            </select>
+          </div>
+          <div class="form-group col-md-3 mb-2">
+            <label for="departmentFilter" class="mb-1">部门</label>
+            <select id="departmentFilter" name="department" class="form-control form-control-sm">
+              <option value="">全部部门</option>
+              {% for dept in department_options %}
+              <option value="{{ dept }}" {% if filter_state.department == dept %}selected{% endif %}>{{ dept }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group col-md-3 mb-2">
+            <label for="ownerFilter" class="mb-1">负责人</label>
+            <input id="ownerFilter" name="owner" value="{{ filter_state.owner }}" class="form-control form-control-sm" placeholder="输入处理人姓名">
+          </div>
+        </div>
+        <div class="d-flex">
+          <button type="submit" class="btn btn-sm btn-danger mr-2">查询</button>
+          <a href="/risk-center" class="btn btn-sm btn-outline-secondary">重置</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if not rows %}
+  <div class="card card-outline card-secondary">
+    <div class="card-body text-center py-4">
+      <h6 class="mb-2">暂无高风险案件</h6>
+      <p class="text-muted mb-0">暂无符合条件的高风险案件。</p>
+    </div>
+  </div>
+  {% else %}
+  <div class="card card-outline card-secondary mb-0">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>风险案件列表</strong>
+      <span class="badge badge-light">共 {{ row_count }} 条</span>
+    </div>
+    <div class="card-body rc">
+      <div class="rc-list" id="riskCaseList">
+        {% for row in rows %}
+        {% set risk_level_code = (row.risk_level or 'UNKNOWN')|upper %}
+        {% set status_code = (row.status or 'OPEN')|upper %}
+        {% set latest_event_code = (row.latest_event or 'CREATE')|upper %}
+        {% set latest_action_note = row.latest_action_note or '' %}
+        {% set latest_action_note_lower = latest_action_note|lower %}
+        {% set risk_level_text = risk_level_map.get(risk_level_code, '未知') %}
+        {% set status_text = status_map.get(status_code, '处理中') %}
+        {% set latest_event_text = latest_event_map.get(latest_event_code, '已更新') %}
+        {% if latest_event_code == 'ASSIGN' and 'risk_center_claim' in latest_action_note_lower %}
+        {% set latest_event_text = '签收' %}
+        {% elif latest_event_code == 'ASSIGN' and 'risk_center_transfer' in latest_action_note_lower %}
+        {% set latest_event_text = '转派' %}
+        {% elif latest_event_code == 'CLOSE' and ('false_positive' in latest_action_note_lower or '误报' in latest_action_note) %}
+        {% set latest_event_text = '误报结案' %}
+        {% endif %}
+        {% set owner_text = row.owner or '' %}
+        {% set owner_display_text = row.owner_display or owner_text %}
+        {% set owner_department_text = row.owner_department or '-' %}
+        {% set owner_account_text = row.owner_account or owner_text %}
+        {% set applicant_text = row.applicant or '-' %}
+        {% set invoice_department_text = row.invoice_department or row.department or '-' %}
+        {% set reference_no_text = row.reference_no or '' %}
+        {% set invoice_id = row.invoice_id or 0 %}
+        {% if reference_no_text %}
+        {% set invoice_display_text = reference_no_text %}
+        {% set ledger_link = '/invoices_page?tab=ledger&reference_no=' ~ reference_no_text %}
+        {% elif invoice_id %}
+        {% set invoice_display_text = '单据ID ' ~ invoice_id %}
+        {% set ledger_link = '/invoices_page?tab=ledger&invoice_id=' ~ invoice_id %}
+        {% elif row.case_id %}
+        {% set invoice_display_text = '案件#' ~ row.case_id %}
+        {% set ledger_link = '/invoices_page?tab=ledger&case_id=' ~ row.case_id %}
+        {% else %}
+        {% set invoice_display_text = '未关联单据' %}
+        {% set ledger_link = '/invoices_page?tab=ledger' %}
+        {% endif %}
+        {% set sla_remaining_text = (row.sla_remaining or '-')|replace('h', ' 小时')|replace('m', ' 分钟') %}
+        <div
+          class="rc-item risk-{{ risk_level_code|lower }}"
+          data-case-id="{{ row.case_id }}"
+          data-status="{{ status_code }}"
+          data-owner="{{ owner_display_text if owner_display_text and owner_display_text != '-' else '' }}"
+          data-latest-event="{{ latest_event_code }}"
+          data-latest-note="{{ latest_action_note }}"
+          data-updated-at="{{ row.updated_at or '' }}"
+        >
+          <div class="rc-item-head">
+            <span class="rc-ref">#{{ row.case_id }}</span>
+            <span class="rc-applicant">
+              <a href="{{ ledger_link }}" class="text-decoration-none">{{ invoice_display_text }}</a>
+              <span class="small text-muted d-block">台账 · 审批</span>
+            </span>
+            <span class="rc-chip chip-{{ risk_level_code|lower }}">{{ risk_level_text }} {{ row.score }}</span>
+            <span class="risk-status-cell">
+              <span class="badge {{ status_badge_map.get(status_code, 'badge-light') }}">{{ status_text }}</span>
+            </span>
+            <span class="rc-time">{{ applicant_text if applicant_text and applicant_text != '-' else '未标注' }} / {{ invoice_department_text if invoice_department_text != '-' else '未标注' }}</span>
+            <span class="rc-time">
+              <span class="risk-owner-name">{{ owner_display_text if owner_display_text and owner_display_text != '-' else '未分配' }}</span>
+              <span class="small text-muted d-block risk-owner-dept">部门：{{ owner_department_text if owner_department_text and owner_department_text != '-' else '未标注' }}</span>
+            </span>
+            <span class="rc-time">
+              <span class="risk-sla-remaining">{{ sla_remaining_text }}</span>
+              <span class="small text-muted d-block risk-sla-due">截至 {{ row.sla_due_at or '-' }}</span>
+            </span>
+            <span class="rc-time risk-latest-cell">{{ latest_event_text }} · {{ row.updated_at or '-' }}</span>
+            <span class="rc-spacer"></span>
+            <div class="rc-actions">
+              <a href="/risk/cases/{{ row.case_id }}/detail" class="btn btn-xs btn-outline-primary">详情</a>
+              <button type="button" class="btn btn-xs btn-outline-success js-risk-action" data-action="CLAIM" {% if status_code == 'CLOSED' %}disabled title="已结案"{% endif %}>签收</button>
+              <button type="button" class="btn btn-xs btn-outline-warning js-risk-action" data-action="TRANSFER" {% if status_code == 'CLOSED' %}disabled title="已结案"{% endif %}>转派</button>
+              <button type="button" class="btn btn-xs btn-outline-danger js-risk-action" data-action="CLOSE" {% if status_code == 'CLOSED' %}disabled title="已结案"{% endif %}>结案</button>
+              <button type="button" class="btn btn-xs btn-outline-secondary js-risk-action" data-action="FALSE_POSITIVE" {% if status_code == 'CLOSED' %}disabled title="已结案"{% endif %}>误报</button>
+            </div>
+            <span class="rc-expand-icon"><i class="ri-arrow-down-s-line"></i></span>
+          </div>
+          <details class="rc-item-detail-wrap">
+            <summary class="rc-item-detail-summary">技术信息（可展开）</summary>
+          <div class="rc-item-detail">
+            <div class="rc-detail-grid">
+              <div class="rc-detail-field">
+                <div class="rc-dl">报销人</div>
+                <div class="rc-dv js-tech-applicant">{{ applicant_text if applicant_text and applicant_text != '-' else '-' }}</div>
+              </div>
+              <div class="rc-detail-field">
+                <div class="rc-dl">归属部门</div>
+                <div class="rc-dv js-tech-department">{{ invoice_department_text if invoice_department_text and invoice_department_text != '-' else '-' }}</div>
+              </div>
+              <div class="rc-detail-field">
+                <div class="rc-dl">当前处理人</div>
+                <div class="rc-dv risk-owner-name js-tech-owner">{{ owner_display_text if owner_display_text and owner_display_text != '-' else '-' }}</div>
+              </div>
+              <div class="rc-detail-field">
+                <div class="rc-dl">处理账号</div>
+                <div class="rc-dv js-tech-owner-account">{{ owner_account_text if owner_account_text and owner_account_text != '-' else '-' }}</div>
+              </div>
+              <div class="rc-detail-field">
+                <div class="rc-dl">案件状态</div>
+                <div class="rc-dv js-tech-status-cn">{{ status_text }}</div>
+              </div>
+              <div class="rc-detail-field">
+                <div class="rc-dl">最近更新时间</div>
+                <div class="rc-dv js-tech-updated-at">{{ row.updated_at or '-' }}</div>
+              </div>
+              <div class="rc-detail-field">
+                <div class="rc-dl">最近动作</div>
+                <div class="rc-dv js-tech-latest-event-cn">{{ latest_event_text }}</div>
+              </div>
+              <div class="rc-detail-field" style="grid-column: 1 / -1;">
+                <div class="rc-dl">动作备注</div>
+                <div class="rc-dv js-tech-latest-note">{{ latest_action_note or '-' }}</div>
+              </div>
+            </div>
+            <div class="rc-detail-links">
+              <a href="{{ ledger_link }}" target="_blank" rel="noopener"><i class="ri-file-text-line"></i> 台账中心</a>
+              {% if nav_can_approval_console is defined and nav_can_approval_console %}
+              <a href="/approval_center" target="_blank" rel="noopener"><i class="ri-checkbox-circle-line"></i> 审批中心</a>
+              {% endif %}
+              <a href="/risk/cases/{{ row.case_id }}/detail"><i class="ri-information-line"></i> 案件详情</a>
+            </div>
+          </div>
+          </details>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="modal fade" id="riskActionModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="riskActionTitle">案件处理</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="riskActionCaseId" value="">
+        <input type="hidden" id="riskActionType" value="">
+        <div id="riskActionHint" class="alert alert-light border py-2 px-3 mb-2"><span class="alert-icon"><i class="ri-lightbulb-line"></i></span><span class="alert-body">请选择处理原因并提交。</span></div>
+
+        <div class="form-group mb-2">
+          <label class="mb-1" for="riskActionReason">处理原因 <span class="text-danger">*</span></label>
+          <select id="riskActionReason" class="form-control enterprise-select" data-clear-button="0">
+            <option value="">请选择处理原因</option>
+            <option value="MANUAL_OVERRIDE">人工覆盖</option>
+            <option value="DATA_CORRECTION">数据修正</option>
+            <option value="POLICY_EXCEPTION">制度例外</option>
+            <option value="NEED_MORE_INFO">需要补充信息</option>
+            <option value="SYSTEM_AUTO">系统自动处理</option>
+          </select>
+          <div id="riskActionReasonError" class="invalid-feedback d-block d-none">请选择处理原因</div>
+        </div>
+
+        <div class="form-group mb-2 d-none" id="riskActionAssignWrap">
+          <label class="mb-1" for="riskActionAssignTo">转派给</label>
+          <select
+            id="riskActionAssignTo"
+            class="form-control enterprise-select"
+            placeholder="请选择接收人"
+            data-clear-button="0"
+            data-enhance-single="1"
+          >
+            <option value="">请选择接收人</option>
+            {% for assignee in assign_to_options %}
+            <option value="{{ assignee }}">{{ assignee }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group mb-0">
+          <label class="mb-1" for="riskActionNote">补充说明（可选）</label>
+          <textarea id="riskActionNote" rows="3" class="form-control" placeholder="可填写处理细节或备注"></textarea>
+        </div>
+        <div id="riskActionError" class="small text-danger mt-2 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" data-dismiss="modal">取消</button>
+        <button class="btn btn-primary" id="riskActionSubmit">确认提交</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/status_i18n.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='vendor/tom-select/tom-select.complete.min.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/enterprise_select.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/risk_center.js', v=static_version) }}"></script>
+{% endblock %}

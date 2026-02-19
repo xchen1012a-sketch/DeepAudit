@@ -1,0 +1,782 @@
+{% extends "base.html" %}
+
+{% block title %}风控看板 - 深度审计{% endblock %}
+{% block page_title %}风控看板{% endblock %}
+
+{% block head %}
+<meta charset="utf-8">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid dashboard-shell pb-3">
+    <div class="row align-items-center dashboard-topbar mb-3">
+        <div class="col-lg-8 mb-2 mb-lg-0">
+            <h2 class="dashboard-page-title mb-0">风险暴露与案件经营总览</h2>
+        </div>
+        <div class="col-lg-4 text-lg-right">
+            <div class="btn-group btn-group-sm" role="group" id="dashboardRangeGroup">
+                <button type="button" class="btn btn-outline-secondary dashboard-range-btn" data-range="today">今天</button>
+                <button type="button" class="btn btn-outline-secondary dashboard-range-btn" data-range="yesterday">昨天</button>
+                <button type="button" class="btn btn-outline-secondary dashboard-range-btn active" data-range="7d">近7天</button>
+                <button type="button" class="btn btn-outline-secondary dashboard-range-btn" data-range="30d">近30天</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="kpi-card enterprise-kpi-card">
+                <div class="kpi-label">风险案件总数</div>
+                <div class="kpi-value" id="kpiRiskCaseCount">--</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="kpi-card enterprise-kpi-card">
+                <div class="kpi-label">高风险案件</div>
+                <div class="kpi-value text-danger" id="kpiHighRiskCaseCount">--</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="kpi-card enterprise-kpi-card">
+                <div class="kpi-label">结案率</div>
+                <div class="kpi-value text-success" id="kpiCloseRate">--</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="kpi-card enterprise-kpi-card kpi-money-card">
+                <div class="kpi-label">风险敞口金额 (CNY)</div>
+                <div class="kpi-value" id="kpiRiskExposure">--</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card mb-0 dashboard-panel">
+                <div class="dashboard-panel-head">
+                    <h3 class="chart-box-title">指标明细</h3>
+                    <span class="dashboard-panel-meta">统一口径 · 自动应用权限数据范围</span>
+                </div>
+                <div class="metrics-mini-grid">
+                    <div class="metrics-mini-item">
+                        <span class="metrics-mini-label">总交易数</span>
+                        <strong id="metricTotalTxn">--</strong>
+                    </div>
+                    <div class="metrics-mini-item">
+                        <span class="metrics-mini-label">总发票数</span>
+                        <strong id="metricTotalInvoice">--</strong>
+                    </div>
+                    <div class="metrics-mini-item">
+                        <span class="metrics-mini-label">风险事件数</span>
+                        <strong id="metricRiskEventCount">--</strong>
+                    </div>
+                    <div class="metrics-mini-item">
+                        <span class="metrics-mini-label">风险案件数</span>
+                        <strong id="metricRiskCaseCount">--</strong>
+                    </div>
+                    <div class="metrics-mini-item">
+                        <span class="metrics-mini-label">已关闭案件</span>
+                        <strong id="metricClosedCaseCount">--</strong>
+                    </div>
+                    <div class="metrics-mini-item">
+                        <span class="metrics-mini-label">平均风险评分</span>
+                        <strong id="metricAvgRiskScore">--</strong>
+                    </div>
+                    <div class="metrics-mini-item">
+                        <span class="metrics-mini-label">AI 触发率</span>
+                        <strong id="metricAiTriggerRate">--</strong>
+                    </div>
+                    <div class="metrics-mini-item">
+                        <span class="metrics-mini-label">待处理案件数</span>
+                        <strong id="metricPendingCaseCount">--</strong>
+                    </div>
+                </div>
+                <div id="dashboardMetricError" class="text-danger small mt-2 d-none"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-lg-8 mb-3 mb-lg-0">
+            <div class="chart-box dashboard-panel h-100">
+                <div class="dashboard-panel-head">
+                    <h3 class="chart-box-title" id="riskTrendChartTitle">近 7 天风险趋势</h3>
+                    <span class="dashboard-panel-meta">风险事件新增 / 风险案件新增</span>
+                </div>
+                <div class="chart-container-fixed chart-container-trend enterprise-trend-chart-wrap">
+                    <canvas id="riskTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="chart-box dashboard-panel h-100">
+                <div class="dashboard-panel-head">
+                    <h3 class="chart-box-title">风险等级分布</h3>
+                    <span class="dashboard-panel-meta">高风险 / 中风险 / 低风险</span>
+                </div>
+                <div class="chart-container-fixed chart-container-doughnut enterprise-dist-chart-wrap">
+                    <canvas id="riskDistributionChart"></canvas>
+                </div>
+                <div class="mt-3">
+                    <div class="small font-weight-bold text-muted mb-2">部门风险排行</div>
+                    <div id="deptRiskRankList" class="enterprise-rank-list text-muted small">仅全局角色可查看</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card card-outline card-info mb-0">
+                <div class="card-header py-2">
+                    <strong>实时 AI 流水线</strong>
+                </div>
+                <div class="card-body py-2">
+                    <div id="realtimeStatusSummary" class="text-muted">暂无新增流水事件</div>
+                    <div id="realtimeEventList" class="small mt-2" style="max-height: 96px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center mb-2">
+        <span class="badge badge-warning mr-2 mb-2">待匹配流水：<span id="bankUnmatchedCount">0</span></span>
+        <span class="badge badge-success mr-2 mb-2">已匹配流水：<span id="bankMatchedCount">0</span></span>
+        <span class="badge badge-secondary mb-2">流水总数：<span id="bankTotalCount">0</span></span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+    let riskTrendChart;
+    let riskDistributionChart;
+
+    const integerFormatter = new Intl.NumberFormat("zh-CN");
+    const moneyFormatter = new Intl.NumberFormat("zh-CN", {
+        style: "currency",
+        currency: "CNY",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+    const percentFormatter = new Intl.NumberFormat("zh-CN", {
+        style: "percent",
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+    });
+    const decimalFormatter = new Intl.NumberFormat("zh-CN", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 2,
+    });
+
+    function toNumber(value, fallback = 0) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : fallback;
+    }
+
+    function formatRatio(value) {
+        return percentFormatter.format(toNumber(value, 0));
+    }
+
+    function showMetricError(message) {
+        const node = document.getElementById("dashboardMetricError");
+        if (!node) return;
+        if (!message) {
+            node.classList.add("d-none");
+            node.textContent = "";
+            return;
+        }
+        node.classList.remove("d-none");
+        node.textContent = message;
+    }
+
+    function setText(id, value) {
+        const node = document.getElementById(id);
+        if (node) node.textContent = value;
+    }
+
+    function renderMetrics(metrics) {
+        const data = metrics || {};
+        const totalTxn = toNumber(data.total_txn, 0);
+        const totalInvoice = toNumber(data.total_invoice, 0);
+        const riskEventCount = toNumber(data.risk_event_count, 0);
+        const riskCaseCount = toNumber(data.risk_case_count, 0);
+        const highRiskCaseCount = toNumber(data.high_risk_case_count, 0);
+        const closedCaseCount = toNumber(data.closed_case_count, 0);
+        const closeRate = toNumber(data.close_rate, 0);
+        const riskExposureAmount = toNumber(data.risk_exposure_amount, 0);
+        const avgRiskScore = toNumber(data.avg_risk_score, 0);
+        const aiTriggerRate = toNumber(data.ai_trigger_rate, 0);
+
+        setText("kpiRiskCaseCount", integerFormatter.format(riskCaseCount));
+        setText("kpiHighRiskCaseCount", integerFormatter.format(highRiskCaseCount));
+        setText("kpiCloseRate", formatRatio(closeRate));
+        setText("kpiRiskExposure", moneyFormatter.format(riskExposureAmount));
+
+        setText("metricTotalTxn", integerFormatter.format(totalTxn));
+        setText("metricTotalInvoice", integerFormatter.format(totalInvoice));
+        setText("metricRiskEventCount", integerFormatter.format(riskEventCount));
+        setText("metricRiskCaseCount", integerFormatter.format(riskCaseCount));
+        setText("metricClosedCaseCount", integerFormatter.format(closedCaseCount));
+        setText("metricAvgRiskScore", decimalFormatter.format(avgRiskScore));
+        setText("metricAiTriggerRate", formatRatio(aiTriggerRate));
+        setText("metricPendingCaseCount", integerFormatter.format(Math.max(0, riskCaseCount - closedCaseCount)));
+    }
+
+    function ensureRiskTrendChart() {
+        if (riskTrendChart) return riskTrendChart;
+        const ctx = document.getElementById("riskTrendChart").getContext("2d");
+        riskTrendChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: "风险事件新增",
+                        data: [],
+                        borderColor: "#e74c3c",
+                        backgroundColor: "rgba(231,76,60,0.12)",
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 2.2,
+                        pointRadius: 2,
+                    },
+                    {
+                        label: "风险案件新增",
+                        data: [],
+                        borderColor: "#2468f2",
+                        backgroundColor: "rgba(36,104,242,0.12)",
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 2.2,
+                        pointRadius: 2,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: "index",
+                    intersect: false,
+                },
+                plugins: {
+                    legend: {
+                        position: "top",
+                        align: "end",
+                    },
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0,
+                        },
+                    },
+                },
+            },
+        });
+        return riskTrendChart;
+    }
+
+    function renderRiskTrends(payload) {
+        const data = payload || {};
+        const labels = Array.isArray(data.labels) ? data.labels : [];
+        const eventSeries = Array.isArray(data.risk_event_trend) ? data.risk_event_trend : [];
+        const caseSeries = Array.isArray(data.risk_case_trend) ? data.risk_case_trend : [];
+        const chart = ensureRiskTrendChart();
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = labels.map((_, idx) => toNumber(eventSeries[idx], 0));
+        chart.data.datasets[1].data = labels.map((_, idx) => toNumber(caseSeries[idx], 0));
+        chart.update();
+    }
+
+    function ensureRiskDistributionChart() {
+        if (riskDistributionChart) return riskDistributionChart;
+        const ctx = document.getElementById("riskDistributionChart").getContext("2d");
+        riskDistributionChart = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+                labels: ["高风险", "中风险", "低风险"],
+                datasets: [
+                    {
+                        data: [0, 0, 0],
+                        backgroundColor: ["#ef4444", "#f59e0b", "#22c55e"],
+                        borderColor: "#ffffff",
+                        borderWidth: 2,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: "62%",
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                    },
+                },
+            },
+        });
+        return riskDistributionChart;
+    }
+
+    function renderRiskDistribution(payload) {
+        const data = payload || {};
+        const chart = ensureRiskDistributionChart();
+        chart.data.datasets[0].data = [
+            toNumber(data.HIGH, 0),
+            toNumber(data.MEDIUM, 0),
+            toNumber(data.LOW, 0),
+        ];
+        chart.update();
+    }
+
+    function renderDepartmentRiskRank(items) {
+        const node = document.getElementById("deptRiskRankList");
+        if (!node) return;
+        const rows = Array.isArray(items) ? items : [];
+        if (!rows.length) {
+            node.textContent = "暂无可展示数据";
+            return;
+        }
+        node.innerHTML = rows.map((row, idx) => {
+            const department = String(row.department || "-");
+            const count = integerFormatter.format(toNumber(row.risk_case_count, 0));
+            return `
+                <div class="enterprise-rank-item">
+                    <span class="enterprise-rank-index">#${idx + 1}</span>
+                    <span class="enterprise-rank-dept">${department}</span>
+                    <span class="enterprise-rank-value">${count}</span>
+                </div>
+            `;
+        }).join("");
+    }
+
+    function getDashboardRange() {
+        const params = new URLSearchParams(window.location.search);
+        const r = (params.get("range") || "7d").toLowerCase();
+        return ["today", "yesterday", "7d", "30d"].includes(r) ? r : "7d";
+    }
+
+    function setDashboardRange(range) {
+        const params = new URLSearchParams(window.location.search);
+        params.set("range", range);
+        const url = window.location.pathname + "?" + params.toString();
+        window.history.replaceState({}, "", url);
+        document.querySelectorAll("#dashboardRangeGroup .dashboard-range-btn").forEach((btn) => {
+            btn.classList.toggle("active", btn.getAttribute("data-range") === range);
+        });
+        const titles = { today: "今日风险趋势", yesterday: "昨日风险趋势", "7d": "近 7 天风险趋势", "30d": "近 30 天风险趋势" };
+        const titleEl = document.getElementById("riskTrendChartTitle");
+        if (titleEl) titleEl.textContent = titles[range] || titles["7d"];
+    }
+
+    async function fetchJson(url) {
+        const response = await fetch(url, {
+            cache: "no-store",
+            headers: { Accept: "application/json" },
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+    }
+
+    async function loadEnterpriseMetrics() {
+        const range = getDashboardRange();
+        const rangeQ = "range=" + encodeURIComponent(range);
+        try {
+            const [metricsRes, trendsRes, distributionRes] = await Promise.all([
+                fetchJson("/api/dashboard/metrics?" + rangeQ),
+                fetchJson("/api/dashboard/risk_trends?" + rangeQ),
+                fetchJson("/api/dashboard/risk_distribution?" + rangeQ),
+            ]);
+            if (metricsRes.ok !== true) throw new Error("metrics unavailable");
+            if (trendsRes.ok !== true) throw new Error("trend unavailable");
+            if (distributionRes.ok !== true) throw new Error("risk distribution unavailable");
+
+            renderMetrics(metricsRes.data || {});
+            renderRiskTrends(trendsRes.data || {});
+            renderRiskDistribution(distributionRes.data || {});
+            showMetricError("");
+        } catch (error) {
+            showMetricError(`指标加载失败: ${error.message}`);
+        }
+
+        try {
+            const rankRes = await fetchJson("/api/dashboard/department_risk_rank?limit=8");
+            if (rankRes.ok === true) {
+                renderDepartmentRiskRank(rankRes.data || []);
+            } else {
+                renderDepartmentRiskRank([]);
+            }
+        } catch (error) {
+            const message = String(error.message || "");
+            if (message.includes("403")) {
+                const rankNode = document.getElementById("deptRiskRankList");
+                if (rankNode) rankNode.textContent = "仅全局角色可查看";
+            } else {
+                renderDepartmentRiskRank([]);
+            }
+        }
+    }
+
+    window.DeepAuditDashboard = window.DeepAuditDashboard || {};
+    window.DeepAuditDashboard.refreshEnterpriseMetrics = loadEnterpriseMetrics;
+
+    setDashboardRange(getDashboardRange());
+    document.querySelectorAll("#dashboardRangeGroup .dashboard-range-btn").forEach((btn) => {
+        btn.addEventListener("click", function () {
+            const r = this.getAttribute("data-range");
+            if (!r) return;
+            setDashboardRange(r);
+            loadEnterpriseMetrics();
+        });
+    });
+
+    loadEnterpriseMetrics();
+    window.setInterval(loadEnterpriseMetrics, 15000);
+})();
+</script>
+<script>
+(() => {
+    let cursor = 0;
+    let initialized = false;
+    const summaryNode = document.getElementById("realtimeStatusSummary");
+    const listNode = document.getElementById("realtimeEventList");
+    const unmatchedNode = document.getElementById("bankUnmatchedCount");
+    const matchedNode = document.getElementById("bankMatchedCount");
+    const totalNode = document.getElementById("bankTotalCount");
+    if (!summaryNode || !listNode) return;
+
+    const eventLogs = [];
+    const MAX_EVENT_LOGS = 20;
+    const STAGE_ORDER = [
+        "INGEST",
+        "RULE_HIT",
+        "AI_EXPLAIN",
+        "RISK_EVENT_CREATED",
+        "CASE_CREATED",
+        "CASE_ASSIGNED",
+        "CASE_CLOSED",
+    ];
+    const STAGE_LABELS = {
+        INGEST: "数据入湖",
+        RULE_HIT: "规则命中",
+        AI_EXPLAIN: "AI解释",
+        RISK_EVENT_CREATED: "风险事件",
+        CASE_CREATED: "案件创建",
+        CASE_ASSIGNED: "案件分派",
+        CASE_CLOSED: "案件结案",
+    };
+    const LEGACY_STAGE_MAP = {
+        PAYMENT_IMPORTED: "INGEST",
+        BANK_TXN_SAVED: "RULE_HIT",
+        INVOICE_VERIFIED: "RULE_HIT",
+    };
+
+    function escapeHtml(value) {
+        return String(value || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function nowTimeText() {
+        return new Date().toLocaleTimeString("zh-CN", { hour12: false });
+    }
+
+    function renderEventLogs() {
+        if (!eventLogs.length) {
+            listNode.innerHTML = "";
+            summaryNode.textContent = "暂无新增流水事件";
+            return;
+        }
+
+        summaryNode.textContent = eventLogs[0].summary;
+        listNode.innerHTML = eventLogs.map((item) => {
+            const detailItems = Array.isArray(item.details) ? item.details.filter(Boolean) : [];
+            const detailHtml = detailItems.length
+                ? `<div class="pipeline-event-details">${detailItems.map((line) => `<div>${escapeHtml(line)}</div>`).join("")}</div>`
+                : "";
+            if (!detailHtml) {
+                return (
+                    `<div class="pipeline-event-row tone-${escapeHtml(item.tone || "info")}">` +
+                        `<span class="pipeline-event-time">${escapeHtml(item.time || "--:--:--")}</span>` +
+                        `<span class="pipeline-event-summary">${escapeHtml(item.summary || "-")}</span>` +
+                    `</div>`
+                );
+            }
+            return (
+                `<details class="pipeline-event-row tone-${escapeHtml(item.tone || "info")}">` +
+                    `<summary>` +
+                        `<span class="pipeline-event-time">${escapeHtml(item.time || "--:--:--")}</span>` +
+                        `<span class="pipeline-event-summary">${escapeHtml(item.summary || "-")}</span>` +
+                    `</summary>` +
+                    detailHtml +
+                `</details>`
+            );
+        }).join("");
+    }
+
+    function appendEventLog(summary, options = {}) {
+        const item = {
+            time: options.time || nowTimeText(),
+            summary: String(summary || "-"),
+            details: Array.isArray(options.details) ? options.details : [],
+            tone: String(options.tone || "info").toLowerCase(),
+        };
+        eventLogs.unshift(item);
+        if (eventLogs.length > MAX_EVENT_LOGS) {
+            eventLogs.length = MAX_EVENT_LOGS;
+        }
+        renderEventLogs();
+    }
+
+    function formatPaymentImported(eventItem) {
+        const payload = (eventItem && eventItem.payload) || {};
+        const count = Number(payload.count) || 0;
+        const firstTxn = String(payload.first_txn_id || "-");
+        return `已导入银行流水 ${count} 条（首条：${firstTxn}）`;
+    }
+
+    function formatBankTxnSaved(eventItem) {
+        const payload = (eventItem && eventItem.payload) || {};
+        const saved = Number(payload.saved_count) || 0;
+        const skipped = Number(payload.skipped_count) || 0;
+        return `已入库流水 ${saved} 条（跳过重复 ${skipped} 条）`;
+    }
+
+    function formatPaymentMatched(eventItem) {
+        const payload = (eventItem && eventItem.payload) || {};
+        const matched = Number(payload.matched_count) || 0;
+        const pairs = Array.isArray(payload.matched_pairs) ? payload.matched_pairs : [];
+        if (!pairs.length) {
+            return `自动匹配成功 ${matched} 条`;
+        }
+        const first = pairs[0] || {};
+        const txnId = String(first.txn_id || "-");
+        const invoiceId = String(first.invoice_id || "-");
+        return `自动匹配成功 ${matched} 条（示例：${txnId} -> 单据#${invoiceId}）`;
+    }
+
+    function getStageIndex(stage) {
+        const idx = STAGE_ORDER.indexOf(stage);
+        return idx >= 0 ? idx : Number.MAX_SAFE_INTEGER;
+    }
+
+    function extractStage(eventItem) {
+        const payload = (eventItem && eventItem.payload) || {};
+        const stage = String(payload.stage || "").trim().toUpperCase();
+        if (stage && STAGE_ORDER.includes(stage)) {
+            return stage;
+        }
+        const payloadType = String(payload.event_type || "").trim().toUpperCase();
+        if (payloadType && LEGACY_STAGE_MAP[payloadType]) {
+            return LEGACY_STAGE_MAP[payloadType];
+        }
+        const eventType = String((eventItem && eventItem.type) || "").trim().toUpperCase();
+        return LEGACY_STAGE_MAP[eventType] || "";
+    }
+
+    function formatStageMessage(stage, eventItem) {
+        const payload = (eventItem && eventItem.payload) || {};
+        const eventType = String(payload.event_type || eventItem.type || "").trim().toUpperCase();
+        const riskLevelText = (value) => {
+            const code = String(value || "").trim().toUpperCase();
+            if (code === "HIGH") return "高风险";
+            if (code === "MEDIUM") return "中风险";
+            if (code === "LOW") return "低风险";
+            return "未知风险";
+        };
+        if (eventType === "INVOICE_VERIFIED") {
+            const resultStatus = String(payload.result_status || payload.verify_status || "").toUpperCase();
+            const invoiceId = payload.invoice_id || (payload.related_ids && payload.related_ids.invoice_id) || "-";
+            const latency = Number(payload.latency_ms);
+            const latencyText = Number.isFinite(latency) && latency > 0 ? `｜${latency}ms` : "";
+            const humanStatus = resultStatus === "PASSED" ? "发票验真通过" : "发票验真未通过";
+            return `${humanStatus}｜单据#${invoiceId}${latencyText}`;
+        }
+
+        if (stage === "INGEST") {
+            return formatPaymentImported(eventItem);
+        }
+        if (stage === "RULE_HIT") {
+            const message = String(payload.message || "").trim();
+            if (message) {
+                return message;
+            }
+            return formatBankTxnSaved(eventItem);
+        }
+        if (stage === "AI_EXPLAIN") {
+            const invoiceId = String(payload.invoice_id || "-");
+            const riskLevel = riskLevelText(payload.risk_level);
+            const riskScore = Number(payload.risk_score) || 0;
+            return `单据#${invoiceId} AI解释完成（${riskLevel}/${riskScore}）`;
+        }
+        if (stage === "RISK_EVENT_CREATED") {
+            const eventId = String(payload.event_id || "-");
+            const invoiceId = String(payload.invoice_id || "-");
+            const riskLevel = riskLevelText(payload.risk_level);
+            return `风险事件#${eventId} 已创建（单据#${invoiceId}，${riskLevel}）`;
+        }
+        if (stage === "CASE_CREATED") {
+            const caseId = String(payload.case_id || "-");
+            const eventId = String(payload.event_id || "-");
+            return `风险案件#${caseId} 已创建（关联事件#${eventId}）`;
+        }
+        if (stage === "CASE_ASSIGNED") {
+            const caseId = String(payload.case_id || "-");
+            const assignedTo = String(payload.assigned_to || "-");
+            return `风险案件#${caseId} 已分派给 ${assignedTo}`;
+        }
+        if (stage === "CASE_CLOSED") {
+            const caseId = String(payload.case_id || "-");
+            const note = String(payload.resolution_note || "").trim();
+            if (note) {
+                return `风险案件#${caseId} 已结案（${note}）`;
+            }
+            return `风险案件#${caseId} 已结案`;
+        }
+        const stageLabel = STAGE_LABELS[stage] || stage;
+        return `${stageLabel} 已更新`;
+    }
+
+    function stageTone(stage, eventItem) {
+        const payload = (eventItem && eventItem.payload) || {};
+        const eventType = String(payload.event_type || eventItem.type || "").trim().toUpperCase();
+        if (eventType === "INVOICE_VERIFIED") {
+            const resultStatus = String(payload.result_status || payload.verify_status || "").toUpperCase();
+            return resultStatus === "FAILED" ? "warn" : "info";
+        }
+        if (stage === "CASE_CREATED" || stage === "CASE_ASSIGNED" || stage === "CASE_CLOSED") {
+            return "info";
+        }
+        return "info";
+    }
+
+    function stageDetails(stage, eventItem) {
+        const payload = (eventItem && eventItem.payload) || {};
+        const eventType = String(payload.event_type || eventItem.type || "").trim().toUpperCase();
+        const details = [];
+        if (eventType === "INVOICE_VERIFIED") {
+            const requestId = String(payload.request_id || (payload.related_ids && payload.related_ids.request_id) || "").trim();
+            const provider = String(payload.provider || "").trim();
+            const statusCode = String(payload.status_code || "").trim();
+            const resultCode = String(payload.result_code || "").trim();
+            if (requestId) details.push(`请求编号：${requestId}`);
+            if (provider) details.push(`服务提供方：${provider}`);
+            if (statusCode) details.push(`接口状态码：${statusCode}`);
+            if (resultCode) details.push(`返回结果码：${resultCode}`);
+            return details;
+        }
+
+        const traceId = String(payload.trace_id || "").trim();
+        if (traceId) details.push(`追踪编号：${traceId}`);
+        if (payload.event_id) details.push(`事件编号：${payload.event_id}`);
+        if (payload.case_id) details.push(`案件编号：${payload.case_id}`);
+        if (payload.invoice_id) details.push(`单据编号：${payload.invoice_id}`);
+        return details;
+    }
+
+    function renderBankStats(data) {
+        if (!data || data.ok !== true) return;
+        if (totalNode) totalNode.textContent = String(Number(data.total_txn) || 0);
+        if (matchedNode) matchedNode.textContent = String(Number(data.matched_txn) || 0);
+        if (unmatchedNode) unmatchedNode.textContent = String(Number(data.unmatched_txn) || 0);
+    }
+
+    async function loadBankStats() {
+        try {
+            const response = await fetch("/api/bank/stats", {
+                cache: "no-store",
+                headers: { Accept: "application/json" },
+            });
+            if (!response.ok) return;
+            const data = await response.json();
+            renderBankStats(data);
+        } catch (error) {
+            // silent retry
+        }
+    }
+
+    function refreshEnterpriseMetricsIfAvailable() {
+        const fn = window.DeepAuditDashboard && window.DeepAuditDashboard.refreshEnterpriseMetrics;
+        if (typeof fn === "function") {
+            fn();
+        }
+    }
+
+    async function pollEvents() {
+        try {
+            const response = await fetch(`/api/events/poll?cursor=${encodeURIComponent(cursor)}`, {
+                cache: "no-store",
+                headers: { Accept: "application/json" },
+            });
+            if (!response.ok) return;
+
+            const data = await response.json();
+            if (!data || data.ok !== true) return;
+            if (Number.isInteger(data.cursor)) {
+                cursor = data.cursor;
+            }
+
+            const events = Array.isArray(data.events) ? data.events : [];
+            if (!initialized) {
+                initialized = true;
+                return;
+            }
+            if (!events.length) {
+                return;
+            }
+
+            let shouldRefreshStats = false;
+            let hasRiskStageEvent = false;
+            const stageEvents = [];
+            for (const eventItem of events) {
+                const eventType = String(eventItem.type || "").toUpperCase();
+                if (eventType === "PAYMENT_MATCHED") {
+                    appendEventLog(formatPaymentMatched(eventItem), { tone: "info" });
+                    shouldRefreshStats = true;
+                    continue;
+                }
+                if (eventType === "PAYMENT_IMPORTED" || eventType === "BANK_TXN_SAVED") {
+                    shouldRefreshStats = true;
+                }
+
+                const stage = extractStage(eventItem);
+                if (stage) {
+                    stageEvents.push({ stage, eventItem });
+                    hasRiskStageEvent = true;
+                }
+            }
+
+            stageEvents.sort((a, b) => getStageIndex(a.stage) - getStageIndex(b.stage));
+            for (const item of stageEvents) {
+                appendEventLog(formatStageMessage(item.stage, item.eventItem), {
+                    tone: stageTone(item.stage, item.eventItem),
+                    details: stageDetails(item.stage, item.eventItem),
+                });
+            }
+            if (shouldRefreshStats) {
+                loadBankStats();
+            }
+            if (hasRiskStageEvent) {
+                refreshEnterpriseMetricsIfAvailable();
+            }
+        } catch (error) {
+            // keep silent and retry by next interval
+        }
+    }
+
+    loadBankStats();
+    pollEvents();
+    window.setInterval(pollEvents, 2000);
+})();
+</script>
+{% endblock %}

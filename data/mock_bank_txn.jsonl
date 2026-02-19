@@ -1,0 +1,40 @@
+{"txn_id":"TXN-202602-0001","amount":93.37,"ts":"2026-02-01T08:11:00+08:00","counterparty":"Guangzhou Hotel","memo":"hotel reimbursement"}
+{"txn_id":"TXN-202602-0002","amount":106.74,"ts":"2026-02-01T08:22:00+08:00","counterparty":"Shenzhen Transport","memo":"taxi fare"}
+{"txn_id":"TXN-202602-0003","amount":120.11,"ts":"2026-02-01T08:33:00+08:00","counterparty":"Cloud Office Supply","memo":"office supply"}
+{"txn_id":"TXN-202602-0004","amount":133.48,"ts":"2026-02-01T08:44:00+08:00","counterparty":"Metro Taxi","memo":"client meeting"}
+{"txn_id":"TXN-202602-0005","amount":146.85,"ts":"2026-02-01T08:55:00+08:00","counterparty":"Business Meal","memo":"project travel"}
+{"txn_id":"TXN-202602-0006","amount":160.22,"ts":"2026-02-01T09:06:00+08:00","counterparty":"Airline Ticket","memo":"meal expense"}
+{"txn_id":"TXN-202602-0007","amount":173.59,"ts":"2026-02-01T09:17:00+08:00","counterparty":"Train Service","memo":"parking fee"}
+{"txn_id":"TXN-202602-0008","amount":186.96,"ts":"2026-02-01T09:28:00+08:00","counterparty":"Conference Center","memo":"courier fee"}
+{"txn_id":"TXN-202602-0009","amount":200.33,"ts":"2026-02-01T09:39:00+08:00","counterparty":"Guangzhou Hotel","memo":"hotel reimbursement"}
+{"txn_id":"TXN-202602-0010","amount":213.7,"ts":"2026-02-01T09:50:00+08:00","counterparty":"Shenzhen Transport","memo":"taxi fare"}
+{"txn_id":"TXN-202602-0011","amount":227.07,"ts":"2026-02-01T10:01:00+08:00","counterparty":"Cloud Office Supply","memo":"office supply"}
+{"txn_id":"TXN-202602-0012","amount":240.44,"ts":"2026-02-01T10:12:00+08:00","counterparty":"Metro Taxi","memo":"client meeting"}
+{"txn_id":"TXN-202602-0013","amount":253.81,"ts":"2026-02-01T10:23:00+08:00","counterparty":"Business Meal","memo":"project travel"}
+{"txn_id":"TXN-202602-0014","amount":267.18,"ts":"2026-02-01T10:34:00+08:00","counterparty":"Airline Ticket","memo":"meal expense"}
+{"txn_id":"TXN-202602-0015","amount":280.55,"ts":"2026-02-01T10:45:00+08:00","counterparty":"Train Service","memo":"parking fee"}
+{"txn_id":"TXN-202602-0016","amount":293.92,"ts":"2026-02-01T10:56:00+08:00","counterparty":"Conference Center","memo":"courier fee"}
+{"txn_id":"TXN-202602-0017","amount":307.29,"ts":"2026-02-01T11:07:00+08:00","counterparty":"Guangzhou Hotel","memo":"hotel reimbursement"}
+{"txn_id":"TXN-202602-0018","amount":320.66,"ts":"2026-02-01T11:18:00+08:00","counterparty":"Shenzhen Transport","memo":"taxi fare"}
+{"txn_id":"TXN-202602-0019","amount":334.03,"ts":"2026-02-01T11:29:00+08:00","counterparty":"Cloud Office Supply","memo":"office supply"}
+{"txn_id":"TXN-202602-0020","amount":347.4,"ts":"2026-02-01T11:40:00+08:00","counterparty":"Metro Taxi","memo":"client meeting"}
+{"txn_id":"TXN-202602-0021","amount":360.77,"ts":"2026-02-01T11:51:00+08:00","counterparty":"Business Meal","memo":"project travel"}
+{"txn_id":"TXN-202602-0022","amount":374.14,"ts":"2026-02-01T12:02:00+08:00","counterparty":"Airline Ticket","memo":"meal expense"}
+{"txn_id":"TXN-202602-0023","amount":387.51,"ts":"2026-02-01T12:13:00+08:00","counterparty":"Train Service","memo":"parking fee"}
+{"txn_id":"TXN-202602-0024","amount":400.88,"ts":"2026-02-01T12:24:00+08:00","counterparty":"Conference Center","memo":"courier fee"}
+{"txn_id":"TXN-202602-0025","amount":414.25,"ts":"2026-02-01T12:35:00+08:00","counterparty":"Guangzhou Hotel","memo":"hotel reimbursement"}
+{"txn_id":"TXN-202602-0026","amount":427.62,"ts":"2026-02-01T12:46:00+08:00","counterparty":"Shenzhen Transport","memo":"taxi fare"}
+{"txn_id":"TXN-202602-0027","amount":440.99,"ts":"2026-02-01T12:57:00+08:00","counterparty":"Cloud Office Supply","memo":"office supply"}
+{"txn_id":"TXN-202602-0028","amount":454.36,"ts":"2026-02-01T13:08:00+08:00","counterparty":"Metro Taxi","memo":"client meeting"}
+{"txn_id":"TXN-202602-0029","amount":467.73,"ts":"2026-02-01T13:19:00+08:00","counterparty":"Business Meal","memo":"project travel"}
+{"txn_id":"TXN-202602-0030","amount":481.1,"ts":"2026-02-01T13:30:00+08:00","counterparty":"Airline Ticket","memo":"meal expense"}
+{"txn_id":"TXN-202602-0031","amount":494.47,"ts":"2026-02-01T13:41:00+08:00","counterparty":"Train Service","memo":"parking fee"}
+{"txn_id":"TXN-202602-0032","amount":507.84,"ts":"2026-02-01T13:52:00+08:00","counterparty":"Conference Center","memo":"courier fee"}
+{"txn_id":"TXN-202602-0033","amount":521.21,"ts":"2026-02-01T14:03:00+08:00","counterparty":"Guangzhou Hotel","memo":"hotel reimbursement"}
+{"txn_id":"TXN-202602-0034","amount":534.58,"ts":"2026-02-01T14:14:00+08:00","counterparty":"Shenzhen Transport","memo":"taxi fare"}
+{"txn_id":"TXN-202602-0035","amount":547.95,"ts":"2026-02-01T14:25:00+08:00","counterparty":"Cloud Office Supply","memo":"office supply"}
+{"txn_id":"TXN-202602-0036","amount":561.32,"ts":"2026-02-01T14:36:00+08:00","counterparty":"Metro Taxi","memo":"client meeting"}
+{"txn_id":"TXN-202602-0037","amount":574.69,"ts":"2026-02-01T14:47:00+08:00","counterparty":"Business Meal","memo":"project travel"}
+{"txn_id":"TXN-202602-0038","amount":588.06,"ts":"2026-02-01T14:58:00+08:00","counterparty":"Airline Ticket","memo":"meal expense"}
+{"txn_id":"TXN-202602-0039","amount":601.43,"ts":"2026-02-01T15:09:00+08:00","counterparty":"Train Service","memo":"parking fee"}
+{"txn_id":"TXN-202602-0040","amount":614.8,"ts":"2026-02-01T15:20:00+08:00","counterparty":"Conference Center","memo":"courier fee"}

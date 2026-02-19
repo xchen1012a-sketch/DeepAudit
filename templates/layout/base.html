@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    {% set _app_version = app_version if app_version is defined and app_version else (static_version if static_version is defined else '') %}
+    {% set _static_version = _app_version %}
+    <meta name="app-version" content="{{ _app_version }}">
+    <meta name="static-version" content="{{ _static_version }}">
+    <title>{% block title %}深度审计{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%230066FF'/%3E%3Cstop offset='100%25' style='stop-color:%2300D4FF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M16 2L6 6v7c0 6.5 4 12 10 15 6-3 10-8.5 10-15V6L16 2z' stroke='url(%23g)' stroke-width='1.8' fill='none' stroke-linejoin='round'/%3E%3Crect x='12' y='11' width='8' height='8' rx='1.5' fill='url(%23g)' opacity='0.9'/%3E%3Cpath d='M10 13h-2M10 16h-2M10 19h-2' stroke='url(%23g)' stroke-width='1.5' stroke-linecap='round' opacity='0.7'/%3E%3Cpath d='M22 13h2M22 16h2M22 19h2' stroke='url(%23g)' stroke-width='1.5' stroke-linecap='round' opacity='0.7'/%3E%3Cpath d='M14 15l1.5 1.5 3-3' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css', v=_app_version, stamp='20260217_01') }}">
+    <script src="{{ url_for('static', filename='js/permission_refresh.js', v=_app_version) }}"></script>
+    {% block head %}{% endblock %}
+    {% block page_css %}{% endblock %}
+</head>
+
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+    <div style="display:none" id="BASE_STAMP">BASE_STAMP: layout/base.html@{{ _app_version }}</div>
+    {% if request.args.get('debug_stamp') == '1' %}
+    <div id="BASE_STAMP_VISIBLE" style="position:sticky;top:0;z-index:9999;background:#b91c1c;color:#fff;padding:6px 12px;font:700 12px/1.2 monospace;">
+        BASE_STAMP: layout/base.html@{{ _app_version }}
+    </div>
+    {% endif %}
+    {% set _nav_user = nav_user if nav_user is defined and nav_user else {} %}
+    {% set _display_name = _nav_user.get('employee_name') or _nav_user.get('username') or '用户' %}
+    {% set _display_role = _nav_user.get('role') or '员工' %}
+    {% set _display_dept = _nav_user.get('department') or '-' %}
+    {% set _access_level = nav_access_level if nav_access_level is defined else 'A' %}
+    {% set _access_level_cn = nav_access_level_cn if nav_access_level_cn is defined else '普通员工' %}
+    {% set _path = request.path or '/' %}
+    {% set _focus = request.args.get('focus') or '' %}
+    {% set _section = request.args.get('section') or '' %}
+    {% set _can_dashboard = nav_has_permission('VIEW_DASHBOARD') if nav_has_permission is defined else True %}
+    {% set _can_view_invoices = nav_has_permission('VIEW_INVOICES') if nav_has_permission is defined else True %}
+    {% set _can_manage_users = nav_has_permission('MANAGE_USERS') if nav_has_permission is defined else True %}
+    {% set _can_manage_roles = nav_has_permission('MANAGE_ROLES') if nav_has_permission is defined else True %}
+    {% set _can_manage_rules = nav_has_permission('MANAGE_RULES') if nav_has_permission is defined else True %}
+    {% set _can_manage_system = nav_has_any_permission(['MANAGE_SETTINGS', 'MANAGE_SYSTEM']) if nav_has_any_permission is defined else True %}
+    {% set _can_view_ai_ledger = nav_has_permission('VIEW_AI_LEDGER') if nav_has_permission is defined else True %}
+    {% set _can_approval_console = nav_can_approval_console if nav_can_approval_console is defined else (nav_has_any_permission(['ASSIGN_CASE', 'CLOSE_CASE']) if nav_has_any_permission is defined else True) %}
+    {% set _can_workflow_manage = nav_can_workflow_manage if nav_can_workflow_manage is defined else _can_manage_system %}
+    {% set _can_governance = nav_can_governance if nav_can_governance is defined else (_can_manage_users or _can_manage_roles or _can_manage_rules or _can_manage_system) %}
+    {% set _can_risk_center = nav_has_any_permission(['CREATE_CASE', 'ASSIGN_CASE', 'CLOSE_CASE']) if nav_has_any_permission is defined else True %}
+    {% set _show_ops_dashboard = _can_dashboard %}
+    {% set _show_ops_upload = _can_view_invoices %}
+    {% set _show_ops_ledger = _can_view_invoices %}
+    {% set _show_risk_approval = _can_approval_console %}
+    {% set _show_risk_workflow = _can_workflow_manage %}
+    {% set _show_risk_center = _can_risk_center %}
+    {% set _show_org_users = _can_governance and _can_manage_users %}
+    {% set _show_org_roles = _can_governance and _can_manage_roles %}
+    {% set _show_org_departments = _can_governance and _can_manage_users %}
+    {% set _show_org_positions = _can_governance and _can_manage_users %}
+    {% set _show_org_data_scope = _can_governance and _can_manage_roles %}
+    {% set _show_gov_rules = _can_governance and _can_manage_rules %}
+    {% set _show_gov_ai_ledger = _can_view_ai_ledger %}
+    {% set _show_gov_sys_params = _can_governance and _can_manage_system %}
+    {% set _show_monitor_system = _can_manage_system %}
+    {% set _show_monitor_logs = _can_governance and (_can_manage_system or _can_manage_users or _can_manage_roles or _can_manage_rules) %}
+    {% set _render_disabled_menus = True %}
+    {% set _ops_dashboard_active = _path == '/dashboard' and _section != 'monitor' %}
+    {% set _ops_upload_active = _path in ['/', '/upload'] %}
+    {% set _ops_ledger_active = _path.startswith('/ledger-center') or (_path.startswith('/invoices_page') and _focus != 'ai_ledger') %}
+    {% set _risk_approval_active = _path in ['/approval_center', '/audit_workbench'] %}
+    {% set _risk_workflow_active = _path.startswith('/workflow') %}
+    {% set _risk_center_active = _path.startswith('/risk-center') or _path.startswith('/risk/cases') %}
+    {% set _org_users_active = _path.startswith('/admin/users') %}
+    {% set _org_roles_active = _path.startswith('/admin/roles') %}
+    {% set _org_departments_active = _path.startswith('/admin/departments') %}
+    {% set _org_positions_active = _path.startswith('/admin/positions') %}
+    {% set _org_data_scope_active = _path.startswith('/admin/data_scope') %}
+    {% set _gov_rules_active = _path.startswith('/governance/rules') %}
+    {% set _gov_ai_ledger_active = _path.startswith('/audit_chain') %}
+    {% set _gov_sys_params_active = _path.startswith('/settings') %}
+    {% set _monitor_system_active = _path == '/monitoring/dashboard' %}
+    {% set _monitor_logs_active = _path.startswith('/admin/audit_logs') %}
+    {% set _group_ops_visible = _show_ops_dashboard or _show_ops_upload or _show_ops_ledger %}
+    {% set _group_risk_visible = _show_risk_approval or _show_risk_workflow or _show_risk_center %}
+    {% set _group_org_visible = _show_org_users or _show_org_roles or _show_org_departments or _show_org_positions or _show_org_data_scope %}
+    {% set _group_gov_visible = _show_gov_rules or _show_gov_ai_ledger or _show_gov_sys_params %}
+    {% set _group_monitor_visible = _show_monitor_system or _show_monitor_logs %}
+    {% set _group_ops_open = _ops_dashboard_active or _ops_upload_active or _ops_ledger_active %}
+    {% set _group_risk_open = _risk_approval_active or _risk_workflow_active or _risk_center_active %}
+    {% set _group_org_open = _org_users_active or _org_roles_active or _org_departments_active or _org_positions_active or _org_data_scope_active %}
+    {% set _group_gov_open = _gov_rules_active or _gov_ai_ledger_active or _gov_sys_params_active %}
+    {% set _group_monitor_open = _monitor_system_active or _monitor_logs_active %}
+
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a href="/dashboard" class="nav-link topbar-brand" title="返回首页">
+                    <span class="topbar-brand-logo" aria-hidden="true">
+                        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="auditGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#0066FF;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#00D4FF;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <!-- 盾牌外框 - 代表风控保护 -->
+                            <path d="M16 2L6 6v7c0 6.5 4 12 10 15 6-3 10-8.5 10-15V6L16 2z" stroke="url(#auditGrad)" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+                            <!-- AI芯片核心 -->
+                            <rect x="12" y="11" width="8" height="8" rx="1.5" fill="url(#auditGrad)" opacity="0.9"/>
+                            <!-- 数据流线条 -->
+                            <path d="M10 13h-2M10 16h-2M10 19h-2" stroke="url(#auditGrad)" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+                            <path d="M22 13h2M22 16h2M22 19h2" stroke="url(#auditGrad)" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+                            <!-- 审计验证标记 -->
+                            <path d="M14 15l1.5 1.5 3-3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <span class="topbar-brand-text">深度审计</span>
+                </a>
+            </li>
+            <li class="nav-item d-none d-sm-inline-block">
+                <span class="nav-link topbar-system-title">财务风控与审计平台</span>
+            </li>
+        </ul>
+
+        <ul class="navbar-nav ml-auto">
+            <li class="nav-item dropdown user-menu-dropdown">
+                <a href="#" class="nav-link d-flex align-items-center" data-toggle="dropdown" style="padding: 0 12px; height: 100%;">
+                    <img src="{{ url_for('static', filename='dist/img/user2-160x160.jpg') }}" class="user-avatar-sm" alt="用户头像" onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name={{ _display_name | urlencode }}&background=1f78ff&color=fff&size=96';">
+                    <span class="d-none d-md-inline ml-2 text-dark font-weight-medium">{{ _display_name }}</span>
+                </a>
+
+                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right ant-dropdown-menu">
+                    <div class="dropdown-header text-center border-bottom bg-light-subtle">
+                        <div class="font-weight-bold text-dark">{{ _display_role }}</div>
+                        <div class="small text-muted">{{ _display_dept }}</div>
+                        <div class="small text-muted">分级：{{ _access_level }} - {{ _access_level_cn }}</div>
+                    </div>
+
+                    <a href="/profile" class="dropdown-item ant-dropdown-item">
+                        <i class="ri-user-settings-line mr-2"></i> 个人中心
+                    </a>
+                    <a href="/profile" class="dropdown-item ant-dropdown-item">
+                        <i class="ri-lock-password-line mr-2"></i> 修改密码
+                    </a>
+                    {% if _show_gov_sys_params %}
+                    <a href="/settings" class="dropdown-item ant-dropdown-item">
+                        <i class="ri-settings-3-line mr-2"></i> 系统设置
+                    </a>
+                    {% endif %}
+
+                    <div class="dropdown-divider"></div>
+
+                    <a href="/logout" class="dropdown-item ant-dropdown-item text-danger">
+                        <i class="ri-logout-box-r-line mr-2"></i> 退出登录
+                    </a>
+                </div>
+            </li>
+        </ul>
+    </nav>
+
+    <aside class="main-sidebar sidebar-container d-flex flex-column">
+        <button id="sidebarToggleBtn" class="sidebar-toggle-btn" type="button" aria-label="切换侧边栏" aria-expanded="true">
+            <i class="fas fa-bars" aria-hidden="true"></i>
+        </button>
+
+        <div class="brand-link sidebar-logo" title="深度审计">
+            <span class="sidebar-logo-icon" aria-hidden="true">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="auditGradSidebar" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#0066FF;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#00D4FF;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <!-- 盾牌外框 - 代表风控保护 -->
+                    <path d="M16 2L6 6v7c0 6.5 4 12 10 15 6-3 10-8.5 10-15V6L16 2z" stroke="url(#auditGradSidebar)" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+                    <!-- AI芯片核心 -->
+                    <rect x="12" y="11" width="8" height="8" rx="1.5" fill="url(#auditGradSidebar)" opacity="0.9"/>
+                    <!-- 数据流线条 -->
+                    <path d="M10 13h-2M10 16h-2M10 19h-2" stroke="url(#auditGradSidebar)" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+                    <path d="M22 13h2M22 16h2M22 19h2" stroke="url(#auditGradSidebar)" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+                    <!-- 审计验证标记 -->
+                    <path d="M14 15l1.5 1.5 3-3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </span>
+        </div>
+
+        <div class="sidebar-search-box" id="sidebarSearchBox">
+            <div class="sidebar-search-inner">
+                <svg class="sidebar-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input
+                    type="text"
+                    id="sidebarSearchInput"
+                    class="sidebar-search-input"
+                    placeholder="搜索单据/风险/台账/审批…"
+                    autocomplete="off"
+                    spellcheck="false"
+                />
+            </div>
+        </div>
+
+        <div class="sidebar flex-grow-1">
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column sidebar-groups" role="menu">
+                    {% if _group_ops_visible %}
+                    <li
+                        class="nav-item sidebar-group {% if _group_ops_open %}is-open{% endif %}"
+                        data-group-key="biz_ops"
+                        data-open-default="{{ '1' if _group_ops_open else '0' }}"
+                    >
+                        <button type="button" class="sidebar-group-toggle" aria-expanded="{{ 'true' if _group_ops_open else 'false' }}">
+                            <i class="ri-arrow-right-s-line sidebar-group-arrow" aria-hidden="true"></i>
+                            <span class="sidebar-group-title">业务运营</span>
+                        </button>
+                        <ul class="nav nav-pills flex-column sidebar-submenu">
+                            {% if _show_ops_dashboard %}
+                            <li class="nav-item">
+                                <a href="/dashboard" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _ops_dashboard_active }}">
+                                    <i class="nav-icon fas fa-th-large"></i>
+                                    <p>管理总览</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-th-large"></i>
+                                    <p>管理总览 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if _show_ops_upload %}
+                            <li class="nav-item">
+                                <a href="/upload" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _ops_upload_active }}">
+                                    <i class="nav-icon fas fa-edit"></i>
+                                    <p>费用报销受理</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-edit"></i>
+                                    <p>费用报销受理 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if _show_ops_ledger %}
+                            <li class="nav-item">
+                                <a href="/ledger-center" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _ops_ledger_active }}">
+                                    <i class="nav-icon fas fa-file-invoice-dollar"></i>
+                                    <p>凭证台账中心</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-file-invoice-dollar"></i>
+                                    <p>凭证台账中心 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    {% if _group_risk_visible %}
+                    <li
+                        class="nav-item sidebar-group {% if _group_risk_open %}is-open{% endif %}"
+                        data-group-key="risk_approval"
+                        data-open-default="{{ '1' if _group_risk_open else '0' }}"
+                    >
+                        <button type="button" class="sidebar-group-toggle" aria-expanded="{{ 'true' if _group_risk_open else 'false' }}">
+                            <i class="ri-arrow-right-s-line sidebar-group-arrow" aria-hidden="true"></i>
+                            <span class="sidebar-group-title">风险与审批</span>
+                        </button>
+                        <ul class="nav nav-pills flex-column sidebar-submenu">
+                            {% if _show_risk_center %}
+                            <li class="nav-item">
+                                <a href="/risk-center" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _risk_center_active }}">
+                                    <i class="nav-icon fas fa-shield-alt"></i>
+                                    <p>风险中心（事件/案件入口）</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-shield-alt"></i>
+                                    <p>风险中心（事件/案件入口） <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if _show_risk_approval %}
+                            <li class="nav-item">
+                                <a href="/approval_center" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _risk_approval_active }}">
+                                    <i class="nav-icon fas fa-user-check"></i>
+                                    <p>审批管理</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-user-check"></i>
+                                    <p>审批管理 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if _show_risk_workflow %}
+                            <li class="nav-item">
+                                <a href="/workflow" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _risk_workflow_active }}">
+                                    <i class="nav-icon fas fa-project-diagram"></i>
+                                    <p>审批流程管理</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-project-diagram"></i>
+                                    <p>审批流程管理 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    {% if _group_org_visible %}
+                    <li
+                        class="nav-item sidebar-group {% if _group_org_open %}is-open{% endif %}"
+                        data-group-key="org_permissions"
+                        data-open-default="{{ '1' if _group_org_open else '0' }}"
+                    >
+                        <button type="button" class="sidebar-group-toggle" aria-expanded="{{ 'true' if _group_org_open else 'false' }}">
+                            <i class="ri-arrow-right-s-line sidebar-group-arrow" aria-hidden="true"></i>
+                            <span class="sidebar-group-title">组织与权限</span>
+                        </button>
+                        <ul class="nav nav-pills flex-column sidebar-submenu">
+                            {% if _show_org_users %}
+                            <li class="nav-item">
+                                <a href="/admin/users" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _org_users_active }}">
+                                    <i class="nav-icon fas fa-users-cog"></i>
+                                    <p>人员管理</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-users-cog"></i>
+                                    <p>人员管理 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if _show_org_roles %}
+                            <li class="nav-item">
+                                <a href="/admin/roles" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _org_roles_active }}">
+                                    <i class="nav-icon fas fa-user-shield"></i>
+                                    <p>角色权限</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-user-shield"></i>
+                                    <p>角色权限 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if _show_org_departments %}
+                            <li class="nav-item">
+                                <a href="/admin/departments" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _org_departments_active }}">
+                                    <i class="nav-icon fas fa-sitemap"></i>
+                                    <p>部门管理</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-sitemap"></i>
+                                    <p>部门管理 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if _show_org_positions %}
+                            <li class="nav-item">
+                                <a href="/admin/positions" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _org_positions_active }}">
+                                    <i class="nav-icon fas fa-briefcase"></i>
+                                    <p>岗位管理</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-briefcase"></i>
+                                    <p>岗位管理 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if _show_org_data_scope %}
+                            <li class="nav-item">
+                                <a href="/admin/data_scope" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _org_data_scope_active }}">
+                                    <i class="nav-icon fas fa-layer-group"></i>
+                                    <p>数据范围策略</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-layer-group"></i>
+                                    <p>数据范围策略 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    {% if _group_gov_visible %}
+                    <li
+                        class="nav-item sidebar-group {% if _group_gov_open %}is-open{% endif %}"
+                        data-group-key="governance_rules"
+                        data-open-default="{{ '1' if _group_gov_open else '0' }}"
+                    >
+                        <button type="button" class="sidebar-group-toggle" aria-expanded="{{ 'true' if _group_gov_open else 'false' }}">
+                            <i class="ri-arrow-right-s-line sidebar-group-arrow" aria-hidden="true"></i>
+                            <span class="sidebar-group-title">治理与规则</span>
+                        </button>
+                        <ul class="nav nav-pills flex-column sidebar-submenu">
+                            {% if _show_gov_rules %}
+                            <li class="nav-item">
+                                <a href="/governance/rules" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _gov_rules_active }}">
+                                    <i class="nav-icon fas fa-balance-scale"></i>
+                                    <p>规则与政策管理</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-balance-scale"></i>
+                                    <p>规则与政策管理 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if _show_gov_ai_ledger %}
+                            <li class="nav-item">
+                                <a href="/audit_chain" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _gov_ai_ledger_active }}">
+                                    <i class="nav-icon fas fa-fingerprint"></i>
+                                    <p>智能审计链</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-fingerprint"></i>
+                                    <p>智能审计链 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if _show_gov_sys_params %}
+                            <li class="nav-item">
+                                <a href="/settings" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _gov_sys_params_active }}">
+                                    <i class="nav-icon fas fa-cog"></i>
+                                    <p>系统参数</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-cog"></i>
+                                    <p>系统参数 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    {% if _group_monitor_visible %}
+                    <li
+                        class="nav-item sidebar-group {% if _group_monitor_open %}is-open{% endif %}"
+                        data-group-key="sys_monitor"
+                        data-open-default="{{ '1' if _group_monitor_open else '0' }}"
+                    >
+                        <button type="button" class="sidebar-group-toggle" aria-expanded="{{ 'true' if _group_monitor_open else 'false' }}">
+                            <i class="ri-arrow-right-s-line sidebar-group-arrow" aria-hidden="true"></i>
+                            <span class="sidebar-group-title">系统监控</span>
+                        </button>
+                        <ul class="nav nav-pills flex-column sidebar-submenu">
+                            {% if _show_monitor_system %}
+                            <li class="nav-item">
+                                <a href="/monitoring/dashboard" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _monitor_system_active }}">
+                                    <i class="nav-icon fas fa-chart-line"></i>
+                                    <p>系统监控</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-chart-line"></i>
+                                    <p>系统监控 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if _show_monitor_logs %}
+                            <li class="nav-item">
+                                <a href="/admin/audit_logs" class="nav-link menu-item sidebar-submenu-link {{ 'active' if _monitor_logs_active }}">
+                                    <i class="nav-icon fas fa-clipboard-list"></i>
+                                    <p>操作日志</p>
+                                </a>
+                            </li>
+                            {% elif _render_disabled_menus %}
+                            <li class="nav-item">
+                                <a href="javascript:void(0)" class="nav-link menu-item sidebar-submenu-link is-disabled" aria-disabled="true" tabindex="-1">
+                                    <i class="nav-icon fas fa-clipboard-list"></i>
+                                    <p>操作日志 <span class="badge badge-light">无权限</span></p>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+
+        <div class="sidebar-footer mt-auto text-center"><small>版权所有 © 2026 画画</small></div>
+    </aside>
+
+    <div class="content-wrapper">
+        {% set _page_title %}{% block page_title %}{% endblock %}{% endset %}
+        {% if _page_title | trim %}
+        <section class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1>{{ _page_title }}</h1>
+                    </div>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="content">
+            {% block content %}{% endblock %}
+        </section>
+    </div>
+
+</div>
+
+<div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="true"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script src="{{ url_for('static', filename='js/page_debug.js', v=_static_version) }}"></script>
+<script>
+// 防止侧边栏导航时页面跳转
+(() => {
+    // 禁用浏览器自动滚动恢复
+    if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+    }
+    
+    // 保存当前滚动位置
+    let savedScrollY = 0;
+    let isNavigating = false;
+    let scrollLockFrameId = null;
+    
+    // 强制锁定滚动位置的函数
+    const forceLockScroll = (targetY = 0) => {
+        // 使用多种方式确保滚动位置被锁定
+        window.scrollTo(0, targetY);
+        document.documentElement.scrollTop = targetY;
+        document.body.scrollTop = targetY;
+        
+        // 如果正在导航，持续锁定
+        if (isNavigating) {
+            scrollLockFrameId = requestAnimationFrame(() => {
+                forceLockScroll(targetY);
+            });
+        }
+    };
+    
+    // 停止滚动锁定
+    const stopScrollLock = () => {
+        if (scrollLockFrameId) {
+            cancelAnimationFrame(scrollLockFrameId);
+            scrollLockFrameId = null;
+        }
+    };
+    
+    // 在页面卸载前保存滚动位置
+    window.addEventListener('beforeunload', () => {
+        savedScrollY = window.pageYOffset || document.documentElement.scrollTop;
+        stopScrollLock();
+    });
+    
+    // 页面加载时立即锁定滚动位置
+    (function lockScrollOnLoad() {
+        // 立即设置滚动位置为0，防止任何自动滚动
+        if (document.documentElement) {
+            document.documentElement.style.scrollBehavior = 'auto';
+            document.documentElement.scrollTop = 0;
+        }
+        if (document.body) {
+            document.body.scrollTop = 0;
+        }
+        window.scrollTo(0, 0);
+        
+        // 如果DOM已加载，立即执行
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                window.scrollTo(0, 0);
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+                document.documentElement.style.scrollBehavior = '';
+            });
+        } else {
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+            document.documentElement.style.scrollBehavior = '';
+        }
+    })();
+    
+    // 监听侧边栏链接点击
+    function initSidebarLinkHandlers() {
+        // 使用事件委托，避免重复绑定
+        const sidebar = document.querySelector('.sidebar-container');
+        if (!sidebar) return;
+        
+        sidebar.addEventListener('click', (e) => {
+            const link = e.target.closest('.sidebar-submenu-link, .sidebar .nav-link[href]');
+            if (!link) return;
+            
+            const href = link.getAttribute('href');
+            
+            // 如果是hash锚点链接，保持默认行为
+            if (href && href.startsWith('#')) {
+                return;
+            }
+            
+            // 如果是javascript:void(0)或禁用链接，不处理
+            if (!href || href === 'javascript:void(0)' || link.hasAttribute('aria-disabled')) {
+                return;
+            }
+            
+            // 标记正在导航
+            isNavigating = true;
+            
+            // 立即强制锁定滚动位置到顶部
+            forceLockScroll(0);
+            
+            // 阻止任何可能的焦点导致的滚动
+            if (document.activeElement && document.activeElement !== document.body) {
+                document.activeElement.blur();
+            }
+            
+            // 阻止链接的默认行为可能导致的其他滚动
+            e.stopPropagation();
+        }, true); // 使用捕获阶段，确保先执行
+    }
+    
+    // 监听侧边栏展开/折叠，防止布局变化导致滚动
+    function initSidebarScrollLock() {
+        const sidebar = document.querySelector('.sidebar-container');
+        const body = document.body;
+        if (!sidebar || !body) return;
+        
+        let lastScrollY = 0;
+        let scrollLockTimer = null;
+        let isLayoutChanging = false;
+        
+        // 锁定滚动位置的函数
+        const lockScroll = () => {
+            const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+            const targetY = isNavigating ? 0 : lastScrollY;
+            
+            if (Math.abs(currentScroll - targetY) > 1) {
+                window.scrollTo({
+                    top: targetY,
+                    left: 0,
+                    behavior: 'instant'
+                });
+                document.documentElement.scrollTop = targetY;
+                document.body.scrollTop = targetY;
+            }
+        };
+        
+        // 监听侧边栏类名变化
+        const observer = new MutationObserver(() => {
+            // 更新保存的滚动位置
+            lastScrollY = window.pageYOffset || document.documentElement.scrollTop;
+            isLayoutChanging = true;
+            
+            // 清除之前的定时器
+            if (scrollLockTimer) {
+                clearTimeout(scrollLockTimer);
+            }
+            
+            // 在布局变化后锁定滚动
+            scrollLockTimer = setTimeout(() => {
+                lockScroll();
+                isLayoutChanging = false;
+                scrollLockTimer = null;
+            }, 10);
+        });
+        
+        observer.observe(body, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+        
+        // 监听窗口滚动事件，防止意外的滚动
+        window.addEventListener('scroll', (e) => {
+            if (isNavigating) {
+                // 导航过程中阻止滚动，强制保持在顶部
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                forceLockScroll(0);
+            } else if (isLayoutChanging) {
+                // 布局变化时锁定滚动位置
+                lockScroll();
+            } else {
+                // 更新保存的滚动位置
+                lastScrollY = window.pageYOffset || document.documentElement.scrollTop;
+            }
+        }, { passive: false, capture: true });
+        
+        // 监听窗口resize事件，防止布局变化导致滚动
+        window.addEventListener('resize', () => {
+            if (!isNavigating) {
+                lastScrollY = window.pageYOffset || document.documentElement.scrollTop;
+            }
+        });
+    }
+    
+    // 页面加载完成后初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initSidebarLinkHandlers();
+            initSidebarScrollLock();
+            // 持续锁定滚动直到页面完全加载
+            forceLockScroll(0);
+            // 重置导航标志
+            setTimeout(() => {
+                isNavigating = false;
+                stopScrollLock();
+            }, 300);
+        });
+    } else {
+        initSidebarLinkHandlers();
+        initSidebarScrollLock();
+        forceLockScroll(0);
+        setTimeout(() => {
+            isNavigating = false;
+            stopScrollLock();
+        }, 300);
+    }
+    
+    // 页面完全加载后，确保滚动位置正确
+    window.addEventListener('load', () => {
+        // 如果页面有hash锚点，允许滚动到锚点
+        if (window.location.hash) {
+            isNavigating = false;
+            stopScrollLock();
+            return;
+        }
+        
+        // 否则确保在顶部，并重置导航标志
+        requestAnimationFrame(() => {
+            window.scrollTo({
+                top: 0,
+                left: 0,
+                behavior: 'instant'
+            });
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+            isNavigating = false;
+            stopScrollLock();
+        });
+    });
+    
+    // 页面显示时也确保滚动位置正确
+    window.addEventListener('pageshow', (e) => {
+        // 如果是后退/前进导航，保持滚动位置
+        if (e.persisted) {
+            isNavigating = false;
+            stopScrollLock();
+            return;
+        }
+        
+        // 否则确保在顶部
+        if (!window.location.hash) {
+            requestAnimationFrame(() => {
+                window.scrollTo({
+                    top: 0,
+                    left: 0,
+                    behavior: 'instant'
+                });
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+                isNavigating = false;
+                stopScrollLock();
+            });
+        } else {
+            isNavigating = false;
+            stopScrollLock();
+        }
+    });
+})();
+</script>
+<script>
+(() => {
+    const host = document.getElementById('toastHost');
+    if (!host) return;
+
+    window.showToast = (message, type = 'success', duration = 1500) => {
+        const toast = document.createElement('div');
+        toast.className = `toast-item toast-${type}`;
+        toast.textContent = message;
+        host.appendChild(toast);
+        window.setTimeout(() => {
+            toast.classList.add('show');
+        }, 20);
+        window.setTimeout(() => {
+            toast.classList.remove('show');
+            window.setTimeout(() => {
+                if (toast && toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 200);
+        }, Math.max(800, Number(duration) || 1500));
+    };
+})();
+</script>
+<script>
+(() => {
+    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = tokenMeta ? String(tokenMeta.content || '').trim() : '';
+    if (!csrfToken || typeof window.fetch !== 'function') return;
+
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (input, init = {}) => {
+        const nextInit = { ...init };
+        const baseHeaders = init && init.headers ? init.headers : (input instanceof Request ? input.headers : undefined);
+        const headers = new Headers(baseHeaders || {});
+        const method = String(nextInit.method || (input instanceof Request ? input.method : 'GET') || 'GET').toUpperCase();
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && !headers.has('X-CSRF-Token')) {
+            headers.set('X-CSRF-Token', csrfToken);
+        }
+        nextInit.headers = headers;
+        return nativeFetch(input, nextInit);
+    };
+})();
+</script>
+<script>
+(() => {
+    const body = document.body;
+    const sidebar = document.querySelector('.sidebar-container');
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+    if (!sidebar || !toggleBtn) return;
+
+    const collapseClass = 'sidebar-collapse';
+    const hoverExpandClass = 'sidebar-hover-expand';
+    const storageKey = 'deepaudit.sidebar.fixedState';
+    let collapseTimer = null;
+
+    const isDesktop = () => window.matchMedia('(min-width: 992px)').matches;
+    const isFixedCollapsed = () => body.classList.contains(collapseClass);
+
+    const clearCollapseTimer = () => {
+        if (collapseTimer) {
+            window.clearTimeout(collapseTimer);
+            collapseTimer = null;
+        }
+    };
+
+    const syncToggleState = () => {
+        const expanded = !isFixedCollapsed() || body.classList.contains(hoverExpandClass);
+        toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        toggleBtn.setAttribute('title', expanded ? '收缩侧边栏' : '展开侧边栏');
+    };
+
+    const setFixedState = (state, persist = true) => {
+        if (state === 'collapsed') {
+            body.classList.add(collapseClass);
+        } else {
+            body.classList.remove(collapseClass);
+        }
+        body.classList.remove(hoverExpandClass);
+        if (persist) {
+            try {
+                window.localStorage.setItem(storageKey, state);
+            } catch (error) {
+                // Ignore storage failures in restricted browser contexts.
+            }
+        }
+        syncToggleState();
+    };
+
+    const handleSidebarMouseEnter = () => {
+        if (!isDesktop() || !isFixedCollapsed()) return;
+        clearCollapseTimer();
+        body.classList.add(hoverExpandClass);
+        syncToggleState();
+    };
+
+    const handleSidebarMouseLeave = () => {
+        if (!isDesktop() || !isFixedCollapsed()) return;
+        clearCollapseTimer();
+        collapseTimer = window.setTimeout(() => {
+            body.classList.remove(hoverExpandClass);
+            syncToggleState();
+        }, 300);
+    };
+
+    const applyMenuTitles = () => {
+        document.querySelectorAll('.sidebar-container .menu-item, .nav-sidebar .nav-item > .nav-link').forEach((item) => {
+            if (item.dataset.menuTitle) return;
+            const label = item.querySelector('p');
+            if (!label) return;
+            const labelClone = label.cloneNode(true);
+            labelClone.querySelectorAll('.badge, .right').forEach((node) => node.remove());
+            const titleText = labelClone.textContent.replace(/\s+/g, ' ').trim();
+            if (titleText) {
+                item.dataset.menuTitle = titleText;
+            }
+        });
+    };
+
+    toggleBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        clearCollapseTimer();
+
+        if (!isDesktop()) {
+            body.classList.toggle('sidebar-open');
+            return;
+        }
+
+        if (isFixedCollapsed()) {
+            setFixedState('expanded');
+            return;
+        }
+
+        setFixedState('collapsed');
+    });
+
+    sidebar.addEventListener('mouseenter', handleSidebarMouseEnter);
+    sidebar.addEventListener('mouseleave', handleSidebarMouseLeave);
+
+    window.addEventListener('resize', () => {
+        clearCollapseTimer();
+        body.classList.remove(hoverExpandClass);
+        syncToggleState();
+    });
+
+    applyMenuTitles();
+
+    let savedState = null;
+    try {
+        savedState = window.localStorage.getItem(storageKey);
+    } catch (error) {
+        savedState = null;
+    }
+    setFixedState(savedState === 'collapsed' ? 'collapsed' : 'expanded', false);
+})();
+</script>
+<script>
+(() => {
+    const storageKey = "deepaudit.sidebar.groupState.v1";
+    const groups = Array.from(document.querySelectorAll(".sidebar-group"));
+    if (!groups.length) return;
+
+    let state = {};
+    try {
+        const raw = window.localStorage.getItem(storageKey);
+        state = raw ? JSON.parse(raw) : {};
+    } catch (error) {
+        state = {};
+    }
+
+    const saveState = () => {
+        try {
+            window.localStorage.setItem(storageKey, JSON.stringify(state));
+        } catch (error) {
+            // Ignore storage failures in restricted browser contexts.
+        }
+    };
+
+    const setGroupOpen = (group, open, persist = false) => {
+        group.classList.toggle("is-open", open);
+        const toggle = group.querySelector(".sidebar-group-toggle");
+        if (toggle) {
+            toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        }
+        const key = String(group.dataset.groupKey || "").trim();
+        if (persist && key) {
+            state[key] = open;
+            saveState();
+        }
+    };
+
+    for (const group of groups) {
+        const key = String(group.dataset.groupKey || "").trim();
+        const hasActive = !!group.querySelector(".sidebar-submenu-link.active");
+        const hasSaved = key && Object.prototype.hasOwnProperty.call(state, key);
+        const defaultOpen = String(group.dataset.openDefault || "") === "1";
+
+        // 优先使用用户保存的状态，只有在没有保存状态时才根据活动项或默认值决定
+        // 这样可以保持用户的折叠/展开偏好，不会因为导航而强制展开
+        const open = hasSaved ? !!state[key] : (hasActive ? true : defaultOpen);
+        setGroupOpen(group, open, false);
+
+        const toggle = group.querySelector(".sidebar-group-toggle");
+        if (toggle) {
+            toggle.addEventListener("click", () => {
+                const next = !group.classList.contains("is-open");
+                setGroupOpen(group, next, true);
+            });
+        }
+    }
+})();
+</script>
+<script>
+(() => {
+    const input = document.getElementById('sidebarSearchInput');
+    if (!input) return;
+    const MIN_LEN = 2;
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { input.value = ''; input.blur(); return; }
+        if (e.key === 'Enter') {
+            const q = input.value.trim();
+            if (q.length >= MIN_LEN) window.location.href = '/search?q=' + encodeURIComponent(q);
+        }
+    });
+})();
+</script>
+<script>
+(() => {
+    const clearStaleModalState = () => {
+        if (document.querySelector('.modal.show')) return;
+        document.querySelectorAll('.modal-backdrop').forEach((node) => {
+            if (node && node.parentNode) {
+                node.parentNode.removeChild(node);
+            }
+        });
+        document.body.classList.remove('modal-open', 'settings-modal-open', 'evidence-modal-open');
+        document.body.style.removeProperty('padding-right');
+    };
+
+    window.addEventListener('pageshow', clearStaleModalState);
+    if (window.jQuery) {
+        window.jQuery(document).on('hidden.bs.modal', () => {
+            window.setTimeout(clearStaleModalState, 0);
+        });
+    }
+    clearStaleModalState();
+})();
+</script>
+{% block page_js %}{% endblock %}
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

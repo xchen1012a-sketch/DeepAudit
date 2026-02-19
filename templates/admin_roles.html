@@ -1,0 +1,716 @@
+{% extends "base.html" %}
+
+{% block title %}角色权限管理 - 深度审计{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tom-select/tom-select.css', v=static_version) }}">
+<style>
+.role-admin { padding: 0 8px 24px; }
+
+.ra-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 0 14px;
+  flex-wrap: wrap;
+}
+.ra-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 3px;
+  line-height: 1.3;
+}
+.ra-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+.ra-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.ra-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+.ra-sidebar {
+  width: 282px;
+  min-width: 282px;
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  position: sticky;
+  top: 70px;
+  max-height: calc(100vh - 90px);
+  display: flex;
+  flex-direction: column;
+}
+.ra-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ra-sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 13px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 600;
+  font-size: 14px;
+  color: #0f172a;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+.ra-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 11px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ra-role-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 6px;
+}
+.ra-role-item {
+  padding: 11px 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+  border: 1.5px solid transparent;
+  margin-bottom: 3px;
+}
+.ra-role-item:hover { background: #f1f5f9; }
+.ra-role-item.is-selected {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+.ra-role-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+.ra-role-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ra-role-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+}
+.ra-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.ra-status-dot.is-active { background: #10b981; }
+.ra-status-dot.is-disabled { background: #94a3b8; }
+.ra-role-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 7px;
+}
+.ra-role-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.ra-role-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+/* 链接式操作按钮：减轻视觉重量，符合 ui-ux-pro-max */
+.ra-role-actions .ra-act-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+.ra-role-actions .ra-act-btn:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.06);
+}
+.ra-role-actions .ra-act-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+}
+.ra-role-actions .ra-act-btn.is-danger {
+  color: #b91c1c;
+  border-left: 1px solid #e2e8f0;
+  padding-left: 12px;
+}
+.ra-role-actions .ra-act-btn.is-danger:hover {
+  color: #991b1b;
+  background: rgba(185, 28, 28, 0.08);
+}
+.ra-role-actions .ra-act-btn.is-danger:focus {
+  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.25);
+}
+.ra-role-actions .ra-act-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: #94a3b8;
+}
+.ra-role-actions .ra-act-btn:disabled:hover {
+  background: transparent;
+  color: #94a3b8;
+}
+
+.ra-editor-card {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.ra-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ra-editor-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: #0f172a;
+}
+.ra-pending {
+  font-size: 12px;
+  color: #64748b;
+  padding: 4px 10px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ra-pending.has-changes {
+  background: #fef3c7;
+  color: #92400e;
+}
+.ra-editor-form {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.ra-form-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.ra-form-group {
+  flex: 1;
+  min-width: 170px;
+}
+.ra-form-group label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.ra-form-group .form-control {
+  height: 36px;
+  font-size: 13px;
+  border-radius: 8px;
+  border-color: #e2e8f0;
+}
+.ra-form-group .form-control:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+}
+
+.ra-permissions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.ra-permissions-label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #0f172a;
+}
+.ra-permissions-hint {
+  font-size: 12px;
+  color: #94a3b8;
+}
+.ra-permissions {
+  padding: 12px 16px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.ra-perm-group {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.ra-perm-group:hover { border-color: #cbd5e1; }
+.ra-perm-group-head {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  background: #f8fafc;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.ra-collapse-arrow {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: #94a3b8;
+  transition: transform 0.2s;
+}
+.ra-perm-group.is-collapsed .ra-collapse-arrow { transform: rotate(-90deg); }
+.ra-perm-group-info {
+  flex: 1;
+  min-width: 0;
+}
+.ra-perm-group-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: #1e293b;
+}
+.ra-perm-group-desc {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 1px;
+}
+.ra-perm-group-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.ra-grp-btn {
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1.5;
+}
+.ra-grp-btn:hover { background: #f1f5f9; border-color: #cbd5e1; color: #334155; }
+.ra-perm-group-body { padding: 2px 0; }
+.ra-perm-group.is-collapsed .ra-perm-group-body { display: none; }
+
+.ra-perm-item {
+  padding: 8px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  transition: background-color 0.1s;
+}
+.ra-perm-item:hover { background: #f8fafc; }
+.ra-perm-item + .ra-perm-item { border-top: 1px solid #f1f5f9; }
+
+.ra-checkbox {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.ra-checkbox input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.ra-checkbox-mark {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #cbd5e1;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  background: #fff;
+}
+.ra-checkbox input:checked + .ra-checkbox-mark {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+.ra-checkbox input:checked + .ra-checkbox-mark::after {
+  content: '';
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translateY(-1px);
+}
+.ra-checkbox input:focus-visible + .ra-checkbox-mark {
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+
+.ra-perm-content { flex: 1; min-width: 0; }
+.ra-perm-name { font-weight: 500; font-size: 13px; color: #1e293b; line-height: 1.3; }
+.ra-perm-desc { font-size: 11.5px; color: #94a3b8; margin-top: 2px; line-height: 1.4; }
+.ra-perm-advanced {
+  display: none;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #f8fafc;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #64748b;
+}
+.role-admin.show-advanced .ra-perm-advanced { display: block; }
+
+.ra-editor-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  background: #f8fafc;
+}
+
+.ra-tabs-card {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+.ra-tabs-header {
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0 16px;
+}
+.ra-tab {
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  border: none;
+  background: none;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+.ra-tab:hover { color: #1e293b; }
+.ra-tab.active { color: #3b82f6; font-weight: 600; }
+.ra-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: #3b82f6;
+  border-radius: 2px 2px 0 0;
+}
+.ra-tab-panel { display: none; padding: 14px 20px; }
+.ra-tab-panel.active { display: block; }
+
+.ra-preview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid #f1f5f9;
+  gap: 12px;
+}
+.ra-preview-item:last-child { border-bottom: none; }
+.ra-preview-name { font-size: 13px; color: #334155; }
+.ra-preview-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 9px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.ra-preview-badge.is-allowed { background: #dcfce7; color: #166534; }
+.ra-preview-badge.is-denied { background: #f1f5f9; color: #94a3b8; }
+
+.ra-empty {
+  text-align: center;
+  padding: 28px 16px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.ra-audit-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom-width: 1px;
+  padding: 10px 12px;
+  background: #f8fafc;
+}
+.ra-audit-table td {
+  font-size: 13px;
+  padding: 9px 12px;
+  vertical-align: middle;
+  color: #334155;
+}
+.ra-audit-table .audit-summary { font-size: 12px; color: #64748b; }
+
+.role-admin .modal-content {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+}
+.role-admin .modal-header {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 16px 20px;
+}
+.role-admin .modal-header .modal-title { font-size: 16px; font-weight: 600; color: #0f172a; }
+.role-admin .modal-body { padding: 20px; }
+.role-admin .modal-footer { border-top: 1px solid #e2e8f0; padding: 14px 20px; }
+
+@media (max-width: 991px) {
+  .ra-layout { flex-direction: column; }
+  .ra-sidebar {
+    width: 100%;
+    min-width: 0;
+    position: static;
+    max-height: 320px;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="admin-roles-page" class="role-admin">
+  <div class="ra-page-header">
+    <div>
+      <h4 class="ra-title">角色权限管理</h4>
+      <p class="ra-subtitle">系统管理员可为任何账号授予权限，无需通过角色 · 按模块授权、菜单与操作可见性预览、保存留痕审计统一闭环</p>
+    </div>
+    <div class="ra-header-actions">
+      <button type="button" id="openCreateRoleBtn" class="btn btn-sm btn-primary">
+        <i class="ri-add-line"></i> 新增角色
+      </button>
+      <button type="button" id="toggleAdvancedInfoBtn" class="btn btn-sm btn-outline-secondary">高级信息</button>
+      <button type="button" id="reloadRolesBtn" class="btn btn-sm btn-outline-secondary">
+        <i class="ri-refresh-line"></i> 刷新
+      </button>
+    </div>
+  </div>
+
+  <div id="rolesFeedback" class="alert d-none py-2 px-3 mb-3" style="border-radius:8px;"></div>
+
+  <div class="ra-layout">
+    <div class="ra-sidebar">
+      <div class="ra-sidebar-header">
+        <span>角色列表</span>
+        <span id="roleCountBadge" class="ra-count">0</span>
+      </div>
+      <div id="rolesTableBody" class="ra-role-list">
+        <div class="ra-empty">加载中...</div>
+      </div>
+    </div>
+
+    <div class="ra-main">
+      <div class="ra-editor-card">
+        <div class="ra-editor-header">
+          <span id="roleEditorTitle" class="ra-editor-title">请选择角色</span>
+          <div id="rolePendingSummary" class="ra-pending">当前无待保存变更</div>
+        </div>
+        <div class="ra-editor-form">
+          <div class="ra-form-row">
+            <div class="ra-form-group">
+              <label for="editorRoleName">角色名称</label>
+              <input id="editorRoleName" class="form-control" readonly>
+            </div>
+            <div class="ra-form-group">
+              <label for="editorDataScope">数据范围</label>
+              <select id="editorDataScope" class="form-control enterprise-select" data-clear-button="0" data-enhance-single="1">
+                <option value="DEPT">本部门数据</option>
+                <option value="ALL">全量数据</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="ra-permissions-header">
+          <span class="ra-permissions-label">权限配置</span>
+          <span class="ra-permissions-hint">按模块分组 · 勾选即授权</span>
+        </div>
+        <div id="permissionGroupContainer" class="ra-permissions">
+          <div class="ra-empty">请选择角色后编辑权限</div>
+        </div>
+
+        <div class="ra-editor-footer">
+          <button type="button" id="saveRoleBtn" class="btn btn-primary" disabled>保存角色配置</button>
+        </div>
+      </div>
+
+      <div class="ra-tabs-card">
+        <div class="ra-tabs-header">
+          <button type="button" class="ra-tab active" data-tab="menu">菜单可见性</button>
+          <button type="button" class="ra-tab" data-tab="action">操作权限</button>
+          <button type="button" class="ra-tab" data-tab="audit">变更记录</button>
+        </div>
+        <div class="ra-tab-panel active" data-tab-panel="menu">
+          <div id="menuPreviewContainer">
+            <div class="ra-empty">请选择角色后查看</div>
+          </div>
+        </div>
+        <div class="ra-tab-panel" data-tab-panel="action">
+          <div id="actionPreviewContainer">
+            <div class="ra-empty">请选择角色后查看</div>
+          </div>
+        </div>
+        <div class="ra-tab-panel" data-tab-panel="audit">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0 ra-audit-table">
+              <thead>
+                <tr>
+                  <th style="width:150px;">时间</th>
+                  <th style="width:120px;">操作者</th>
+                  <th style="width:120px;">原因码</th>
+                  <th>变更摘要</th>
+                  <th style="width:180px;">补充说明</th>
+                </tr>
+              </thead>
+              <tbody id="roleAuditTableBody">
+                <tr><td colspan="5" class="text-center text-muted py-3">请选择角色后查看留痕</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="roleSaveModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">保存角色配置</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="saveChangeSummary" class="alert alert-light border py-2 px-3 mb-2" style="border-radius:8px;"><span class="alert-icon"><i class="ri-lightbulb-line"></i></span><span class="alert-body">暂无变更</span></div>
+
+        <div class="form-group mb-2">
+          <label for="saveReasonCode" class="mb-1">变更原因码 <span class="text-danger">*</span></label>
+          <select id="saveReasonCode" class="form-control enterprise-select" data-clear-button="0">
+            <option value="">请选择变更原因</option>
+          </select>
+          <div id="saveReasonCodeError" class="invalid-feedback d-block d-none">请选择变更原因码</div>
+        </div>
+
+        <div class="form-group mb-0">
+          <label for="saveReasonNote" class="mb-1">补充说明（可选）</label>
+          <textarea id="saveReasonNote" rows="3" class="form-control" placeholder="可填写审批备注，便于审计回溯" style="border-radius:8px;"></textarea>
+        </div>
+
+        <div id="saveModalError" class="small text-danger mt-2 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" data-dismiss="modal">取消</button>
+        <button class="btn btn-primary" id="saveRoleSubmitBtn">确认保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="createRoleModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">新增角色</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="createRoleForm" novalidate>
+          <div class="form-group mb-2">
+            <label for="newRoleName">角色名称 <span class="text-danger">*</span></label>
+            <input id="newRoleName" class="form-control" placeholder="例如：采购专员" autocomplete="off" required style="border-radius:8px;">
+          </div>
+          <div id="createRoleError" class="small text-danger d-none mb-2"></div>
+          <div class="d-flex justify-content-end">
+            <button type="button" class="btn btn-light mr-2" data-dismiss="modal">取消</button>
+            <button type="submit" id="createRoleSubmitBtn" class="btn btn-primary">创建角色</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="adminRolesInitPayload" type="application/json">{{ {
+  "roles": roles,
+  "permissions": permissions,
+  "permission_groups": permission_groups,
+  "menu_rules": menu_rules,
+  "action_rules": action_rules,
+  "change_reason_options": change_reason_options
+}|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/tom-select/tom-select.complete.min.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/enterprise_select.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/admin_roles.js', v=static_version) }}"></script>
+{% endblock %}

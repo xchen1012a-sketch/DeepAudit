@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+{% block title %}个人中心 - 深度审计{% endblock %}
+{% block page_title %}个人中心{% endblock %}
+
+{% block content %}
+<section class="content profile-shell">
+  <div class="container-fluid">
+    {% if request.args.get('force_password') == '1' %}
+    <div class="alert alert-warning profile-force-password-alert" role="alert">
+      <span class="alert-icon"><i class="ri-error-warning-line" aria-hidden="true"></i></span>
+      <span class="alert-body">当前账号需先修改密码后才能继续访问其他页面。</span>
+    </div>
+    {% endif %}
+
+    <div class="row">
+      <div class="col-lg-4">
+        <div class="card profile-summary-card">
+          <div class="card-body">
+            <div class="profile-summary-head">
+              <div class="profile-avatar profile-avatar-initials" aria-hidden="true">
+                {% if profile.name and profile.name|length > 0 %}
+                <span class="profile-avatar-letter">{{ profile.name[:1]|upper }}</span>
+                {% else %}
+                <i class="ri-user-3-line profile-avatar-icon" aria-hidden="true"></i>
+                {% endif %}
+              </div>
+              <h2 class="profile-name">{{ profile.name or '用户' }}</h2>
+              <p class="profile-role">{{ profile.role }} / {{ profile.department }}</p>
+            </div>
+            <ul class="profile-meta-list" aria-label="个人信息">
+              <li class="profile-meta-item">
+                <span>工号</span>
+                <strong>{{ profile.employee_id }}</strong>
+              </li>
+              <li class="profile-meta-item">
+                <span><i class="ri-mail-line" aria-hidden="true"></i> 邮箱</span>
+                <strong>{{ profile.email or '—' }}</strong>
+              </li>
+              <li class="profile-meta-item">
+                <span><i class="ri-smartphone-line" aria-hidden="true"></i> 手机</span>
+                <strong>{{ profile.phone or '—' }}</strong>
+              </li>
+              <li class="profile-meta-item">
+                <span><i class="ri-time-line" aria-hidden="true"></i> 最近登录</span>
+                <strong>{{ profile.last_login }}</strong>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-8">
+        <div class="card profile-panel-card mb-3">
+          <div class="card-header">
+            <h3 class="card-title"><i class="ri-bar-chart-box-line" aria-hidden="true"></i> 履职指标</h3>
+          </div>
+          <div class="card-body">
+            <div class="profile-metric-grid">
+              <div class="profile-metric-item">
+                <div class="profile-metric-label"><i class="ri-file-list-3-line" aria-hidden="true"></i> 本月审批量</div>
+                <div class="profile-metric-value">{{ metrics.month_approvals }}</div>
+              </div>
+              <div class="profile-metric-item">
+                <div class="profile-metric-label"><i class="ri-alert-line" aria-hidden="true"></i> 风险干预次数</div>
+                <div class="profile-metric-value">{{ metrics.risk_interventions }}</div>
+              </div>
+              <div class="profile-metric-item">
+                <div class="profile-metric-label"><i class="ri-percent-line" aria-hidden="true"></i> 自动通过率</div>
+                <div class="profile-metric-value">{{ metrics.auto_pass_rate }}</div>
+              </div>
+              <div class="profile-metric-item">
+                <div class="profile-metric-label"><i class="ri-team-line" aria-hidden="true"></i> 团队成员</div>
+                <div class="profile-metric-value">{{ metrics.team_size }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card profile-panel-card mb-3">
+          <div class="card-header">
+            <h3 class="card-title"><i class="ri-contacts-line" aria-hidden="true"></i> 修改邮箱 / 手机号</h3>
+          </div>
+          <div class="card-body">
+            <form id="updateProfileForm" class="row profile-form" novalidate>
+              <div class="form-group col-md-6">
+                <label for="profileEmail"><i class="ri-mail-line" aria-hidden="true"></i> 邮箱</label>
+                <input id="profileEmail" name="email" class="form-control profile-input" type="email" placeholder="请输入邮箱" value="{{ profile.email or '' }}" maxlength="128" autocomplete="email">
+              </div>
+              <div class="form-group col-md-6">
+                <label for="profilePhone"><i class="ri-smartphone-line" aria-hidden="true"></i> 手机号</label>
+                <input id="profilePhone" name="phone" class="form-control profile-input" type="tel" placeholder="请输入手机号" value="{{ profile.phone or '' }}" maxlength="32" autocomplete="tel">
+              </div>
+              <div class="col-12 d-flex align-items-center mt-2">
+                <button id="saveProfileBtn" type="submit" class="btn btn-primary profile-btn-primary">保存</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card profile-panel-card mb-3">
+          <div class="card-header">
+            <h3 class="card-title"><i class="ri-shield-keyhole-line" aria-hidden="true"></i> 修改密码</h3>
+          </div>
+          <div class="card-body">
+            <form id="changePasswordForm" class="row profile-form" novalidate>
+              <div class="form-group col-md-4">
+                <label for="oldPassword">当前密码</label>
+                <input id="oldPassword" class="form-control profile-input" type="password" required autocomplete="current-password">
+              </div>
+              <div class="form-group col-md-4">
+                <label for="newPassword">新密码</label>
+                <input id="newPassword" class="form-control profile-input" type="password" required autocomplete="new-password">
+              </div>
+              <div class="form-group col-md-4">
+                <label for="confirmPassword">确认新密码</label>
+                <input id="confirmPassword" class="form-control profile-input" type="password" required autocomplete="new-password">
+              </div>
+              <div class="col-12 d-flex align-items-center flex-wrap mt-2">
+                <button id="savePasswordBtn" type="submit" class="btn btn-primary profile-btn-primary">保存新密码</button>
+                <p class="small text-muted mb-0 ml-3 mt-1 mt-md-0">密码至少 8 位，且包含字母与数字。</p>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card profile-panel-card mb-0">
+          <div class="card-header">
+            <h3 class="card-title"><i class="ri-history-line" aria-hidden="true"></i> 最近登录记录</h3>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0 profile-login-table" role="grid">
+                <thead>
+                  <tr>
+                    <th scope="col">时间</th>
+                    <th scope="col">设备</th>
+                    <th scope="col">IP</th>
+                    <th scope="col">地点</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in logins %}
+                  <tr>
+                    <td>{{ item.time }}</td>
+                    <td>{{ item.device }}</td>
+                    <td>{{ item.ip }}</td>
+                    <td>{{ item.location }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const profileForm = document.getElementById("updateProfileForm");
+  if (profileForm) {
+    const saveProfileBtn = document.getElementById("saveProfileBtn");
+    profileForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const email = String(document.getElementById("profileEmail").value || "").trim();
+      const phone = String(document.getElementById("profilePhone").value || "").trim();
+      if (email && email.indexOf("@") === -1) {
+        if (window.showToast) window.showToast("请输入有效的邮箱地址", "warning", 1800);
+        return;
+      }
+      saveProfileBtn.disabled = true;
+      const originalText = saveProfileBtn.textContent;
+      saveProfileBtn.textContent = "保存中...";
+      try {
+        const response = await fetch("/api/auth/update_profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ email: email, phone: phone })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload || payload.ok !== true) {
+          throw new Error(payload.msg || "HTTP " + response.status);
+        }
+        if (window.showToast) window.showToast("保存成功", "success", 1800);
+        window.setTimeout(function() { window.location.reload(); }, 800);
+      } catch (error) {
+        if (window.showToast) window.showToast("保存失败: " + (error.message || error), "danger", 2200);
+      } finally {
+        saveProfileBtn.disabled = false;
+        saveProfileBtn.textContent = originalText;
+      }
+    });
+  }
+
+  const form = document.getElementById("changePasswordForm");
+  if (!form) return;
+  const saveBtn = document.getElementById("savePasswordBtn");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const oldPassword = String(document.getElementById("oldPassword").value || "").trim();
+    const newPassword = String(document.getElementById("newPassword").value || "").trim();
+    const confirmPassword = String(document.getElementById("confirmPassword").value || "").trim();
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      if (window.showToast) window.showToast("请完整填写密码字段", "warning", 1800);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      if (window.showToast) window.showToast("两次输入的新密码不一致", "warning", 1800);
+      return;
+    }
+
+    saveBtn.disabled = true;
+    const originalText = saveBtn.textContent;
+    saveBtn.textContent = "保存中...";
+    try {
+      const response = await fetch("/api/auth/change_password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload || payload.ok !== true) {
+        throw new Error(payload.msg || `HTTP ${response.status}`);
+      }
+      form.reset();
+      if (window.showToast) window.showToast("密码修改成功", "success", 1800);
+      const forceFlag = new URLSearchParams(window.location.search).get("force_password");
+      if (forceFlag === "1") {
+        window.setTimeout(() => { window.location.href = "/dashboard"; }, 800);
+      }
+    } catch (error) {
+      if (window.showToast) window.showToast(`修改失败: ${error.message || error}`, "danger", 2200);
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalText;
+    }
+  });
+})();
+</script>
+{% endblock %}

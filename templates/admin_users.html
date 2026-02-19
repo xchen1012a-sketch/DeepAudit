@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}人员管理 - 深度审计{% endblock %}
+{% block page_title %}人员管理{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/tom-select/tom-select.css', v=static_version) }}">
+<style>
+.user-admin .toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.user-admin .toolbar-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.user-admin .table {
+  font-size: 14px;
+}
+.user-admin .table thead th {
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+  letter-spacing: 0.02em;
+}
+.user-admin .table tbody td {
+  vertical-align: middle;
+  padding: 12px 14px;
+  color: #1e293b;
+  line-height: 1.5;
+}
+.user-admin .table tbody tr:hover {
+  background-color: #f1f5f9;
+}
+.user-admin .role-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.user-admin .role-badges .badge {
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+.user-admin .row-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.user-admin .row-links a {
+  font-size: 13px;
+  color: #2563eb;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.user-admin .row-links a:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+.user-admin .latest-action {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+}
+.user-admin .action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+.user-admin .action-group .btn {
+  font-size: 12.5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.user-admin .trail-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 12px 16px;
+}
+.user-admin .trail-list {
+  margin: 0;
+  padding-left: 20px;
+}
+.user-admin .trail-list li {
+  margin-bottom: 10px;
+}
+.user-admin .trail-list li:last-child {
+  margin-bottom: 0;
+}
+.user-admin .trail-main {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1e293b;
+}
+.user-admin .trail-sub {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.6;
+}
+.user-admin .invalid-feedback.d-block {
+  display: block;
+}
+.user-admin .status-chip {
+  font-size: 12.5px;
+  font-weight: 500;
+  border-radius: 999px;
+  padding: 4px 12px;
+  letter-spacing: 0.02em;
+}
+.user-admin .user-meta-sub {
+  font-size: 12.5px;
+  color: #64748b;
+  margin-top: 2px;
+}
+.user-admin .card-header strong {
+  font-size: 15px;
+}
+.user-admin .card-header .badge {
+  font-size: 13px;
+  padding: 4px 10px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="admin-users-page" class="container-fluid pb-3 user-admin">
+  <div class="card card-outline card-primary mb-3">
+    <div class="card-body">
+      <div class="toolbar mb-2">
+        <div>
+          <h5 class="mb-1" style="font-size: 16px; font-weight: 600; color: #1e293b;">用户-角色-流程待办-风险案件联动</h5>
+          <div class="text-muted" style="font-size: 13px;">敏感操作统一要求原因码并记录可审计留痕。</div>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="openCreateUserBtn" class="btn btn-primary" style="font-size: 14px; padding: 6px 18px;">新增用户</button>
+          <a href="/admin/departments" class="btn btn-outline-secondary" style="font-size: 14px; padding: 6px 18px;" title="管理部门信息">
+            <i class="ri-building-line" style="margin-right: 4px; font-size: 15px; vertical-align: -2px;"></i>部门管理
+          </a>
+          <a href="/admin/positions" class="btn btn-outline-info" style="font-size: 14px; padding: 6px 18px;" title="管理岗位/职位信息">
+            <i class="ri-briefcase-line" style="margin-right: 4px; font-size: 15px; vertical-align: -2px;"></i>岗位管理
+          </a>
+          <button type="button" id="reloadUsersBtn" class="btn btn-outline-secondary" style="font-size: 14px; padding: 6px 14px;">刷新</button>
+        </div>
+      </div>
+
+      <div id="usersFeedback" class="alert d-none py-2 px-3 mb-3"></div>
+
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <select id="filterDepartment" class="form-control enterprise-select" style="min-width: 160px; font-size: 14px;" data-enhance-single="1">
+            <option value="">全部部门</option>
+          </select>
+          <select id="filterRole" class="form-control enterprise-select" style="min-width: 160px; font-size: 14px;" data-enhance-single="1">
+            <option value="">全部角色</option>
+          </select>
+          <select id="filterStatus" class="form-control enterprise-select" style="min-width: 120px; font-size: 14px;" data-enhance-single="1">
+            <option value="">全部状态</option>
+            <option value="ACTIVE">启用</option>
+            <option value="DISABLED">禁用</option>
+          </select>
+          <input id="filterKeyword" class="form-control" style="min-width: 240px; font-size: 14px;" placeholder="关键词：用户名 / 姓名 / 工号 / 部门 / 角色">
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="resetFiltersBtn" class="btn btn-outline-secondary" style="font-size: 14px; padding: 6px 14px;">重置筛选</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card card-outline card-secondary mb-0">
+    <div class="card-header d-flex justify-content-between align-items-center" style="padding: 12px 18px;">
+      <strong>用户列表</strong>
+      <span id="userCountBadge" class="badge badge-light">0</span>
+    </div>
+    <div class="card-body table-responsive p-0">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th style="min-width: 120px;">用户名</th>
+            <th style="min-width: 150px;">姓名 / 工号</th>
+            <th style="min-width: 100px;">部门</th>
+            <th style="min-width: 90px;">岗位</th>
+            <th style="min-width: 180px;">角色</th>
+            <th style="min-width: 80px;">状态</th>
+            <th style="min-width: 160px;">联动入口</th>
+            <th style="min-width: 170px;">最新动作</th>
+            <th style="min-width: 260px;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody">
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">加载中...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="createUserModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">新增用户</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="createUserForm" novalidate>
+          <div class="form-row">
+            <div class="form-group col-md-4">
+              <label for="newUsername">用户名 <span class="text-danger">*</span></label>
+              <input id="newUsername" class="form-control" placeholder="例如 finance02" autocomplete="off" required>
+            </div>
+            <div class="form-group col-md-4">
+              <label for="newPassword">初始密码 <span class="text-danger">*</span></label>
+              <input id="newPassword" type="password" class="form-control" placeholder="建议 8 位以上" required>
+            </div>
+            <div class="form-group col-md-4">
+              <label for="newDepartment">部门 <span class="text-danger">*</span></label>
+              <select id="newDepartment" class="form-control enterprise-select" data-clear-button="0" required>
+                <option value="">请选择部门</option>
+              </select>
+            </div>
+            <div class="form-group col-md-4">
+              <label for="newRoleId">角色</label>
+              <select id="newRoleId" class="form-control enterprise-select" data-clear-button="1">
+                <option value="">不分配角色</option>
+              </select>
+              <small class="form-text text-muted">可选；选「通用员工」则仅拥有最小权限（仅本人数据）</small>
+            </div>
+            <div class="form-group col-md-4">
+              <label for="newPositionId">岗位/职位</label>
+              <div class="d-flex align-items-center" style="gap: 6px;">
+                <select id="newPositionId" class="form-control enterprise-select flex-grow-1" data-clear-button="1">
+                  <option value="">请选择或新增</option>
+                </select>
+                <button type="button" id="newPositionAddBtn" class="btn btn-sm btn-outline-secondary" title="快速新增岗位" style="min-width: 36px;">+</button>
+                <a href="/admin/positions" target="_blank" class="btn btn-sm btn-outline-info" title="打开岗位管理页面" style="min-width: 36px;">
+                  <i class="ri-external-link-line"></i>
+                </a>
+              </div>
+              <small class="form-text text-muted">可选；可快速新增或前往岗位管理页维护</small>
+            </div>
+            <div class="form-group col-md-4">
+              <label for="newEmployeeName">姓名</label>
+              <input id="newEmployeeName" class="form-control" placeholder="可选">
+            </div>
+            <div class="form-group col-md-4">
+              <label for="newEmployeeNo">工号</label>
+              <input id="newEmployeeNo" class="form-control" placeholder="可选">
+            </div>
+          </div>
+          <div id="createUserError" class="small text-danger d-none mb-2"></div>
+          <div class="d-flex justify-content-end">
+            <button type="button" class="btn btn-light mr-2" data-dismiss="modal">取消</button>
+            <button type="submit" id="createUserSubmitBtn" class="btn btn-primary">创建用户</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="userActionModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="userActionTitle">敏感操作</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="actionUserId" value="0">
+        <input type="hidden" id="actionType" value="">
+        <div id="actionContextHint" class="alert alert-light border py-2 px-3"><span class="alert-icon"><i class="ri-lightbulb-line"></i></span><span class="alert-body">请选择处理原因后提交。</span></div>
+
+        <div class="form-group mb-2 d-none" id="actionRoleWrap">
+          <label for="actionRoleId" class="mb-1">目标角色 <span class="text-danger">*</span></label>
+          <select id="actionRoleId" class="form-control enterprise-select" data-clear-button="0" data-enhance-single="1">
+            <option value="">请选择角色</option>
+          </select>
+          <div id="actionRoleError" class="invalid-feedback d-block d-none">请选择目标角色</div>
+        </div>
+
+        <div class="form-group mb-2 d-none" id="actionPositionWrap">
+          <label for="actionPositionId" class="mb-1">目标岗位 <span class="text-danger">*</span></label>
+          <select id="actionPositionId" class="form-control enterprise-select" data-clear-button="0" data-enhance-single="1">
+            <option value="">请选择岗位</option>
+          </select>
+          <div id="actionPositionError" class="invalid-feedback d-block d-none">请选择目标岗位</div>
+        </div>
+
+        <div class="form-group mb-2 d-none" id="actionDepartmentWrap">
+          <label for="actionDepartment" class="mb-1">目标部门 <span class="text-danger">*</span></label>
+          <select id="actionDepartment" class="form-control enterprise-select" data-clear-button="0" data-enhance-single="1">
+            <option value="">请选择部门</option>
+          </select>
+          <div id="actionDepartmentError" class="invalid-feedback d-block d-none">请选择目标部门</div>
+        </div>
+
+        <div class="form-group mb-2">
+          <label for="actionReasonCode" class="mb-1">处理原因码 <span class="text-danger">*</span></label>
+          <select id="actionReasonCode" class="form-control enterprise-select" data-clear-button="0">
+            <option value="">请选择处理原因</option>
+            <option value="MANUAL_OVERRIDE">人工覆盖</option>
+            <option value="DATA_CORRECTION">数据修正</option>
+            <option value="POLICY_EXCEPTION">制度例外</option>
+            <option value="NEED_MORE_INFO">需要补充信息</option>
+            <option value="SYSTEM_AUTO">系统自动处理</option>
+          </select>
+          <div id="actionReasonError" class="invalid-feedback d-block d-none">请选择处理原因码</div>
+        </div>
+
+        <div class="form-group mb-0">
+          <label for="actionReasonNote" id="actionReasonNoteLabel" class="mb-1">补充说明（可选）</label>
+          <textarea id="actionReasonNote" rows="3" class="form-control" placeholder="可填写处理细节，写入审计留痕"></textarea>
+        </div>
+
+        <div id="actionModalError" class="small text-danger mt-2 d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" data-dismiss="modal">取消</button>
+        <button class="btn btn-primary" id="actionSubmitBtn">确认提交</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="adminUsersInitPayload" type="application/json">{{ {
+  'users': users,
+  'roles': roles,
+  'active_roles': active_roles,
+  'departments': departments,
+  'positions': positions,
+  'current_user_id': current_user_id
+}|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/tom-select/tom-select.complete.min.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/enterprise_select.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/admin_users.js', v=static_version) }}"></script>
+{% endblock %}

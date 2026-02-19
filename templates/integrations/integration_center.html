@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}集成中心 - DeepAudit Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h3 class="text-dark font-weight-bold">集成中心</h3>
+            <p class="text-muted mb-2">配置系统集成、监控同步状态</p>
+            <div id="integrationFeedback" class="alert d-none py-2 px-3 mb-0"></div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">集成列表</h5>
+                </div>
+                <div class="card-body">
+                    <div id="integrationList">
+                        <div class="text-muted text-center py-3">加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const integrationTypes = {
+        finance: {name: "财务系统", icon: "ri-money-dollar-circle-line"},
+        hr: {name: "HR系统", icon: "ri-team-line"},
+        oa: {name: "OA系统", icon: "ri-file-list-3-line"},
+        bank: {name: "银行系统", icon: "ri-bank-line"}
+    };
+
+    const ALERT_ICONS = {success:"ri-checkbox-circle-line",info:"ri-information-line",warning:"ri-error-warning-line",danger:"ri-close-circle-line"};
+
+    function showFeedback(type, msg) {
+        const box = document.getElementById("integrationFeedback");
+        const icon = ALERT_ICONS[type] || ALERT_ICONS.info;
+        box.className = `alert alert-${type} py-2 px-3 mb-0`;
+        box.innerHTML = `<span class="alert-icon"><i class="${icon}"></i></span><span class="alert-body">${msg}</span>`;
+        box.classList.remove("d-none");
+        setTimeout(() => box.classList.add("d-none"), 3000);
+    }
+
+    async function loadIntegrations() {
+        try {
+            const res = await fetch("/api/integrations/list");
+            const data = await res.json();
+            if (data.ok) {
+                renderIntegrations(data.integrations);
+            }
+        } catch (e) {
+            console.error("加载集成列表失败", e);
+        }
+    }
+
+    function renderIntegrations(integrations) {
+        const list = document.getElementById("integrationList");
+        if (!integrations || integrations.length === 0) {
+            list.innerHTML = '<div class="text-muted text-center py-3">暂无集成配置</div>';
+            return;
+        }
+        list.innerHTML = integrations.map(i => {
+            const typeInfo = integrationTypes[i.integration_type] || {name: i.integration_type, icon: "ri-settings-3-line"};
+            return `
+                <div class="card mb-2">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="${typeInfo.icon} mr-2"></i>
+                            <strong>${typeInfo.name}</strong>
+                            <span class="badge badge-${i.status === 'active' ? 'success' : 'secondary'} ml-2">${i.status}</span>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary mr-2" onclick="syncIntegration(${i.id}, '${i.integration_type}')">同步</button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="viewLogs(${i.id})">日志</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    }
+
+    async function syncIntegration(integrationId, integrationType) {
+        try {
+            const res = await fetch("/api/integrations/sync", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({integration_id: integrationId, integration_type: integrationType})
+            });
+            const data = await res.json();
+            if (data.ok) {
+                showFeedback("success", "同步成功");
+                loadIntegrations();
+            } else {
+                showFeedback("danger", data.msg || "同步失败");
+            }
+        } catch (e) {
+            showFeedback("danger", "同步失败: " + e.message);
+        }
+    }
+
+    window.syncIntegration = syncIntegration;
+    window.viewLogs = function(id) { alert("查看日志功能待实现"); };
+    loadIntegrations();
+})();
+</script>
+{% endblock %}
