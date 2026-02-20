@@ -462,13 +462,23 @@ def _role_page_payload() -> dict[str, Any]:
 @require_permission("MANAGE_USERS")
 def admin_users_page():
     users = list_users_admin(limit=2000)
+    me = current_user() or {}
+    me_id = _safe_int(me.get("id"), 0)
+    has_delete_any_permission = has_permission("DELETE_ANY_USER", me)
     for u in users:
-        u["can_delete"] = user_can_be_deleted(_safe_int(u.get("id"), 0))
+        user_id = _safe_int(u.get("id"), 0)
+        # 不能删除自己
+        if user_id == me_id:
+            u["can_delete"] = False
+        # 如果有DELETE_ANY_USER权限，则所有其他用户都可以删除
+        elif has_delete_any_permission:
+            u["can_delete"] = True
+        else:
+            u["can_delete"] = user_can_be_deleted(user_id)
     all_roles = list_roles_with_permissions()
     active_roles = list_roles_with_permissions(include_disabled=False)
     departments = list_department_names(limit=2000)
     positions = list_positions(include_disabled=False, limit=2000)
-    me = current_user() or {}
     return render_template(
         "admin_users.html",
         users=users,
@@ -476,7 +486,7 @@ def admin_users_page():
         active_roles=active_roles,
         departments=departments,
         positions=positions,
-        current_user_id=_safe_int(me.get("id"), 0),
+        current_user_id=me_id,
     )
 
 
@@ -486,9 +496,19 @@ def admin_users_page():
 def admin_users_api():
     limit = _safe_int(request.args.get("limit"), 500)
     me = current_user() or {}
+    me_id = _safe_int(me.get("id"), 0)
+    has_delete_any_permission = has_permission("DELETE_ANY_USER", me)
     users = list_users_admin(limit=limit)
     for u in users:
-        u["can_delete"] = user_can_be_deleted(_safe_int(u.get("id"), 0))
+        user_id = _safe_int(u.get("id"), 0)
+        # 不能删除自己
+        if user_id == me_id:
+            u["can_delete"] = False
+        # 如果有DELETE_ANY_USER权限，则所有其他用户都可以删除
+        elif has_delete_any_permission:
+            u["can_delete"] = True
+        else:
+            u["can_delete"] = user_can_be_deleted(user_id)
     return jsonify(
         {
             "ok": True,
@@ -497,7 +517,7 @@ def admin_users_api():
             "active_roles": list_roles_with_permissions(include_disabled=False),
             "departments": list_department_names(limit=2000),
             "positions": list_positions(include_disabled=False, limit=2000),
-            "current_user_id": _safe_int(me.get("id"), 0),
+            "current_user_id": me_id,
         }
     )
 
@@ -809,24 +829,36 @@ def admin_offboard_user_api(user_id: int):
 @login_required
 @require_permission("MANAGE_USERS")
 def admin_delete_user_api(user_id: int):
-    """删除用户：仅对无业务、无审计记录的测试账号可用。"""
-    if _safe_int((current_user() or {}).get("id"), 0) == int(user_id):
-        return jsonify({"ok": False, "message": "cannot delete current user"}), 400
-    if not user_can_be_deleted(user_id):
-        return jsonify(
-            {"ok": False, "message": "仅无业务记录、无审计记录的测试账号可删除，该用户不可删除"}
-        ), 400
+    """删除用户：仅对无业务、无审计记录的测试账号可用。拥有DELETE_ANY_USER权限的管理员可删除任意用户。"""
+    me = current_user() or {}
+    me_id = _safe_int(me.get("id"), 0)
+    has_delete_any_permission = has_permission("DELETE_ANY_USER", me)
+    
+    # 不允许删除自己
+    if me_id > 0 and me_id == int(user_id):
+        return jsonify({"ok": False, "message": "不能删除当前登录的账号"}), 400
+    
+    # 检查用户是否存在
     before_user = _load_user_admin_row(user_id)
     if before_user is None:
         return jsonify({"ok": False, "message": "user not found"}), 404
-    ok = delete_user_account(user_id)
+    
+    # 如果没有DELETE_ANY_USER权限，需要检查是否可以删除
+    if not has_delete_any_permission:
+        if not user_can_be_deleted(user_id):
+            return jsonify(
+                {"ok": False, "message": "仅无业务记录、无审计记录的测试账号可删除，该用户不可删除"}
+            ), 400
+    
+    # 执行删除（如果有权限则强制删除）
+    ok = delete_user_account(user_id, force=has_delete_any_permission)
     if not ok:
         return jsonify({"ok": False, "message": "delete failed"}), 500
     _record_admin_log(
         action_type="DELETE_USER",
         target_type="user",
         target_id=int(user_id),
-        detail=f"user_id={int(user_id)}; username={_safe_text(before_user.get('username'))}",
+        detail=f"user_id={int(user_id)}; username={_safe_text(before_user.get('username'))}; force={has_delete_any_permission}",
     )
     return jsonify({"ok": True, "user_id": int(user_id), "message": "用户已删除"})
 

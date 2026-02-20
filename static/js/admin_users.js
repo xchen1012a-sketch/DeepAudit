@@ -618,8 +618,8 @@
     const offboardDisabled = status !== "ACTIVE" || isCurrent;
     const offboardTitle = offboardDisabled ? (isCurrent ? "当前账号不可操作" : "仅启用状态可离职/停用") : "禁用并清空角色与数据范围，必填原因";
 
-    const deleteTitle = canDelete ? "删除该用户（仅测试账号可用）" : "仅无业务/无审计记录的测试账号可删除";
-    const deleteDisabled = !canDelete ? "disabled" : "";
+    const deleteTitle = isCurrent ? "不能删除当前登录的账号" : (canDelete ? "删除该用户，删除后不可恢复" : "仅无业务/无审计记录的测试账号可删除，或需要DELETE_ANY_USER权限");
+    const deleteDisabled = (!canDelete || isCurrent) ? "disabled" : "";
 
     const dropdownId = `userActions${userId}`;
     
@@ -1214,7 +1214,7 @@
       const userId = Number(deleteBtn.getAttribute("data-user-id") || 0);
       const username = deleteBtn.getAttribute("data-username") || "";
       if (userId <= 0) return;
-      if (!window.confirm(`确定要删除用户「${username || userId}」吗？仅测试账号可删除，删除后不可恢复。`)) return;
+      if (!window.confirm(`确定要删除用户「${username || userId}」吗？删除后不可恢复。`)) return;
       (async () => {
         try {
           await requestJson(`/api/admin/users/${encodeURIComponent(userId)}`, {

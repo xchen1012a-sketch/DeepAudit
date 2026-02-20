@@ -4523,10 +4523,11 @@ def user_can_be_deleted(user_id: int) -> bool:
     return True
 
 
-def delete_user_account(user_id: int) -> bool:
-    """删除用户（仅应在 user_can_be_deleted 为 True 时调用）。"""
-    if not user_can_be_deleted(user_id):
-        return False
+def delete_user_account(user_id: int, *, force: bool = False) -> bool:
+    """删除用户（仅应在 user_can_be_deleted 为 True 时调用，或 force=True 时强制删除）。"""
+    if not force:
+        if not user_can_be_deleted(user_id):
+            return False
     try:
         normalized_id = int(user_id)
     except Exception:

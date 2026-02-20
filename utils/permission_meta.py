@@ -96,6 +96,11 @@ PERMISSION_META: dict[str, dict[str, str]] = {
         "description_cn": "可新增用户、启停账号并维护部门组织。",
         "group": "ORG",
     },
+    "DELETE_ANY_USER": {
+        "name_cn": "删除任意用户",
+        "description_cn": "可删除任意用户账号，包括有业务记录和审计记录的用户（高风险操作）。",
+        "group": "ORG",
+    },
     "MANAGE_ROLES": {
         "name_cn": "角色权限管理",
         "description_cn": "可维护角色、权限点与数据范围策略。",
