@@ -1,0 +1,5 @@
+DeepAudit Pro Initial Admin Credential
+generated_at=2026-02-19 17:32:27
+username=admin01
+password=1aE51R6_H4n23BgC19c
+notice=Rotate immediately after first login.

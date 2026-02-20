@@ -13,6 +13,8 @@
 /* ===== Shared Styles ===== */
 .ledger-key-col { font-weight: 800; color: #0f172a; }
 .ledger-amount-strong { font-weight: 800; color: #0f172a; }
+.date-shortcuts { display: flex; gap: 6px; flex-wrap: wrap; }
+.date-shortcuts .btn { font-size: 12px; padding: 4px 10px; border-radius: 6px; }
 .risk-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; }
 .risk-pill.high { background: #fef2f2; color: #991b1b; border: 1px solid #fecdd3; }
 .risk-pill.medium { background: #fff7ed; color: #92400e; border: 1px solid #fed7aa; }
@@ -542,9 +544,15 @@
           <div class="form-group col-md-3">
             <label>{{ '上传日期' if active_tab == 'draft' else '入账日期' }}</label>
             <div class="ledger-range">
-              <input type="date" name="ledger_date_start" class="form-control" value="{{ filters.ledger_date_start }}">
+              <input type="date" name="ledger_date_start" id="ledgerDateStart" class="form-control" value="{{ filters.ledger_date_start }}">
               <span class="ledger-range-sep">至</span>
-              <input type="date" name="ledger_date_end" class="form-control" value="{{ filters.ledger_date_end }}">
+              <input type="date" name="ledger_date_end" id="ledgerDateEnd" class="form-control" value="{{ filters.ledger_date_end }}">
+            </div>
+            <div class="date-shortcuts mt-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary js-date-shortcut" data-range="today">今天</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary js-date-shortcut" data-range="yesterday">昨天</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary js-date-shortcut" data-range="week">本周</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary js-date-shortcut" data-range="month">本月</button>
             </div>
           </div>
           <div class="form-group col-md-3">

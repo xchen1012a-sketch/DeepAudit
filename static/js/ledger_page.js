@@ -1176,12 +1176,68 @@
   const refreshBatchReturnReasonState = setupRequiredSelect("batchReturnReason", "batchReturnReasonHint", "batchReturnSubmit");
   const refreshStructuredReasonState = setupRequiredSelect("evStructuredReason", "evStructuredReasonHint", "evStructuredSave");
 
+  function bindDateShortcuts() {
+    document.addEventListener("click", (event) => {
+      const btn = event.target.closest(".js-date-shortcut");
+      if (!btn) return;
+      
+      const range = btn.getAttribute("data-range");
+      const today = new Date();
+      const startInput = document.getElementById("ledgerDateStart");
+      const endInput = document.getElementById("ledgerDateEnd");
+      
+      if (!startInput || !endInput) return;
+      
+      const formatDate = (date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      };
+      
+      let startDate = new Date(today);
+      let endDate = new Date(today);
+      
+      if (range === "today") {
+        // 今天
+        startDate = today;
+        endDate = today;
+      } else if (range === "yesterday") {
+        // 昨天
+        startDate.setDate(today.getDate() - 1);
+        endDate.setDate(today.getDate() - 1);
+      } else if (range === "week") {
+        // 本周（周一到今天）
+        const dayOfWeek = today.getDay();
+        const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 周日算作上周
+        startDate.setDate(today.getDate() - diff);
+        endDate = today;
+      } else if (range === "month") {
+        // 本月（1号到今天）
+        startDate.setDate(1);
+        endDate = today;
+      }
+      
+      startInput.value = formatDate(startDate);
+      endInput.value = formatDate(endDate);
+      
+      // 高亮选中的按钮
+      document.querySelectorAll(".js-date-shortcut").forEach((b) => {
+        b.classList.remove("btn-primary");
+        b.classList.add("btn-outline-secondary");
+      });
+      btn.classList.remove("btn-outline-secondary");
+      btn.classList.add("btn-primary");
+    });
+  }
+
   bindPageSize();
   bindSelectAll();
   bindEvidenceOpen();
   bindEvidenceActions();
   bindActionButtons();
   bindBatchButtons();
+  bindDateShortcuts();
   void autoOpenEvidenceFromQuery();
   bindCopyButtons();
   formatAmountNodes();
