@@ -301,6 +301,7 @@ LOGIN_LOCK_WINDOW_MINUTES = 10
 
 DEFAULT_PERMISSIONS = [
     ("VIEW_DASHBOARD", "View dashboard pages and metrics"),
+    ("VIEW_UPLOAD_PAGE", "View expense reimbursement intake page"),
     ("VIEW_INVOICES", "View invoice ledger data"),
     ("CREATE_CASE", "Create risk cases from risk events"),
     ("ASSIGN_CASE", "Assign risk cases"),
@@ -336,6 +337,7 @@ DEFAULT_ROLES = [
         # 这里列出所有权限以确保数据库中也正确记录，便于审计和权限管理
         "permissions": [
             "VIEW_DASHBOARD",
+            "VIEW_UPLOAD_PAGE",
             "VIEW_BANK_STATS",
             "VIEW_INVOICES",
             "CREATE_CASE",
@@ -355,18 +357,19 @@ DEFAULT_ROLES = [
     {
         "role_name": ROLE_FINANCE_SPECIALIST,
         "data_scope": DATA_SCOPE_DEPT,
-        "permissions": ["VIEW_DASHBOARD", "VIEW_BANK_STATS", "VIEW_INVOICES"],
+        "permissions": ["VIEW_DASHBOARD", "VIEW_UPLOAD_PAGE", "VIEW_BANK_STATS", "VIEW_INVOICES"],
     },
     {
         "role_name": ROLE_RISK_SPECIALIST,
         "data_scope": DATA_SCOPE_DEPT,
-        "permissions": ["VIEW_DASHBOARD", "VIEW_BANK_STATS", "VIEW_INVOICES", "CREATE_CASE", "ASSIGN_CASE", "CLOSE_CASE"],
+        "permissions": ["VIEW_DASHBOARD", "VIEW_UPLOAD_PAGE", "VIEW_BANK_STATS", "VIEW_INVOICES", "CREATE_CASE", "ASSIGN_CASE", "CLOSE_CASE"],
     },
     {
         "role_name": ROLE_FINANCE_MANAGER,
         "data_scope": DATA_SCOPE_DEPT,
         "permissions": [
             "VIEW_DASHBOARD",
+            "VIEW_UPLOAD_PAGE",
             "VIEW_BANK_STATS",
             "VIEW_INVOICES",
             "CREATE_CASE",
@@ -383,7 +386,7 @@ DEFAULT_ROLES = [
     {
         "role_name": ROLE_EMPLOYEE_GENERAL,
         "data_scope": DATA_SCOPE_SELF,
-        "permissions": ["VIEW_DASHBOARD"],
+        "permissions": ["VIEW_UPLOAD_PAGE"],
     },
 ]
 DEFAULT_GOVERNANCE_RULES = [
@@ -3585,12 +3588,25 @@ def list_positions(*, include_disabled: bool = True, limit: int = 500) -> list[D
         normalized_limit = 500
     with get_conn() as conn:
         sql = """
-            SELECT id, name, status, created_at, updated_at
-            FROM positions
-            ORDER BY status ASC, name ASC
+            SELECT
+                p.id,
+                p.name,
+                p.status,
+                p.created_at,
+                p.updated_at,
+                COALESCE(u.active_user_count, 0) AS active_user_count
+            FROM positions p
+            LEFT JOIN (
+                SELECT position_id, COUNT(1) AS active_user_count
+                FROM users
+                WHERE position_id IS NOT NULL
+                  AND UPPER(COALESCE(status, ?)) = ?
+                GROUP BY position_id
+            ) u ON u.position_id = p.id
+            ORDER BY p.status ASC, p.name ASC
             LIMIT ?
         """
-        rows = conn.execute(sql, (normalized_limit,)).fetchall()
+        rows = conn.execute(sql, (USER_STATUS_ACTIVE, USER_STATUS_ACTIVE, normalized_limit)).fetchall()
     result: list[Dict[str, Any]] = []
     for row in rows:
         status = str(row["status"] or POSITION_STATUS_ACTIVE).strip().upper() or POSITION_STATUS_ACTIVE
@@ -3602,6 +3618,7 @@ def list_positions(*, include_disabled: bool = True, limit: int = 500) -> list[D
             "status": status,
             "created_at": str(row["created_at"] or "").strip(),
             "updated_at": str(row["updated_at"] or row["created_at"] or "").strip(),
+            "active_user_count": int(row["active_user_count"] or 0),
         })
     return result
 
@@ -3694,6 +3711,41 @@ def enable_position(position_id: int) -> Dict[str, Any] | None:
         if int(item.get("id", 0)) == pid:
             return item
     return None
+
+
+def delete_position(position_id: int) -> bool:
+    """Delete a position only when no active user is currently assigned to it."""
+    try:
+        pid = int(position_id)
+    except Exception:
+        return False
+    if pid <= 0:
+        return False
+
+    with get_conn() as conn:
+        exists_row = conn.execute(
+            "SELECT id FROM positions WHERE id = ? LIMIT 1",
+            (pid,),
+        ).fetchone()
+        if exists_row is None:
+            return False
+
+        count_row = conn.execute(
+            """
+            SELECT COUNT(1) AS active_user_count
+            FROM users
+            WHERE position_id = ?
+              AND UPPER(COALESCE(status, ?)) = ?
+            """,
+            (pid, USER_STATUS_ACTIVE, USER_STATUS_ACTIVE),
+        ).fetchone()
+        active_user_count = int((count_row["active_user_count"] if count_row else 0) or 0)
+        if active_user_count > 0:
+            return False
+
+        cur = conn.execute("DELETE FROM positions WHERE id = ?", (pid,))
+        conn.commit()
+        return cur.rowcount > 0
 
 
 def _department_name_map_by_ids(dept_ids: list[int]) -> dict[int, str]:
@@ -3817,6 +3869,65 @@ def list_roles_with_permissions(search: str | None = None, include_disabled: boo
     return result
 
 
+def _normalize_role_name_for_template(role_name: Any) -> str:
+    return str(role_name or "").strip().lower()
+
+
+def _normalize_permission_keys(permission_keys: Any) -> list[str]:
+    normalized: list[str] = []
+    for raw_key in permission_keys if isinstance(permission_keys, (list, tuple, set)) else []:
+        key = str(raw_key or "").strip().upper()
+        if not key or key in normalized:
+            continue
+        normalized.append(key)
+    return normalized
+
+
+def _role_definition_to_default_template(role_def: dict[str, Any] | None) -> dict[str, Any]:
+    row = dict(role_def or {})
+    source_role_name = str(row.get("role_name") or ROLE_EMPLOYEE_GENERAL).strip() or ROLE_EMPLOYEE_GENERAL
+    data_scope = _normalize_data_scope(row.get("data_scope"), fallback=DATA_SCOPE_SELF)
+    permission_keys = _normalize_permission_keys(row.get("permissions") or [])
+    if not permission_keys:
+        permission_keys = ["VIEW_UPLOAD_PAGE"]
+    return {
+        "source_role_name": source_role_name,
+        "data_scope": data_scope,
+        "permission_keys": permission_keys,
+    }
+
+
+def resolve_role_default_template(role_name: Any) -> Dict[str, Any]:
+    requested_role_name = str(role_name or "").strip()
+    requested_name_key = _normalize_role_name_for_template(requested_role_name)
+
+    employee_role_def = next(
+        (item for item in DEFAULT_ROLES if str(item.get("role_name") or "").strip() == ROLE_EMPLOYEE_GENERAL),
+        None,
+    )
+    fallback_template = _role_definition_to_default_template(employee_role_def)
+
+    matched_role_def: dict[str, Any] | None = None
+    if requested_name_key:
+        for role_def in DEFAULT_ROLES:
+            role_title = str(role_def.get("role_name") or "").strip()
+            if not role_title:
+                continue
+            candidate_keys = {_normalize_role_name_for_template(role_title)}
+            for legacy_name in role_def.get("legacy_names") or []:
+                legacy_key = _normalize_role_name_for_template(legacy_name)
+                if legacy_key:
+                    candidate_keys.add(legacy_key)
+            if requested_name_key in candidate_keys:
+                matched_role_def = role_def
+                break
+
+    template = _role_definition_to_default_template(matched_role_def) if matched_role_def else dict(fallback_template)
+    template["requested_role_name"] = requested_role_name
+    template["is_builtin"] = bool(matched_role_def)
+    return template
+
+
 def _normalize_permission_ids(permission_ids: list[int] | None) -> list[int]:
     normalized_permission_ids: list[int] = []
     for raw in permission_ids or []:
@@ -3934,6 +4045,7 @@ def create_role_record(role_name: str, data_scope: str = DATA_SCOPE_SELF) -> Dic
         return None
     scope = _normalize_data_scope(data_scope)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    target_role_id = 0
     with get_conn() as conn:
         # 检查是否存在同名角色（包括已删除的）
         existing = conn.execute(
@@ -3949,6 +4061,7 @@ def create_role_record(role_name: str, data_scope: str = DATA_SCOPE_SELF) -> Dic
                     (scope, now, int(existing["id"])),
                 )
                 conn.commit()
+                target_role_id = int(existing["id"])
             else:
                 # 角色存在且未删除，返回 None 表示名称冲突
                 return None
@@ -3962,6 +4075,36 @@ def create_role_record(role_name: str, data_scope: str = DATA_SCOPE_SELF) -> Dic
                 conn.commit()
             except sqlite3.IntegrityError:
                 return None
+            created_row = conn.execute("SELECT id FROM roles WHERE role_name = ? LIMIT 1", (normalized_name,)).fetchone()
+            if created_row:
+                target_role_id = int(created_row["id"])
+
+    # New or recovered roles always start from the factory template to keep behavior predictable.
+    if target_role_id > 0:
+        template = resolve_role_default_template(normalized_name)
+        default_scope = _normalize_data_scope(template.get("data_scope"), fallback=scope)
+        default_keys = _normalize_permission_keys(template.get("permission_keys") or [])
+        permission_ids: list[int] = []
+        if default_keys:
+            placeholders = ",".join(["?"] * len(default_keys))
+            with get_conn() as conn:
+                rows = conn.execute(
+                    f"SELECT id, permission_key FROM permissions WHERE permission_key IN ({placeholders})",
+                    tuple(default_keys),
+                ).fetchall()
+            permission_id_by_key = {
+                str(row["permission_key"] or "").strip().upper(): int(row["id"])
+                for row in rows
+                if int(row["id"]) > 0 and str(row["permission_key"] or "").strip()
+            }
+            permission_ids = [
+                permission_id_by_key.get(key, 0)
+                for key in default_keys
+                if permission_id_by_key.get(key, 0) > 0
+            ]
+        updated = set_role_permissions(target_role_id, permission_ids, data_scope=default_scope)
+        if updated is not None:
+            return updated
     
     roles = list_roles_with_permissions()
     for r in roles:
@@ -7103,6 +7246,3 @@ def update_invoice_verification(
         ).fetchone()
         conn.commit()
     return dict(row) if row else None
-
-
-

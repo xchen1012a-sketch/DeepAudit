@@ -69,6 +69,7 @@
   let activeItem = null;
   let trailExpanded = false;
   let stepFilter = "";
+  const singleFilterMode = root.getAttribute("data-single-filter") === "1";
 
   const trailStore = new Map();
   const riskCaseByInvoice = new Map();
@@ -196,12 +197,14 @@
   /* ── Filter logic ── */
   function isVisible(el) {
     const st = normalize(el.getAttribute("data-status"));
-    if (inbox === "my_pending") {
-      if (st !== "PENDING" || !queueMatches(el)) return false;
-    } else if (inbox === "all_pending") {
-      if (st !== "PENDING") return false;
-    } else if (inbox === "my_processed") {
-      if (!processedByMe(el)) return false;
+    if (!singleFilterMode) {
+      if (inbox === "my_pending") {
+        if (st !== "PENDING" || !queueMatches(el)) return false;
+      } else if (inbox === "all_pending") {
+        if (st !== "PENDING") return false;
+      } else if (inbox === "my_processed") {
+        if (!processedByMe(el)) return false;
+      }
     }
     const rf = normalize(refs.riskFilter.value);
     if (rf && normalize(el.getAttribute("data-risk")) !== rf) return false;
@@ -316,6 +319,7 @@
     const upLink = el.querySelector(".js-link-upload");
     if (upLink) {
       let href = `/invoices_page?tab=ledger&open_evidence=${encodeURIComponent(id || 0)}`;
+      if (id > 0) href += `&invoice_id=${encodeURIComponent(id)}`;
       if (ref) href += `&reference_no=${encodeURIComponent(ref)}`;
       upLink.setAttribute("href", href);
     }
@@ -323,15 +327,18 @@
     const riskLink = el.querySelector(".js-link-risk");
     if (riskLink) {
       if (caseId > 0) riskLink.setAttribute("href", `/risk/cases/${encodeURIComponent(caseId)}/detail`);
-      else if (trace) riskLink.setAttribute("href", `/api/ai/ledger/${encodeURIComponent(trace)}`);
+      else if (trace) riskLink.setAttribute("href", `/risk-center?trace_id=${encodeURIComponent(trace)}`);
       else riskLink.setAttribute("href", "/risk-center");
     }
 
     const evLink = el.querySelector(".js-link-evidence");
     if (evLink) {
+      const evidenceHref = id > 0
+        ? `/invoices_page?tab=ledger&invoice_id=${encodeURIComponent(id)}`
+        : `/invoices_page?tab=ledger&reference_no=${encodeURIComponent(ref || String(id || ""))}`;
       evLink.setAttribute(
         "href",
-        `/invoices_page?tab=ledger&reference_no=${encodeURIComponent(ref || String(id || ""))}`,
+        evidenceHref,
       );
       evLink.classList.toggle("is-disabled", st !== "APPROVED");
     }
@@ -553,11 +560,24 @@
   function applyReferenceDeepLink() {
     const p = new URLSearchParams(window.location.search);
     const ref = text(p.get("ref"));
-    if (!ref) return;
-    refs.keywordFilter.value = ref;
+    const invoiceId = Number(p.get("invoice_id") || 0);
+    const hasInvoiceId = Number.isFinite(invoiceId) && invoiceId > 0;
+    if (!ref && !hasInvoiceId) return;
+    if (!singleFilterMode) {
+      inbox = "all_pending";
+      refs.inboxTabs.forEach((btn) => {
+        btn.classList.toggle(
+          "is-active",
+          text(btn.getAttribute("data-inbox")) === "all_pending",
+        );
+      });
+    }
+    if (ref) refs.keywordFilter.value = ref;
     applyFilters();
     const target = items().find(
-      (el) => text(el.getAttribute("data-reference")) === ref,
+      (el) =>
+        (hasInvoiceId && Number(el.getAttribute("data-id") || 0) === invoiceId) ||
+        (ref && text(el.getAttribute("data-reference")) === ref),
     );
     if (!target) return;
     target.classList.add("is-highlighted");

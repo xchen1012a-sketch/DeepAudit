@@ -43,7 +43,7 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Request ID</label>
+                    <label class="form-label">请求ID</label>
                     <input type="text" class="form-control" id="request_id" name="request_id" placeholder="请求追踪ID">
                 </div>
                 <div class="col-md-3">
@@ -81,7 +81,7 @@
                             <th>目标类型</th>
                             <th>目标ID</th>
                             <th>客户端IP</th>
-                            <th>Request ID</th>
+                            <th>请求ID</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -107,7 +107,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">审计日志详情</h5>
+                <h5 class="modal-title">操作日志详情</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="detailContent">
@@ -118,6 +118,26 @@
         </div>
     </div>
 </div>
+
+<style>
+  #detailModal .modal-dialog {
+    transform: translateY(24px);
+    opacity: 0;
+    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.35s ease;
+    will-change: transform, opacity;
+  }
+
+  #detailModal.show .modal-dialog {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #detailModal .modal-dialog {
+      transition: none;
+    }
+  }
+</style>
 
 <script>
 let currentPage = 1;
@@ -391,7 +411,7 @@ async function showDetail(logId) {
                     </div>
                     ${log.user_agent ? `
                     <div class="d-flex mb-2">
-                        <span class="text-muted" style="min-width: 120px;">User Agent：</span>
+                        <span class="text-muted" style="min-width: 120px;">用户代理：</span>
                         <span class="text-break small">${escapeHtml(log.user_agent)}</span>
                     </div>
                     ` : ''}
@@ -434,5 +454,3 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 {% endblock %}
-
-

@@ -889,12 +889,20 @@
       'INFO': '#3b82f6',
       'DEBUG': '#64748b'
     };
-    const levelColor = levelColors[log.level] || '#64748b';
+    const levelLabels = {
+      'ERROR': '错误',
+      'WARN': '警告',
+      'INFO': '信息',
+      'DEBUG': '调试'
+    };
+    const normalizedLevel = String(log.level || 'INFO').toUpperCase();
+    const levelColor = levelColors[normalizedLevel] || '#64748b';
+    const levelLabel = levelLabels[normalizedLevel] || normalizedLevel;
     document.getElementById("drawerContent").innerHTML = `
       <div class="mb-3 p-3" style="background: #f8fafc; border-radius: 12px; border-left: 4px solid ${levelColor};">
         <div class="mb-2">
           <span class="badge" style="background: ${levelColor}; color: #fff; padding: 0.375rem 0.75rem; border-radius: 6px; font-weight: 600;">
-            ${esc(log.level || 'INFO')}
+            ${esc(levelLabel)}
           </span>
         </div>
         <div class="row mb-2">

@@ -23,6 +23,7 @@
     editorDataScope: document.getElementById("editorDataScope"),
     pendingSummary: document.getElementById("rolePendingSummary"),
     permissionGroupContainer: document.getElementById("permissionGroupContainer"),
+    resetDefaultsBtn: document.getElementById("resetRoleDefaultsBtn"),
     saveBtn: document.getElementById("saveRoleBtn"),
 
     menuPreviewContainer: document.getElementById("menuPreviewContainer"),
@@ -55,6 +56,7 @@
     !refs.editorDataScope ||
     !refs.pendingSummary ||
     !refs.permissionGroupContainer ||
+    !refs.resetDefaultsBtn ||
     !refs.saveBtn ||
     !refs.menuPreviewContainer ||
     !refs.actionPreviewContainer ||
@@ -152,6 +154,33 @@
       if (id > 0) set.add(id);
     });
     return set;
+  }
+
+  function roleDefaultTemplate(role) {
+    const defaultKeySet = new Set(
+      (Array.isArray(role && role.default_permission_keys) ? role.default_permission_keys : [])
+        .map((item) => normalize(item))
+        .filter(Boolean),
+    );
+    if (!defaultKeySet.size) {
+      const permissionIds = Array.isArray(role && role.default_permission_ids) ? role.default_permission_ids : [];
+      permissionIds.forEach((permissionId) => {
+        const permission = permissionById(permissionId);
+        const key = normalize(permission && permission.permission_key);
+        if (key) defaultKeySet.add(key);
+      });
+    }
+    if (!defaultKeySet.size) {
+      getRolePermissionKeySet(role).forEach((key) => defaultKeySet.add(key));
+    }
+    const rawScope = normalize(role && role.default_data_scope);
+    const dataScope = rawScope === "ALL" ? "ALL" : "DEPT";
+    return {
+      keySet: defaultKeySet,
+      dataScope,
+      sourceRoleName: displayText(role && role.default_source_role_name, "通用员工"),
+      isBuiltin: !!(role && role.default_is_builtin),
+    };
   }
 
   function collectCurrentPermissionIds() {
@@ -532,6 +561,7 @@
 
     const dirty = role ? hasPendingChanges(role, editorState) : false;
     refs.saveBtn.disabled = !dirty;
+    refs.resetDefaultsBtn.disabled = !role;
     refs.pendingSummary.classList.toggle("has-changes", dirty);
 
     const permissionKeySet = editorState.permission_keys instanceof Set ? editorState.permission_keys : new Set();
@@ -787,6 +817,21 @@
   });
 
   refs.editorDataScope.addEventListener("change", refreshEditorMeta);
+  refs.resetDefaultsBtn.addEventListener("click", () => {
+    const role = roleById(state.selectedRoleId);
+    if (!role) {
+      showFeedback("danger", "请先选择角色");
+      return;
+    }
+    const defaults = roleDefaultTemplate(role);
+    setSelectValue(refs.editorDataScope, defaults.dataScope);
+    renderPermissionGroups(role, defaults.keySet);
+    refreshEditorMeta();
+    const sourceText = defaults.isBuiltin || text(defaults.sourceRoleName) === text(role.role_name)
+      ? "已重置为该角色的出厂默认权限，请点击保存生效"
+      : `已按「${defaults.sourceRoleName}」模板重置默认权限，请点击保存生效`;
+    showFeedback("info", sourceText);
+  });
   refs.saveBtn.addEventListener("click", openSaveModal);
   refs.saveRoleSubmitBtn.addEventListener("click", submitSave);
 

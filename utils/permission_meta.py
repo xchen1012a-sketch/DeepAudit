@@ -51,9 +51,14 @@ PERMISSION_META: dict[str, dict[str, str]] = {
         "description_cn": "可查看银行流水相关统计图表和汇总。",
         "group": "DASHBOARD",
     },
+    "VIEW_UPLOAD_PAGE": {
+        "name_cn": "仅可使用费用报销受理页面",
+        "description_cn": "可访问费用报销受理页面并提交单据，不包含凭证台账中心权限。",
+        "group": "UPLOAD_LEDGER",
+    },
     "VIEW_INVOICES": {
-        "name_cn": "查看上传与台账",
-        "description_cn": "可查看上传记录、凭证台账与单据详情。",
+        "name_cn": "查看凭证台账中心",
+        "description_cn": "可查看凭证台账、单据详情以及台账相关操作。",
         "group": "UPLOAD_LEDGER",
     },
     "DELETE_INVOICE": {
@@ -130,7 +135,7 @@ PERMISSION_META: dict[str, dict[str, str]] = {
 
 MENU_VISIBILITY_RULES: list[dict[str, Any]] = [
     {"id": "ops_dashboard", "name_cn": "管理总览", "group_cn": "业务运营", "mode": "any", "permissions": ["VIEW_DASHBOARD"]},
-    {"id": "ops_upload", "name_cn": "费用报销受理", "group_cn": "业务运营", "mode": "any", "permissions": ["VIEW_INVOICES"]},
+    {"id": "ops_upload", "name_cn": "费用报销受理", "group_cn": "业务运营", "mode": "any", "permissions": ["VIEW_UPLOAD_PAGE", "VIEW_INVOICES"]},
     {"id": "ops_ledger", "name_cn": "凭证台账中心", "group_cn": "业务运营", "mode": "any", "permissions": ["VIEW_INVOICES"]},
     {
         "id": "risk_center",

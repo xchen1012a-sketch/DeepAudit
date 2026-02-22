@@ -93,11 +93,21 @@
   table-layout: auto;
   width: 100%;
 }
-.position-admin .table thead th:nth-child(1) { width: 70px; } /* ID */
-.position-admin .table thead th:nth-child(2) { min-width: 150px; } /* 岗位名称 */
-.position-admin .table thead th:nth-child(3) { width: 100px; } /* 状态 */
-.position-admin .table thead th:nth-child(4) { width: 160px; } /* 更新时间 */
-.position-admin .table thead th:nth-child(5) { width: 100px; } /* 操作 */
+.position-admin .table thead th:nth-child(1) { width: 44px; text-align: center; } /* 选择 */
+.position-admin .table thead th:nth-child(2) { width: 70px; } /* ID */
+.position-admin .table thead th:nth-child(3) { min-width: 150px; } /* 岗位名称 */
+.position-admin .table thead th:nth-child(4) { width: 100px; } /* 状态 */
+.position-admin .table thead th:nth-child(5) { width: 160px; } /* 更新时间 */
+.position-admin .table thead th:nth-child(6) { width: 250px; } /* 操作 */
+.position-admin .position-select-cell {
+  text-align: center;
+}
+.position-admin .position-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 </style>
 {% endblock %}
 
@@ -121,12 +131,16 @@
         <strong>岗位列表</strong>
         <span id="positionCountBadge" class="badge badge-light">{{ positions|length }}</span>
       </div>
-      <button id="reloadPositionsBtn" class="btn btn-outline-secondary">刷新</button>
+      <div class="d-flex align-items-center" style="gap: 8px;">
+        <button id="batchDeletePositionsBtn" class="btn btn-outline-danger" disabled>批量删除</button>
+        <button id="reloadPositionsBtn" class="btn btn-outline-secondary">刷新</button>
+      </div>
     </div>
     <div class="card-body table-responsive p-0">
       <table class="table table-striped mb-0">
         <thead>
           <tr>
+            <th><input type="checkbox" id="positionsSelectAll" title="全选"></th>
             <th>ID</th>
             <th>岗位名称</th>
             <th>状态</th>
@@ -137,6 +151,9 @@
         <tbody id="positionsTableBody">
           {% for position in positions %}
           <tr data-position-id="{{ position.id }}">
+            <td class="position-select-cell">
+              <input type="checkbox" class="js-position-select" data-position-id="{{ position.id }}">
+            </td>
             <td>{{ position.id }}</td>
             <td>{{ position.name or '-' }}</td>
             <td>
@@ -148,16 +165,67 @@
             </td>
             <td>{{ position.updated_at or position.created_at or '-' }}</td>
             <td>
-              {% if (position.status or '')|upper == 'ACTIVE' %}
-              <button type="button" class="btn btn-outline-danger js-position-disable" data-position-id="{{ position.id }}" data-position-name="{{ position.name or '' }}">禁用</button>
-              {% else %}
-              <button type="button" class="btn btn-outline-success js-position-enable" data-position-id="{{ position.id }}" data-position-name="{{ position.name or '' }}">启用</button>
-              {% endif %}
+              <div class="position-actions">
+                {% if (position.status or '')|upper == 'ACTIVE' %}
+                <button type="button" class="btn btn-outline-danger js-position-disable" data-position-id="{{ position.id }}" data-position-name="{{ position.name or '' }}">禁用</button>
+                {% else %}
+                <button type="button" class="btn btn-outline-success js-position-enable" data-position-id="{{ position.id }}" data-position-name="{{ position.name or '' }}">启用</button>
+                {% endif %}
+                <button
+                  type="button"
+                  class="btn btn-outline-danger js-position-delete"
+                  data-position-id="{{ position.id }}"
+                  data-position-name="{{ position.name or '' }}"
+                  {% if (position.active_user_count or 0) > 0 %}disabled title="该岗位仍有在职人员，无法删除"{% endif %}
+                >
+                  删除
+                </button>
+              </div>
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="positionDeleteModal" tabindex="-1" aria-labelledby="positionDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="positionDeleteModalLabel">删除岗位</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-light d-flex align-items-start mb-3">
+          <i class="ri-information-line text-primary mr-2" aria-hidden="true"></i>
+          <div>
+            <div class="font-weight-medium" id="positionDeleteNameLabel">岗位：-</div>
+            <div class="text-muted small" id="positionDeleteStatusLabel">成员数：0；状态：-</div>
+          </div>
+        </div>
+        <div class="form-group mb-3">
+          <label class="mb-1" for="positionDeleteReasonCode">处理原因码 <span class="text-danger">*</span></label>
+          <select id="positionDeleteReasonCode" class="form-control">
+            <option value="">请选择处理原因</option>
+            {% for opt in reason_options %}
+            <option value="{{ opt.value }}">{{ opt.label }}</option>
+            {% endfor %}
+          </select>
+          <div id="positionDeleteReasonError" class="invalid-feedback d-none">请选择处理原因码</div>
+        </div>
+        <div class="form-group mb-0">
+          <label class="mb-1" for="positionDeleteReasonNote">补充说明（可选）</label>
+          <textarea id="positionDeleteReasonNote" class="form-control" rows="3" placeholder="可填写处理细节，写入审计留痕"></textarea>
+        </div>
+        <div id="positionDeleteAlert" class="alert alert-danger mt-3 d-none" role="alert"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" id="positionDeleteConfirmBtn">确认删除</button>
+      </div>
     </div>
   </div>
 </div>
@@ -170,12 +238,25 @@
   const form = document.getElementById("createPositionForm");
   const nameInput = document.getElementById("newPositionName");
   const reloadBtn = document.getElementById("reloadPositionsBtn");
+  const batchDeleteBtn = document.getElementById("batchDeletePositionsBtn");
+  const selectAllCheckbox = document.getElementById("positionsSelectAll");
   const msg = document.getElementById("positionMsg");
   const countBadge = document.getElementById("positionCountBadge");
+  const deleteModalEl = document.getElementById("positionDeleteModal");
+  const deleteModalJQuery = window.jQuery && deleteModalEl ? window.jQuery(deleteModalEl) : null;
+  const deleteReasonSelect = document.getElementById("positionDeleteReasonCode");
+  const deleteReasonNote = document.getElementById("positionDeleteReasonNote");
+  const deleteReasonError = document.getElementById("positionDeleteReasonError");
+  const deletePositionAlert = document.getElementById("positionDeleteAlert");
+  const deletePositionNameLabel = document.getElementById("positionDeleteNameLabel");
+  const deletePositionStatusLabel = document.getElementById("positionDeleteStatusLabel");
+  const deletePositionConfirmBtn = document.getElementById("positionDeleteConfirmBtn");
 
   let state = {
     positions: Array.isArray({{ positions | tojson }}) ? {{ positions | tojson }} : [],
+    selectedIds: new Set(),
   };
+  let pendingDeletePositionId = 0;
 
   function setMessage(text, isError = false) {
     if (!msg) return;
@@ -194,33 +275,124 @@
     return '<span class="badge badge-secondary">禁用</span>';
   }
 
+  function setPositionDeleteReasonError(message) {
+    if (!deleteReasonSelect || !deleteReasonError) return;
+    if (message) {
+      deleteReasonError.textContent = message;
+      deleteReasonError.classList.remove("d-none");
+      deleteReasonSelect.classList.add("is-invalid");
+    } else {
+      deleteReasonError.classList.add("d-none");
+      deleteReasonSelect.classList.remove("is-invalid");
+    }
+  }
+
+  function setPositionDeleteModalAlert(message) {
+    if (!deletePositionAlert) return;
+    if (message) {
+      deletePositionAlert.textContent = message;
+      deletePositionAlert.classList.remove("d-none");
+    } else {
+      deletePositionAlert.classList.add("d-none");
+    }
+  }
+
+  function resetPositionDeleteModalState() {
+    pendingDeletePositionId = 0;
+    if (deleteReasonSelect) deleteReasonSelect.value = "";
+    if (deleteReasonNote) deleteReasonNote.value = "";
+    if (deletePositionNameLabel) deletePositionNameLabel.textContent = "岗位：-";
+    if (deletePositionStatusLabel) deletePositionStatusLabel.textContent = "成员数：0；状态：-";
+    setPositionDeleteReasonError("");
+    setPositionDeleteModalAlert("");
+    if (deletePositionConfirmBtn) deletePositionConfirmBtn.disabled = false;
+  }
+
+  function describePositionForModal(positionId) {
+    const positions = Array.isArray(state.positions) ? state.positions : [];
+    const row = positions.find((item) => Number(item && item.id || 0) === positionId) || null;
+    const normalizedStatus = String(row?.status || "").trim().toUpperCase();
+    const statusLabel = normalizedStatus === "ACTIVE" ? "启用" : normalizedStatus === "DISABLED" ? "禁用" : "-";
+    const members = Number(row?.active_user_count) || 0;
+    const name = row?.name || "-";
+    return { name, statusLabel, members };
+  }
+
+  function openPositionDeleteModal(positionId) {
+    if (positionId <= 0) return;
+    pendingDeletePositionId = positionId;
+    const info = describePositionForModal(positionId);
+    if (deleteReasonSelect) deleteReasonSelect.value = "";
+    if (deleteReasonNote) deleteReasonNote.value = "";
+    if (deletePositionNameLabel) deletePositionNameLabel.textContent = `岗位：${info.name}`;
+    if (deletePositionStatusLabel)
+      deletePositionStatusLabel.textContent = `成员数：${info.members}；状态：${info.statusLabel}`;
+    setPositionDeleteReasonError("");
+    setPositionDeleteModalAlert("");
+    if (deleteModalJQuery) {
+      deleteModalJQuery.modal("show");
+    } else if (deleteModalEl) {
+      deleteModalEl.classList.add("show");
+    }
+  }
+
+  function updateBatchDeleteState() {
+    if (batchDeleteBtn) {
+      const selectedCount = state.selectedIds.size;
+      batchDeleteBtn.disabled = selectedCount <= 0;
+      batchDeleteBtn.textContent = selectedCount > 0 ? ("批量删除（" + selectedCount + "）") : "批量删除";
+    }
+    if (selectAllCheckbox) {
+      const positions = Array.isArray(state.positions) ? state.positions : [];
+      const total = positions.length;
+      const selectedCount = positions.reduce((count, p) => count + (state.selectedIds.has(Number(p.id) || 0) ? 1 : 0), 0);
+      selectAllCheckbox.checked = total > 0 && selectedCount === total;
+      selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < total;
+    }
+  }
+
+  function syncSelectedIds() {
+    const validIds = new Set((state.positions || []).map((item) => Number(item && item.id) || 0).filter((id) => id > 0));
+    state.selectedIds.forEach((id) => {
+      if (!validIds.has(id)) state.selectedIds.delete(id);
+    });
+  }
+
   function renderRows() {
     if (!body) return;
+    syncSelectedIds();
     if (!state.positions.length) {
-      body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">暂无岗位</td></tr>';
+      body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">暂无岗位</td></tr>';
       if (countBadge) countBadge.textContent = "0";
+      updateBatchDeleteState();
       return;
     }
     const rows = state.positions.map((p) => {
-      const id = p.id;
+      const id = Number(p.id) || 0;
       const name = escapeHtml(p.name || "-");
       const status = p.status || "ACTIVE";
       const updated = p.updated_at || p.created_at || "-";
       const isDisabled = String(status).toUpperCase() === "DISABLED";
-      const actionBtn = isDisabled
+      const activeUserCount = Number(p.active_user_count) || 0;
+      const checked = state.selectedIds.has(id) ? " checked" : "";
+      const toggleBtn = isDisabled
         ? "<button type=\"button\" class=\"btn btn-outline-success js-position-enable\" data-position-id=\"" + id + "\" data-position-name=\"" + escapeHtml(p.name || "") + "\">启用</button>"
         : "<button type=\"button\" class=\"btn btn-outline-danger js-position-disable\" data-position-id=\"" + id + "\" data-position-name=\"" + escapeHtml(p.name || "") + "\">禁用</button>";
+      const deleteDisabled = activeUserCount > 0 ? " disabled title=\"该岗位仍有在职人员，无法删除\"" : "";
+      const deleteBtn = "<button type=\"button\" class=\"btn btn-outline-danger js-position-delete\" data-position-id=\"" + id + "\" data-position-name=\"" + escapeHtml(p.name || "") + "\"" + deleteDisabled + ">删除</button>";
       return (
         "<tr data-position-id=\"" + id + "\">" +
+        "<td class=\"position-select-cell\"><input type=\"checkbox\" class=\"js-position-select\" data-position-id=\"" + id + "\"" + checked + "></td>" +
         "<td>" + id + "</td>" +
         "<td>" + name + "</td>" +
         "<td>" + statusBadge(status) + "</td>" +
         "<td>" + escapeHtml(updated) + "</td>" +
-        "<td>" + actionBtn + "</td></tr>"
+        "<td><div class=\"position-actions\">" + toggleBtn + deleteBtn + "</div></td></tr>"
       );
     });
     body.innerHTML = rows.join("");
     if (countBadge) countBadge.textContent = String(state.positions.length);
+    updateBatchDeleteState();
   }
 
   async function loadPositions() {
@@ -233,6 +405,96 @@
       }
     } catch (e) {
       setMessage("加载失败：" + (e && e.message), true);
+    }
+  }
+
+  async function requestPositionToggle(id, name, isEnable) {
+    const action = isEnable ? "启用" : "禁用";
+    const url = isEnable ? "/api/admin/positions/" + id + "/enable" : "/api/admin/positions/" + id + "/disable";
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: "{}",
+      });
+      const data = await res.json();
+      if (data && data.ok && data.position) {
+        const idx = state.positions.findIndex((p) => Number(p.id) === id);
+        if (idx >= 0) state.positions[idx] = data.position;
+        renderRows();
+        setMessage(`${action}成功`);
+      } else {
+        setMessage(data && data.message ? data.message : action + "失败", true);
+      }
+    } catch (err) {
+      setMessage("请求失败：" + (err && err.message), true);
+    }
+  }
+
+  async function confirmDeletePosition() {
+    if (!pendingDeletePositionId) return;
+    const reasonCode = String(deleteReasonSelect?.value || "").trim();
+    if (!reasonCode) {
+      setPositionDeleteReasonError("请选择处理原因码");
+      return;
+    }
+    setPositionDeleteReasonError("");
+    setPositionDeleteModalAlert("");
+    const payload = { change_reason_code: reasonCode };
+    const note = String(deleteReasonNote?.value || "").trim();
+    if (note) payload.change_reason_note = note;
+    if (deletePositionConfirmBtn) deletePositionConfirmBtn.disabled = true;
+    try {
+      const response = await fetch(`/api/admin/positions/${pendingDeletePositionId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok || !data || data.ok !== true) {
+        throw new Error(data?.message || `HTTP ${response.status}`);
+      }
+      setMessage("岗位已删除");
+      if (deleteModalJQuery) {
+        deleteModalJQuery.modal("hide");
+      } else if (deleteModalEl) {
+        deleteModalEl.classList.remove("show");
+      }
+      resetPositionDeleteModalState();
+      await loadPositions();
+    } catch (error) {
+      setPositionDeleteModalAlert(`删除失败：${error.message}`);
+    } finally {
+      if (deletePositionConfirmBtn) deletePositionConfirmBtn.disabled = false;
+    }
+  }
+
+  async function requestBatchDelete() {
+    const ids = Array.from(state.selectedIds);
+    if (!ids.length) {
+      setMessage("请先选择要删除的岗位", true);
+      return;
+    }
+    if (!window.confirm("确定要批量删除选中的 " + ids.length + " 个岗位吗？此操作不可恢复。")) return;
+    try {
+      const res = await fetch("/api/admin/positions/batch-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data) {
+        setMessage("批量删除失败", true);
+        return;
+      }
+      const deletedIds = Array.isArray(data.deleted_ids) ? data.deleted_ids.map((v) => Number(v) || 0) : [];
+      deletedIds.forEach((id) => state.selectedIds.delete(id));
+      await loadPositions();
+      const hasSuccess = (Number(data.deleted_count) || 0) > 0;
+      const messageText = data.message || (hasSuccess ? "批量删除成功" : "批量删除失败");
+      setMessage(messageText, !hasSuccess);
+    } catch (err) {
+      setMessage("请求失败：" + (err && err.message), true);
     }
   }
 
@@ -252,11 +514,7 @@
       });
       const data = await res.json();
       if (data && data.ok && data.position) {
-        state.positions = state.positions || [];
-        if (!state.positions.some((p) => p.id === data.position.id)) {
-          state.positions.push(data.position);
-        }
-        renderRows();
+        await loadPositions();
         if (nameInput) nameInput.value = "";
         setMessage("已新增");
         setTimeout(() => setMessage(""), 2000);
@@ -269,39 +527,58 @@
   });
 
   reloadBtn.addEventListener("click", loadPositions);
+  if (batchDeleteBtn) batchDeleteBtn.addEventListener("click", requestBatchDelete);
+  if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener("change", (event) => {
+      const checked = !!(event.target && event.target.checked);
+      const positions = Array.isArray(state.positions) ? state.positions : [];
+      if (checked) {
+        positions.forEach((item) => {
+          const id = Number(item && item.id) || 0;
+          if (id > 0) state.selectedIds.add(id);
+        });
+      } else {
+        state.selectedIds.clear();
+      }
+      renderRows();
+    });
+  }
+
+  body.addEventListener("change", (e) => {
+    const checkbox = e.target && e.target.closest && e.target.closest(".js-position-select");
+    if (!checkbox) return;
+    const id = Number(checkbox.getAttribute("data-position-id")) || 0;
+    if (id <= 0) return;
+    if (checkbox.checked) state.selectedIds.add(id);
+    else state.selectedIds.delete(id);
+    updateBatchDeleteState();
+  });
 
   body.addEventListener("click", async (e) => {
     const disableBtn = e.target && e.target.closest && e.target.closest(".js-position-disable");
     const enableBtn = e.target && e.target.closest && e.target.closest(".js-position-enable");
-    const btn = disableBtn || enableBtn;
+    const deleteBtn = e.target && e.target.closest && e.target.closest(".js-position-delete");
+    const btn = disableBtn || enableBtn || deleteBtn;
     if (!btn) return;
     const id = parseInt(btn.getAttribute("data-position-id"), 10);
     const name = btn.getAttribute("data-position-name") || "";
     if (!id) return;
-    const isEnable = !!enableBtn;
-    const action = isEnable ? "启用" : "禁用";
-    const url = isEnable ? "/api/admin/positions/" + id + "/enable" : "/api/admin/positions/" + id + "/disable";
-    if (!window.confirm("确定要" + action + "岗位「" + (name || id) + "」吗？")) return;
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: "{}",
-      });
-      const data = await res.json();
-      if (data && data.ok && data.position) {
-        const idx = state.positions.findIndex((p) => p.id === id);
-        if (idx >= 0) state.positions[idx] = data.position;
-        renderRows();
-      } else {
-        alert(data && data.message ? data.message : action + "失败");
-      }
-    } catch (err) {
-      alert("请求失败：" + (err && err.message));
+    if (deleteBtn) {
+      openPositionDeleteModal(id);
+      return;
     }
+    await requestPositionToggle(id, name, !!enableBtn);
   });
 
+  deleteReasonSelect?.addEventListener("change", () => setPositionDeleteReasonError(""));
+  deletePositionConfirmBtn?.addEventListener("click", confirmDeletePosition);
+  if (deleteModalJQuery) {
+    deleteModalJQuery.on("hidden.bs.modal", resetPositionDeleteModalState);
+  }
+  resetPositionDeleteModalState();
+
   renderRows();
+  loadPositions();
 })();
 </script>
 {% endblock %}

@@ -38,6 +38,7 @@
     {% set _focus = request.args.get('focus') or '' %}
     {% set _section = request.args.get('section') or '' %}
     {% set _can_dashboard = nav_has_permission('VIEW_DASHBOARD') if nav_has_permission is defined else True %}
+    {% set _can_upload_page = nav_has_any_permission(['VIEW_UPLOAD_PAGE', 'VIEW_INVOICES']) if nav_has_any_permission is defined else True %}
     {% set _can_view_invoices = nav_has_permission('VIEW_INVOICES') if nav_has_permission is defined else True %}
     {% set _can_manage_users = nav_has_permission('MANAGE_USERS') if nav_has_permission is defined else True %}
     {% set _can_manage_roles = nav_has_permission('MANAGE_ROLES') if nav_has_permission is defined else True %}
@@ -49,7 +50,7 @@
     {% set _can_governance = nav_can_governance if nav_can_governance is defined else (_can_manage_users or _can_manage_roles or _can_manage_rules or _can_manage_system) %}
     {% set _can_risk_center = nav_has_any_permission(['CREATE_CASE', 'ASSIGN_CASE', 'CLOSE_CASE']) if nav_has_any_permission is defined else True %}
     {% set _show_ops_dashboard = _can_dashboard %}
-    {% set _show_ops_upload = _can_view_invoices %}
+    {% set _show_ops_upload = _can_upload_page %}
     {% set _show_ops_ledger = _can_view_invoices %}
     {% set _show_risk_approval = _can_approval_console %}
     {% set _show_risk_workflow = _can_workflow_manage %}

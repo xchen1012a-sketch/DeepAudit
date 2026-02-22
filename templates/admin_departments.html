@@ -69,6 +69,56 @@
   white-space: nowrap;
   transition: all 0.15s;
 }
+.department-admin .header-actions .btn {
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+.department-admin .header-actions .btn + .btn {
+  margin-left: 10px;
+}
+.department-admin .btn-dept {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+.department-admin .btn-dept:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+.department-admin .btn-dept:disabled,
+.department-admin .btn-dept.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.department-admin .btn-dept-primary {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+.department-admin .btn-dept-primary:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+.department-admin .btn-dept-muted {
+  border-color: #94a3b8;
+  color: #475569;
+}
+.department-admin .btn-dept-danger {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+.department-admin .btn-dept-danger:hover {
+  background: #fef2f2;
+  border-color: #b91c1c;
+}
+.department-admin .dept-actions .btn {
+  margin-right: 8px;
+  margin-bottom: 6px;
+}
+.department-admin .dept-select {
+  width: 16px;
+  height: 16px;
+}
 </style>
 {% endblock %}
 
@@ -89,12 +139,18 @@
   <div class="card card-outline card-secondary mb-0">
     <div class="card-header d-flex justify-content-between align-items-center">
       <strong>部门列表</strong>
-      <button id="reloadDepartmentsBtn" class="btn btn-outline-secondary">刷新</button>
+      <div class="header-actions">
+        <button id="reloadDepartmentsBtn" class="btn btn-dept btn-dept-muted">刷新</button>
+        <button id="bulkDeleteDepartmentsBtn" class="btn btn-dept btn-dept-danger" disabled>&#25209;&#37327;&#21024;&#38500;</button>
+      </div>
     </div>
     <div class="card-body table-responsive p-0">
       <table class="table table-striped mb-0">
         <thead>
           <tr>
+            <th style="width: 44px;" class="text-center">
+              <input id="departmentsSelectAll" class="dept-select" type="checkbox" aria-label="Select all">
+            </th>
             <th style="width: 80px;">ID</th>
             <th>部门名称</th>
             <th style="width: 120px;">状态</th>
@@ -106,6 +162,14 @@
         <tbody id="departmentsTableBody">
           {% for department in departments %}
           <tr data-department-id="{{ department.id }}">
+            <td class="text-center">
+              <input
+                class="js-dept-select dept-select"
+                type="checkbox"
+                data-department-id="{{ department.id }}"
+                {% if (department.active_user_count or 0) > 0 %}disabled title="该部门有在职人员，无法删除"{% endif %}
+              >
+            </td>
             <td>{{ department.id }}</td>
             <td>
               <input
@@ -125,39 +189,41 @@
             <td>{{ department.active_user_count or 0 }}</td>
             <td>{{ department.updated_at or department.created_at or '-' }}</td>
             <td>
-              <button
-                class="btn btn-outline-primary js-department-action"
-                data-action="rename"
-                data-department-id="{{ department.id }}"
-                {% if (department.status or '')|upper == 'DISABLED' %}disabled{% endif %}
-              >
-                保存名称
-              </button>
-              {% if (department.status or '')|upper == 'DISABLED' %}
-              <button
-                class="btn btn-outline-success js-department-action"
-                data-action="enable"
-                data-department-id="{{ department.id }}"
-              >
-                启用
-              </button>
-              {% else %}
-              <button
-                class="btn btn-outline-warning js-department-action"
-                data-action="disable"
-                data-department-id="{{ department.id }}"
-              >
-                禁用
-              </button>
-              {% endif %}
-              <button
-                class="btn btn-outline-danger js-department-action"
-                data-action="delete"
-                data-department-id="{{ department.id }}"
-                {% if (department.active_user_count or 0) > 0 %}disabled title="该部门有在职人员，无法删除"{% endif %}
-              >
-                删除
-              </button>
+              <div class="dept-actions">
+                <button
+                  class="btn btn-dept btn-dept-primary js-department-action"
+                  data-action="rename"
+                  data-department-id="{{ department.id }}"
+                  {% if (department.status or '')|upper == 'DISABLED' %}disabled{% endif %}
+                >
+                  保存名称
+                </button>
+                {% if (department.status or '')|upper == 'DISABLED' %}
+                <button
+                  class="btn btn-dept btn-dept-muted js-department-action"
+                  data-action="enable"
+                  data-department-id="{{ department.id }}"
+                >
+                  启用
+                </button>
+                {% else %}
+                <button
+                  class="btn btn-dept btn-dept-muted js-department-action"
+                  data-action="disable"
+                  data-department-id="{{ department.id }}"
+                >
+                  禁用
+                </button>
+                {% endif %}
+                <button
+                  class="btn btn-dept btn-dept-danger js-department-action"
+                  data-action="delete"
+                  data-department-id="{{ department.id }}"
+                  {% if (department.active_user_count or 0) > 0 %}disabled title="该部门有在职人员，无法删除"{% endif %}
+                >
+                  删除
+                </button>
+              </div>
             </td>
           </tr>
           {% endfor %}
@@ -166,6 +232,47 @@
     </div>
   </div>
 </div>
+<div class="modal fade" id="departmentDeleteModal" tabindex="-1" aria-labelledby="departmentDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="departmentDeleteModalLabel">删除部门</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="关闭">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-light d-flex align-items-start mb-3">
+          <i class="ri-information-line text-primary mr-2" aria-hidden="true"></i>
+          <div>
+            <div class="font-weight-medium" id="deleteDepartmentNameLabel">部门：-</div>
+            <div class="text-muted small" id="deleteDepartmentStatusLabel">成员数：0；状态：-</div>
+          </div>
+        </div>
+        <div class="form-group mb-3">
+          <label class="mb-1" for="deleteReasonCode">处理原因码 <span class="text-danger">*</span></label>
+          <select id="deleteReasonCode" class="form-control">
+            <option value="">请选择处理原因</option>
+            {% for opt in reason_options %}
+            <option value="{{ opt.value }}">{{ opt.label }}</option>
+            {% endfor %}
+          </select>
+          <div id="deleteReasonError" class="invalid-feedback d-none">请选择处理原因码</div>
+        </div>
+        <div class="form-group mb-0">
+          <label class="mb-1" for="deleteReasonNote">补充说明（可选）</label>
+          <textarea id="deleteReasonNote" class="form-control" rows="3" placeholder="可填写处理细节，写入审计留痕"></textarea>
+        </div>
+        <div id="deleteDepartmentAlert" class="alert alert-danger mt-3 d-none" role="alert"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" id="deleteDepartmentConfirmBtn">确认删除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -175,11 +282,24 @@
   const form = document.getElementById("createDepartmentForm");
   const nameInput = document.getElementById("newDepartmentName");
   const reloadBtn = document.getElementById("reloadDepartmentsBtn");
+  const selectAllEl = document.getElementById("departmentsSelectAll");
+  const bulkDeleteBtn = document.getElementById("bulkDeleteDepartmentsBtn");
   const msg = document.getElementById("departmentMsg");
+  const deleteModalEl = document.getElementById("departmentDeleteModal");
+  const deleteModalJQuery = window.jQuery && deleteModalEl ? window.jQuery(deleteModalEl) : null;
+  const deleteReasonSelect = document.getElementById("deleteReasonCode");
+  const deleteReasonNote = document.getElementById("deleteReasonNote");
+  const deleteReasonError = document.getElementById("deleteReasonError");
+  const deleteDepartmentAlert = document.getElementById("deleteDepartmentAlert");
+  const deleteDepartmentNameLabel = document.getElementById("deleteDepartmentNameLabel");
+  const deleteDepartmentStatusLabel = document.getElementById("deleteDepartmentStatusLabel");
+  const deleteConfirmBtn = document.getElementById("deleteDepartmentConfirmBtn");
 
   const state = {
     departments: Array.isArray({{ departments | tojson }}) ? {{ departments | tojson }} : [],
   };
+  const selectedDepartmentIds = new Set();
+  let pendingDeleteDepartmentIds = [];
 
   function escapeHtml(value) {
     const text = String(value ?? "");
@@ -191,10 +311,99 @@
       .replaceAll("'", "&#39;");
   }
 
+  function setDeleteReasonError(message) {
+    if (!deleteReasonSelect || !deleteReasonError) return;
+    if (message) {
+      deleteReasonError.textContent = message;
+      deleteReasonError.classList.remove("d-none");
+      deleteReasonSelect.classList.add("is-invalid");
+    } else {
+      deleteReasonError.classList.add("d-none");
+      deleteReasonSelect.classList.remove("is-invalid");
+    }
+  }
+
+  function setDeleteModalAlert(message) {
+    if (!deleteDepartmentAlert) return;
+    if (message) {
+      deleteDepartmentAlert.textContent = message;
+      deleteDepartmentAlert.classList.remove("d-none");
+    } else {
+      deleteDepartmentAlert.classList.add("d-none");
+    }
+  }
+
+  function resetDeleteModalState() {
+    pendingDeleteDepartmentIds = [];
+    if (deleteReasonSelect) deleteReasonSelect.value = "";
+    if (deleteReasonNote) deleteReasonNote.value = "";
+    if (deleteDepartmentNameLabel) deleteDepartmentNameLabel.textContent = "部门：-";
+    if (deleteDepartmentStatusLabel) deleteDepartmentStatusLabel.textContent = "成员数：0；状态：-";
+    setDeleteReasonError("");
+    setDeleteModalAlert("");
+  }
+
+  function describeDepartmentForModal(departmentId) {
+    const dept = Array.isArray(state.departments)
+      ? state.departments.find((item) => Number(item.id) === departmentId)
+      : null;
+    const normalizedStatus = String(dept?.status || "").trim().toUpperCase();
+    const statusLabel =
+      normalizedStatus === "ACTIVE"
+        ? "启用"
+        : normalizedStatus === "DISABLED"
+        ? "停用"
+        : "-";
+    const members = Number(dept?.active_user_count) || 0;
+    const name = dept?.name || rowDepartmentName(departmentId) || "-";
+    return { name, statusLabel, members };
+  }
+
   function setMessage(text, isError = false) {
     if (!msg) return;
     msg.textContent = String(text || "");
     msg.className = isError ? "ml-2 text-danger" : "ml-2 text-muted";
+  }
+
+  function updateBulkDeleteButtonState() {
+    if (!bulkDeleteBtn) return;
+    const count = selectedDepartmentIds.size;
+    bulkDeleteBtn.disabled = count <= 0;
+    bulkDeleteBtn.title = count > 0 ? `批量删除（已选 ${count}）` : "请选择要删除的部门";
+  }
+
+  function updateSelectAllState() {
+    if (!selectAllEl) return;
+    const enabled = Array.from(body.querySelectorAll('input.js-dept-select:not(:disabled)'));
+    if (!enabled.length) {
+      selectAllEl.checked = false;
+      selectAllEl.indeterminate = false;
+      return;
+    }
+    const checked = enabled.filter((el) => el.checked).length;
+    selectAllEl.checked = checked === enabled.length;
+    selectAllEl.indeterminate = checked > 0 && checked < enabled.length;
+  }
+
+  function syncSelectionAfterRender() {
+    const checkboxes = Array.from(body.querySelectorAll("input.js-dept-select"));
+    const existing = new Set();
+    for (const el of checkboxes) {
+      const id = Number(el.getAttribute("data-department-id") || 0);
+      if (id <= 0) continue;
+      existing.add(id);
+      if (el.disabled) {
+        el.checked = false;
+        selectedDepartmentIds.delete(id);
+        continue;
+      }
+      el.checked = selectedDepartmentIds.has(id);
+    }
+    for (const id of Array.from(selectedDepartmentIds)) {
+      if (!existing.has(id)) selectedDepartmentIds.delete(id);
+    }
+    updateSelectAllState();
+    updateBulkDeleteButtonState();
   }
 
   function renderStatus(status) {
@@ -206,19 +415,23 @@
   function renderRows() {
     const rows = Array.isArray(state.departments) ? state.departments : [];
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">暂无部门数据</td></tr>';
+      body.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">暂无部门数据</td></tr>';
       return;
     }
 
-    body.innerHTML = rows.map((item) => {
-      const id = Number(item.id) || 0;
-      const status = String(item.status || "").trim().toUpperCase();
-      const disabled = status === "DISABLED";
-      const activeUserCount = Number(item.active_user_count) || 0;
-      const canDelete = activeUserCount === 0;
-      
-      return `
+    body.innerHTML = rows
+      .map((item) => {
+        const id = Number(item.id) || 0;
+        const status = String(item.status || "").trim().toUpperCase();
+        const disabled = status === "DISABLED";
+        const activeUserCount = Number(item.active_user_count) || 0;
+        const canDelete = activeUserCount === 0;
+
+        return `
         <tr data-department-id="${id}">
+          <td class="text-center">
+            <input class="js-dept-select dept-select" type="checkbox" data-department-id="${id}" ${!canDelete ? 'disabled title="该部门有在职人员，无法删除"' : ""}>
+          </td>
           <td>${id}</td>
           <td>
             <input
@@ -232,25 +445,28 @@
           <td>${activeUserCount}</td>
           <td>${escapeHtml(String(item.updated_at || item.created_at || "-"))}</td>
           <td>
-            <button class="btn btn-outline-primary js-department-action" data-action="rename" data-department-id="${id}" ${disabled ? "disabled" : ""}>
-              保存名称
-            </button>
-            ${disabled ? `
-            <button class="btn btn-outline-success js-department-action" data-action="enable" data-department-id="${id}">
-              启用
-            </button>
-            ` : `
-            <button class="btn btn-outline-warning js-department-action" data-action="disable" data-department-id="${id}">
-              禁用
-            </button>
-            `}
-            <button class="btn btn-outline-danger js-department-action" data-action="delete" data-department-id="${id}" ${!canDelete ? 'disabled title="该部门有在职人员，无法删除"' : ''}>
-              删除
-            </button>
+            <div class="dept-actions">
+              <button class="btn btn-dept btn-dept-primary js-department-action" data-action="rename" data-department-id="${id}" ${disabled ? "disabled" : ""}>
+                保存名称
+              </button>
+              ${disabled ? `
+              <button class="btn btn-dept btn-dept-muted js-department-action" data-action="enable" data-department-id="${id}">
+                启用
+              </button>
+              ` : `
+              <button class="btn btn-dept btn-dept-muted js-department-action" data-action="disable" data-department-id="${id}">
+                禁用
+              </button>
+              `}
+              <button class="btn btn-dept btn-dept-danger js-department-action" data-action="delete" data-department-id="${id}" ${!canDelete ? 'disabled title="该部门有在职人员，无法删除"' : ""}>
+                删除
+              </button>
+            </div>
           </td>
         </tr>
       `;
-    }).join("");
+      })
+      .join("");
   }
 
   async function loadDepartments() {
@@ -263,6 +479,7 @@
       if (!response.ok || !payload || payload.ok !== true) throw new Error(payload?.message || `HTTP ${response.status}`);
       state.departments = Array.isArray(payload.departments) ? payload.departments : [];
       renderRows();
+      syncSelectionAfterRender();
       setMessage(`已加载 ${state.departments.length} 个部门`);
     } catch (error) {
       setMessage(`加载失败: ${error.message}`, true);
@@ -353,27 +570,130 @@
     }
   }
 
-  async function deleteDepartment(departmentId) {
-    if (!confirm("确定要删除该部门吗？此操作不可恢复。")) {
+  function openDeleteModal(departmentId) {
+    if (departmentId <= 0) return;
+    pendingDeleteDepartmentIds = [Number(departmentId)];
+    const info = describeDepartmentForModal(departmentId);
+    if (deleteDepartmentNameLabel) deleteDepartmentNameLabel.textContent = `部门：${escapeHtml(info.name)}`;
+    if (deleteDepartmentStatusLabel)
+      deleteDepartmentStatusLabel.textContent = `成员数：${info.members}；状态：${info.statusLabel}`;
+    setDeleteReasonError("");
+    setDeleteModalAlert("");
+    if (deleteModalJQuery) {
+      deleteModalJQuery.modal("show");
+    } else if (deleteModalEl) {
+      deleteModalEl.classList.add("show");
+    }
+  }
+
+  function openBulkDeleteModal() {
+    const ids = Array.from(selectedDepartmentIds)
+      .map((value) => Number(value) || 0)
+      .filter((value) => value > 0);
+    if (!ids.length) return;
+    pendingDeleteDepartmentIds = ids;
+
+    const names = ids
+      .map((id) => describeDepartmentForModal(id).name)
+      .filter((name) => String(name || "").trim())
+      .slice(0, 6);
+    const more = ids.length > names.length ? "…" : "";
+
+    if (deleteDepartmentNameLabel) {
+      deleteDepartmentNameLabel.textContent = `批量删除：已选 ${ids.length} 个部门`;
+    }
+    if (deleteDepartmentStatusLabel) {
+      deleteDepartmentStatusLabel.textContent = names.length ? `包含：${names.join("、")}${more}` : "包含：-";
+    }
+
+    setDeleteReasonError("");
+    setDeleteModalAlert("");
+    if (deleteModalJQuery) {
+      deleteModalJQuery.modal("show");
+    } else if (deleteModalEl) {
+      deleteModalEl.classList.add("show");
+    }
+  }
+
+  async function confirmDeleteDepartments() {
+    const ids = Array.isArray(pendingDeleteDepartmentIds) ? pendingDeleteDepartmentIds : [];
+    if (!ids.length) return;
+    const reasonCode = String(deleteReasonSelect?.value || "").trim();
+    if (!reasonCode) {
+      setDeleteReasonError("请选择处理原因码");
       return;
     }
-    
+    setDeleteReasonError("");
+    setDeleteModalAlert("");
+    const note = String(deleteReasonNote?.value || "").trim();
+    const payload = { change_reason_code: reasonCode };
+    if (note) payload.change_reason_note = note;
+    if (deleteConfirmBtn) deleteConfirmBtn.disabled = true;
+
     try {
-      const response = await fetch(`/api/admin/departments/${departmentId}`, {
-        method: "DELETE",
-        headers: { Accept: "application/json" },
+      const isBulk = ids.length > 1;
+      const response = await fetch(isBulk ? "/api/admin/departments/bulk-delete" : `/api/admin/departments/${ids[0]}`, {
+        method: isBulk ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(isBulk ? { ...payload, ids } : payload),
       });
-      const payload = await response.json();
-      if (!response.ok || !payload || payload.ok !== true) throw new Error(payload?.message || `HTTP ${response.status}`);
-      setMessage("部门已删除");
+      const data = await response.json();
+      if (!response.ok || !data || data.ok !== true) throw new Error(data?.message || `HTTP ${response.status}`);
+
+      if (Array.isArray(data.deleted_ids)) {
+        for (const rawId of data.deleted_ids) selectedDepartmentIds.delete(Number(rawId) || 0);
+      } else {
+        for (const id of ids) selectedDepartmentIds.delete(Number(id) || 0);
+      }
+
+      setMessage(String(data.message || (isBulk ? "批量删除完成" : "部门已删除")));
+      if (deleteModalJQuery) {
+        deleteModalJQuery.modal("hide");
+      } else if (deleteModalEl) {
+        deleteModalEl.classList.remove("show");
+        resetDeleteModalState();
+      }
       await loadDepartments();
     } catch (error) {
-      setMessage(`删除失败: ${error.message}`, true);
+      setDeleteModalAlert(`删除失败: ${error.message}`);
+    } finally {
+      if (deleteConfirmBtn) deleteConfirmBtn.disabled = false;
     }
   }
 
   form.addEventListener("submit", createDepartment);
   reloadBtn.addEventListener("click", loadDepartments);
+  selectAllEl?.addEventListener("change", () => {
+    const checked = !!selectAllEl.checked;
+    const targets = Array.from(body.querySelectorAll("input.js-dept-select:not(:disabled)"));
+    for (const el of targets) {
+      if (!(el instanceof HTMLInputElement)) continue;
+      const id = Number(el.getAttribute("data-department-id") || 0);
+      if (id <= 0) continue;
+      el.checked = checked;
+      if (checked) selectedDepartmentIds.add(id);
+      else selectedDepartmentIds.delete(id);
+    }
+    updateSelectAllState();
+    updateBulkDeleteButtonState();
+  });
+  bulkDeleteBtn?.addEventListener("click", openBulkDeleteModal);
+  deleteReasonSelect?.addEventListener("change", () => setDeleteReasonError(""));
+  deleteConfirmBtn?.addEventListener("click", confirmDeleteDepartments);
+  if (deleteModalJQuery) {
+    deleteModalJQuery.on("hidden.bs.modal", resetDeleteModalState);
+  }
+
+  body.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || !target.classList.contains("js-dept-select")) return;
+    const departmentId = Number(target.getAttribute("data-department-id") || 0);
+    if (departmentId <= 0) return;
+    if (target.checked) selectedDepartmentIds.add(departmentId);
+    else selectedDepartmentIds.delete(departmentId);
+    updateSelectAllState();
+    updateBulkDeleteButtonState();
+  });
 
   body.addEventListener("click", (event) => {
     const target = event.target;
@@ -395,12 +715,15 @@
       return;
     }
     if (action === "delete") {
-      deleteDepartment(departmentId);
+      openDeleteModal(departmentId);
     }
   });
 
+  resetDeleteModalState();
   renderRows();
+  syncSelectionAfterRender();
   loadDepartments();
 })();
 </script>
+
 {% endblock %}

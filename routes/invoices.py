@@ -32,6 +32,8 @@ from events import event_bus
 from events.types import (
     RISK_STAGE,
     STAGE_AI_EXPLAIN,
+    STAGE_CASE_ASSIGNED,
+    STAGE_CASE_CREATED,
     STAGE_RISK_EVENT_CREATED,
     risk_stage_category,
     risk_stage_message,
@@ -40,7 +42,15 @@ from services.invoice_service import get_invoice_dict
 from services.audit_chain_service import append_event as append_audit_chain_event, link_evidence as link_audit_evidence
 from services.invoice_verification_service import verify_invoice_internal
 from services.prompt_ledger_service import DEFAULT_PROMPT_VERSION, record_ai_prompt_ledger
-from services.risk_case_service import create_ai_risk_event_if_needed
+from services.risk_case_service import (
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+    assign_case,
+    create_ai_risk_event_if_needed,
+    create_case_from_event,
+    find_active_case_by_invoice,
+)
 from utils.audit_logger import write_audit_log as write_audit_log_orm
 from utils.db import (
     delete_invoices,
@@ -64,8 +74,16 @@ from utils.llm_audit import semantic_audit
 from utils.ocr_helper import recognize_invoice
 from utils.risk import evaluate_risk
 from utils.security import (
+    ROLE_KEY_CFO,
+    ROLE_KEY_FIN_MANAGER,
+    ROLE_KEY_FIN_STAFF,
+    ROLE_KEY_FIN_SUPERVISOR,
+    access_level,
     apply_data_scope_filter,
     current_user,
+    current_user_role_keys,
+    has_permission,
+    is_system_admin,
     login_required,
     require_permission,
 )
@@ -96,6 +114,14 @@ LEDGER_REASON_CODES = {
     "SYSTEM_AUTO",
 }
 LEDGER_ACTIONS = {"SUBMIT_REVIEW", "RETURN_TO_DRAFT", "RERUN_AI_RISK", "POST_LEDGER"}
+RETURN_TO_DRAFT_ALLOWED_ACCESS_LEVELS = {"C", "D", "E"}
+SUPPLEMENT_ALLOWED_ROLE_KEYS = {
+    ROLE_KEY_FIN_STAFF,
+    ROLE_KEY_FIN_MANAGER,
+    ROLE_KEY_FIN_SUPERVISOR,
+    ROLE_KEY_CFO,
+}
+VERIFY_PASSED_VALUES = {"PASS", "PASSED"}
 
 
 def _safe_text(value: Any, fallback: str = "") -> str:
@@ -138,6 +164,20 @@ def _record_invoice_audit_log(*, action_type: str, detail: str, target_id: int |
             actor_user_id=_operator_user_id(),
             target_type="invoice",
             target_id=target_id,
+            detail=detail,
+        )
+    except Exception:
+        return
+
+
+def _record_risk_case_audit_log(*, action_type: str, case_id: int, detail: str) -> None:
+    try:
+        insert_audit_log(
+            action_type=action_type,
+            operator=_operator_name(),
+            actor_user_id=_operator_user_id(),
+            target_type="risk_case",
+            target_id=int(case_id),
             detail=detail,
         )
     except Exception:
@@ -230,6 +270,37 @@ def _current_scope_filter() -> dict[str, Any]:
     return apply_data_scope_filter(user=current_user())
 
 
+def _can_return_to_draft(user: dict[str, Any] | None = None) -> bool:
+    target = user if user is not None else (current_user() or {})
+    if not target:
+        return False
+    try:
+        level = _safe_text(access_level(target)).upper()
+    except Exception:
+        return False
+    return level in RETURN_TO_DRAFT_ALLOWED_ACCESS_LEVELS
+
+
+def _can_supplement_operate(user: dict[str, Any] | None = None) -> bool:
+    target = user if user is not None else (current_user() or {})
+    if not target:
+        return False
+    if is_system_admin(target):
+        return True
+    role_keys = current_user_role_keys(target)
+    if role_keys & SUPPLEMENT_ALLOWED_ROLE_KEYS:
+        return True
+    department = _safe_text(target.get("department"))
+    if "财务" in department:
+        level = _safe_text(access_level(target)).upper()
+        return level in {"B", "C", "D", "E"}
+    return False
+
+
+def _can_post_ledger(user: dict[str, Any] | None = None) -> bool:
+    return _can_supplement_operate(user)
+
+
 def _get_invoice_for_scope(invoice_id: int, *, include_raw_json: bool = False) -> dict[str, Any] | None:
     return get_invoice_detail(
         invoice_id,
@@ -274,6 +345,24 @@ def _is_ledger_ready(invoice_row: dict[str, Any] | None) -> bool:
         preferred="LEDGER",
     )
     return resolved == "LEDGER"
+
+
+def _is_verify_passed(invoice_row: dict[str, Any] | None) -> bool:
+    if not isinstance(invoice_row, dict):
+        return False
+    verify_status = _safe_text(invoice_row.get("verify_status")).upper()
+    return verify_status in VERIFY_PASSED_VALUES
+
+
+def _post_ledger_block_reason(invoice_row: dict[str, Any] | None) -> str:
+    if not _is_ledger_ready(invoice_row):
+        return "金额或开票日期缺失，无法入账"
+    if not _is_verify_passed(invoice_row):
+        verify_status = _safe_text((invoice_row or {}).get("verify_status"), "PENDING").upper()
+        if verify_status in {"FAIL", "FAILED"}:
+            return "发票验真未通过，无法入账"
+        return "发票待验真，验真通过后方可入账"
+    return ""
 
 
 def _resolve_file_hash(filename: str) -> str:
@@ -1024,6 +1113,14 @@ def invoices_api():
 @bp.post("/upload")
 @login_required
 def upload_invoice():
+    user = current_user() or {}
+    if not (has_permission("VIEW_UPLOAD_PAGE", user) or has_permission("VIEW_INVOICES", user)):
+        msg = "无权限访问费用报销受理页面。"
+        if _wants_json():
+            return jsonify({"ok": False, "msg": msg}), 403
+        flash(msg, "danger")
+        return redirect(url_for("dashboard.upload_page"))
+
     file_obj = request.files.get("file")
     if file_obj is None or not _safe_text(file_obj.filename):
         msg = "请先选择发票文件。"
@@ -1048,7 +1145,6 @@ def upload_invoice():
         flash(msg, "danger")
         return redirect(url_for("dashboard.upload_page"))
 
-    user = current_user() or {}
     entry_mode = _safe_text(request.form.get("entry_mode"), "ocr").lower()
     manual_entry = {
         "invoice_code": _safe_text(request.form.get("invoice_code")),
@@ -1385,9 +1481,13 @@ def run_invoice_ai_internal(
             risk_event = None
             current_app.logger.warning("action=create_risk_event invoice_id=%s err=%s", invoice_id, exc)
 
-        if publish_events and isinstance(risk_event, dict) and risk_event.get("id"):
+        event_id = _safe_int((risk_event or {}).get("id"), 0)
+        case_row: dict[str, Any] | None = None
+        case_created = False
+        case_assigned = False
+
+        if event_id > 0 and publish_events:
             try:
-                event_id = _safe_int(risk_event.get("id"), 0)
                 event_bus.publish(
                     RISK_STAGE,
                     {
@@ -1413,6 +1513,148 @@ def run_invoice_ai_internal(
                     STAGE_RISK_EVENT_CREATED,
                     exc,
                 )
+
+        if event_id > 0:
+            try:
+                # Enterprise linkage: keep one active case per invoice to avoid duplicated in-flight work items.
+                case_row = find_active_case_by_invoice(invoice_id=invoice_id)
+                if not isinstance(case_row, dict):
+                    case_row = create_case_from_event(
+                        event_id=event_id,
+                        operator=_operator_name(),
+                        action_note="auto_case_from_ai_risk",
+                    )
+                    case_created = isinstance(case_row, dict) and _safe_int(case_row.get("id"), 0) > 0
+            except ConflictError:
+                case_row = find_active_case_by_invoice(invoice_id=invoice_id)
+            except (ValidationError, NotFoundError) as exc:
+                current_app.logger.warning(
+                    "action=auto_create_case invoice_id=%s event_id=%s err=%s",
+                    invoice_id,
+                    event_id,
+                    exc,
+                )
+            except Exception as exc:
+                current_app.logger.warning(
+                    "action=auto_create_case invoice_id=%s event_id=%s err=%s",
+                    invoice_id,
+                    event_id,
+                    exc,
+                )
+
+            case_id = _safe_int((case_row or {}).get("id"), 0)
+            if case_created and case_id > 0:
+                _record_risk_case_audit_log(
+                    action_type="CASE_CREATED",
+                    case_id=case_id,
+                    detail=(
+                        f"case_id={case_id}; "
+                        f"event_id={event_id}; "
+                        f"invoice_id={int(invoice_id)}; "
+                        "source=invoice_ai_auto_link"
+                    ),
+                )
+                if publish_events:
+                    try:
+                        event_bus.publish(
+                            RISK_STAGE,
+                            {
+                                "stage": STAGE_CASE_CREATED,
+                                "event_type": STAGE_CASE_CREATED,
+                                "message": risk_stage_message(STAGE_CASE_CREATED),
+                                "category": risk_stage_category(STAGE_CASE_CREATED),
+                                "case_id": case_id,
+                                "event_id": _safe_int(case_row.get("event_id"), event_id),
+                                "invoice_id": _safe_int(case_row.get("invoice_id"), invoice_id),
+                                "status": _safe_text(case_row.get("status"), "OPEN").upper(),
+                                "operator": _operator_name(),
+                                "related_ids": {
+                                    "invoice_id": _safe_int(case_row.get("invoice_id"), invoice_id),
+                                    "event_id": _safe_int(case_row.get("event_id"), event_id),
+                                    "case_id": case_id,
+                                },
+                            },
+                        )
+                    except Exception as exc:
+                        current_app.logger.warning(
+                            "action=publish_stage invoice_id=%s stage=%s err=%s",
+                            invoice_id,
+                            STAGE_CASE_CREATED,
+                            exc,
+                        )
+
+            queue_owner_id = _safe_text(invoice_row.get("queue_owner_id"))
+            if case_id > 0 and queue_owner_id:
+                current_case_owner = _safe_text((case_row or {}).get("assigned_to"))
+                current_case_status = _safe_text((case_row or {}).get("status"), "OPEN").upper()
+                needs_assign = current_case_status != "CLOSED" and current_case_owner != queue_owner_id
+                if needs_assign:
+                    try:
+                        case_row = assign_case(
+                            case_id=case_id,
+                            assigned_to=queue_owner_id,
+                            operator=_operator_name(),
+                            action_note="auto_assign_from_invoice_queue_owner",
+                        )
+                        case_assigned = isinstance(case_row, dict)
+                    except (ValidationError, NotFoundError, ConflictError) as exc:
+                        current_app.logger.warning(
+                            "action=auto_assign_case invoice_id=%s case_id=%s owner=%s err=%s",
+                            invoice_id,
+                            case_id,
+                            queue_owner_id,
+                            exc,
+                        )
+                    except Exception as exc:
+                        current_app.logger.warning(
+                            "action=auto_assign_case invoice_id=%s case_id=%s owner=%s err=%s",
+                            invoice_id,
+                            case_id,
+                            queue_owner_id,
+                            exc,
+                        )
+
+            case_id = _safe_int((case_row or {}).get("id"), 0)
+            if case_assigned and case_id > 0:
+                _record_risk_case_audit_log(
+                    action_type="CASE_ASSIGNED",
+                    case_id=case_id,
+                    detail=(
+                        f"case_id={case_id}; "
+                        f"assigned_to={_safe_text((case_row or {}).get('assigned_to'))}; "
+                        f"invoice_id={int(invoice_id)}; "
+                        "source=invoice_ai_auto_link"
+                    ),
+                )
+                if publish_events:
+                    try:
+                        event_bus.publish(
+                            RISK_STAGE,
+                            {
+                                "stage": STAGE_CASE_ASSIGNED,
+                                "event_type": STAGE_CASE_ASSIGNED,
+                                "message": risk_stage_message(STAGE_CASE_ASSIGNED),
+                                "category": risk_stage_category(STAGE_CASE_ASSIGNED),
+                                "case_id": case_id,
+                                "event_id": _safe_int((case_row or {}).get("event_id"), event_id),
+                                "invoice_id": _safe_int((case_row or {}).get("invoice_id"), invoice_id),
+                                "assigned_to": _safe_text((case_row or {}).get("assigned_to")),
+                                "status": _safe_text((case_row or {}).get("status"), "ASSIGNED").upper(),
+                                "operator": _operator_name(),
+                                "related_ids": {
+                                    "invoice_id": _safe_int((case_row or {}).get("invoice_id"), invoice_id),
+                                    "event_id": _safe_int((case_row or {}).get("event_id"), event_id),
+                                    "case_id": case_id,
+                                },
+                            },
+                        )
+                    except Exception as exc:
+                        current_app.logger.warning(
+                            "action=publish_stage invoice_id=%s stage=%s err=%s",
+                            invoice_id,
+                            STAGE_CASE_ASSIGNED,
+                            exc,
+                        )
 
     current_app.logger.info(
         "action=tax_verify invoice_id=%s risk_level=%s model=%s trace_id=%s",
@@ -1574,6 +1816,9 @@ def ledger_update_structured_api(invoice_id: int):
     if not before_row:
         return jsonify({"ok": False, "msg": "未找到单据"}), 404
 
+    if not _can_supplement_operate():
+        return jsonify({"ok": False, "msg": "仅财务相关岗位可执行补录操作"}), 403
+
     updates = _normalize_structured_patch(payload)
     if not updates:
         return jsonify({"ok": False, "msg": "未提供可编辑字段"}), 400
@@ -1648,6 +1893,12 @@ def ledger_action_api(invoice_id: int):
     if not before_row:
         return jsonify({"ok": False, "msg": "未找到单据"}), 404
 
+    if action == "RETURN_TO_DRAFT" and not _can_return_to_draft():
+        return jsonify({"ok": False, "msg": "权限不足，仅经理及以上可执行退回"}), 403
+
+    if action == "POST_LEDGER" and not _can_post_ledger():
+        return jsonify({"ok": False, "msg": "仅财务相关岗位可执行补录入账操作"}), 403
+
     record_state = normalize_record_state(before_row.get("record_state"), fallback="DRAFT")
     comment = _safe_text(payload.get("comment"))
     message = ""
@@ -1688,6 +1939,9 @@ def ledger_action_api(invoice_id: int):
         message = "已打回补录，单据已转为待补录状态。"
 
     elif action == "POST_LEDGER":
+        block_reason = _post_ledger_block_reason(before_row)
+        if block_reason:
+            return jsonify({"ok": False, "msg": block_reason}), 409
         if not _is_ledger_ready(before_row):
             return jsonify({"ok": False, "msg": "金额或开票日期缺失，无法入账"}), 409
         _set_record_state(invoice_id, record_state="LEDGER", set_pending_status=True)
@@ -1750,8 +2004,14 @@ def ledger_batch_api():
         return reason_err
 
     action = _safe_text(payload.get("action")).upper()
-    if action not in {"RETURN_TO_DRAFT", "SUPPLEMENT"}:
+    if action not in {"RETURN_TO_DRAFT", "SUPPLEMENT", "POST_LEDGER"}:
         return jsonify({"ok": False, "msg": "无效动作"}), 400
+
+    if action == "RETURN_TO_DRAFT" and not _can_return_to_draft():
+        return jsonify({"ok": False, "msg": "权限不足，仅经理及以上可执行批量退回"}), 403
+
+    if action in {"SUPPLEMENT", "POST_LEDGER"} and not _can_supplement_operate():
+        return jsonify({"ok": False, "msg": "仅财务相关岗位可执行补录入账操作"}), 403
 
     ids = _parse_int_list(payload.get("ids"))
     if not ids:
@@ -1783,7 +2043,22 @@ def ledger_batch_api():
                     append_audit_chain_event(trace_id, "RETURN", {"comment": comment}, reason_code)
                 except Exception:
                     pass
-            else:
+            elif action == "POST_LEDGER":
+                # 批量入账：检查是否可入账
+                block_reason = _post_ledger_block_reason(before_row)
+                if block_reason:
+                    failed.append({"id": invoice_id, "msg": block_reason})
+                    continue
+                if not _is_ledger_ready(before_row):
+                    failed.append({"id": invoice_id, "msg": "金额或开票日期缺失，无法入账"})
+                    continue
+                _set_record_state(invoice_id, record_state="LEDGER", set_pending_status=True)
+                try:
+                    trace_id, _ = get_or_create_audit_trace("invoice", invoice_id)
+                    append_audit_chain_event(trace_id, "REVIEW", {"action": "POST_LEDGER", "batch": True}, reason_code)
+                except Exception:
+                    pass
+            else:  # SUPPLEMENT
                 _apply_structured_update(invoice_id, updates)
                 refreshed = _get_invoice_for_scope(invoice_id)
                 if refreshed:
@@ -1795,7 +2070,9 @@ def ledger_batch_api():
                     if next_state == "DRAFT":
                         _set_record_state(invoice_id, record_state="DRAFT", return_to_draft=True)
                     elif auto_post_ledger:
-                        _set_record_state(invoice_id, record_state="LEDGER", set_pending_status=True)
+                        block_reason = _post_ledger_block_reason(refreshed)
+                        if not block_reason:
+                            _set_record_state(invoice_id, record_state="LEDGER", set_pending_status=True)
 
             after_row = _get_invoice_for_scope(invoice_id) or before_row
             audit_err = _write_invoice_audit(
@@ -1992,4 +2269,3 @@ def uploads_file(filename: str):
 @bp.get("/invoices/health")
 def health():
     return jsonify({"ok": True, "module": "invoices"})
-

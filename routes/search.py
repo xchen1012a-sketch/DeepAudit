@@ -8,7 +8,7 @@ from typing import Any
 from flask import Blueprint, jsonify, render_template, request
 
 from utils.db import get_conn
-from utils.security import current_user, login_required
+from utils.security import current_user, login_required, can_access_approval_console
 from utils.data_scope_enforcer import get_enforced_data_scope
 
 bp = Blueprint("search", __name__)
@@ -59,7 +59,11 @@ def _build_scope_sql(
 
 
 def _search_invoices(
-    keyword: str, scope: dict[str, Any], limit: int,
+    keyword: str,
+    scope: dict[str, Any],
+    limit: int,
+    *,
+    include_approval_location: bool = False,
 ) -> list[dict[str, Any]]:
     like = f"%{keyword}%"
     exact_match = keyword.strip()
@@ -70,7 +74,7 @@ def _search_invoices(
     # 优先匹配：1. ID完全匹配 2. reference_no完全匹配 3. 其他匹配
     sql = (
         "SELECT id, reference_no, filename, amount, department, applicant, "
-        "risk_level, status, invoice_date, created_at, "
+        "risk_level, status, approval_status, invoice_date, created_at, record_state, "
         "CASE "
         "  WHEN CAST(id AS TEXT) = ? THEN 1 "
         "  WHEN LOWER(COALESCE(reference_no,'')) = LOWER(?) THEN 2 "
@@ -103,13 +107,31 @@ def _search_invoices(
             r["applicant"] or "",
             f"¥{r['amount']}" if r["amount"] else "",
         ]
+        record_state = str(r["record_state"] or "").strip().upper()
+        active_tab = "draft" if record_state == "DRAFT" else "ledger"
+        locations: list[dict[str, str]] = [
+            {
+                "key": "ledger",
+                "label": "待补录" if active_tab == "draft" else "入账台账",
+                "url": f"/ledger-center?tab={active_tab}&invoice_id={r['id']}",
+            }
+        ]
+        approval_status = str(r["approval_status"] or r["status"] or "").strip().upper()
+        if include_approval_location and record_state == "LEDGER" and approval_status == "PENDING":
+            locations.append({
+                "key": "approval",
+                "label": "审批管理",
+                "url": f"/approval_center?invoice_id={r['id']}",
+            })
         results.append({
             "type": "invoice",
             "id": r["id"],
             "title": title,
             "subtitle": " · ".join(p for p in subtitle_parts if p),
-            "url": f"/ledger-center?invoice_id={r['id']}",
-            "match_priority": r.get("match_priority", 999),
+            "url": locations[0]["url"],
+            "locations": locations,
+            "location_count": len(locations),
+            "match_priority": r["match_priority"] if "match_priority" in r.keys() else 999,
         })
     return results
 
@@ -156,7 +178,7 @@ def _search_risk_cases(
             "title": title,
             "subtitle": " · ".join(p for p in subtitle_parts if p),
             "url": f"/risk-center/case/{r['id']}",
-            "match_priority": r.get("match_priority", 999),
+            "match_priority": r["match_priority"] if "match_priority" in r.keys() else 999,
         })
     return results
 
@@ -340,27 +362,45 @@ def search_api():
     if len(q) < 2:
         return jsonify({"results": [], "q": q, "total": 0})
 
-    user = current_user()
-    scope = get_enforced_data_scope(user)
+    try:
+        user = current_user()
+        scope = get_enforced_data_scope(user)
+        
+        # 如果用户有审批权限，放宽数据范围限制（与审批管理页面保持一致）
+        approval_console_access = False
+        try:
+            if can_access_approval_console(user):
+                approval_console_access = True
+                scope = {"all_access": True}
+        except Exception:
+            pass  # 如果检查权限失败，使用默认的 scope
 
-    # 按优先级搜索，找到第一个匹配的结果就返回
-    # 优先级：单据 > 风险案例 > 银行交易 > 治理规则
-    results: list[dict[str, Any]] = []
-    
-    invoice_results = _search_invoices(q, scope, 1)
-    if invoice_results:
-        return jsonify({"results": invoice_results, "q": q, "total": 1})
-    
-    risk_results = _search_risk_cases(q, scope, 1)
-    if risk_results:
-        return jsonify({"results": risk_results, "q": q, "total": 1})
-    
-    bank_results = _search_bank_transactions(q, scope, 1)
-    if bank_results:
-        return jsonify({"results": bank_results, "q": q, "total": 1})
-    
-    rule_results = _search_governance_rules(q, 1)
-    if rule_results:
-        return jsonify({"results": rule_results, "q": q, "total": 1})
-    
-    return jsonify({"results": [], "q": q, "total": 0})
+        # 搜索所有类型，返回所有匹配结果
+        # 每个类型最多返回 10 条，按优先级排序
+        results: list[dict[str, Any]] = []
+        
+        invoice_results = _search_invoices(
+            q,
+            scope,
+            10,
+            include_approval_location=approval_console_access,
+        )
+        results.extend(invoice_results)
+        
+        risk_results = _search_risk_cases(q, scope, 10)
+        results.extend(risk_results)
+        
+        bank_results = _search_bank_transactions(q, scope, 10)
+        results.extend(bank_results)
+        
+        rule_results = _search_governance_rules(q, 10)
+        results.extend(rule_results)
+        
+        # 按匹配优先级和类型优先级排序
+        # 类型优先级：单据(1) > 风险案例(2) > 银行交易(3) > 治理规则(4)
+        type_priority = {"invoice": 1, "risk_case": 2, "bank_txn": 3, "governance_rule": 4}
+        results.sort(key=lambda x: (x.get("match_priority", 999), type_priority.get(x.get("type", ""), 999)))
+        
+        return jsonify({"results": results, "q": q, "total": len(results)})
+    except Exception as e:
+        return jsonify({"error": str(e), "results": [], "q": q, "total": 0}), 500

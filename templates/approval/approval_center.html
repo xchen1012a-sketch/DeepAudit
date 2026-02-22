@@ -211,7 +211,12 @@
 </div>
 
 <section class="content aw">
-  <div id="approval-workbench" class="container-fluid" data-current-operator="{{ current_operator }}">
+  <div
+    id="approval-workbench"
+    class="container-fluid"
+    data-current-operator="{{ current_operator }}"
+    data-single-filter="{{ 1 if filter_by_id else 0 }}"
+  >
 
     <div class="aw-metrics">
       <div class="aw-metric">
@@ -231,6 +236,16 @@
         <div class="aw-metric-k">已超时</div>
       </div>
     </div>
+
+    {% if filter_by_id %}
+    <div class="alert alert-info d-flex align-items-center justify-content-between flex-wrap" style="gap:8px;">
+      <span>
+        当前已按单据定位，仅展示目标单据
+        {% if filter_reference %}（{{ filter_reference }}）{% elif filter_invoice_id %}（ID: {{ filter_invoice_id }}）{% endif %}。
+      </span>
+      <a href="{{ request.path }}" class="btn btn-sm btn-outline-primary">查看全部 / 清除筛选</a>
+    </div>
+    {% endif %}
 
     <div class="aw-bar">
       <div class="aw-tabs">
@@ -349,7 +364,7 @@
             <a class="js-link-upload" href="{{ url_for('ledger.invoices_page', tab='ledger', open_evidence=row.id, reference_no=(row.reference_no or '')) }}" target="_blank" rel="noopener">
               <i class="ri-file-text-line"></i> 单据详情
             </a>
-            <a class="js-link-risk" href="{% if row.ai_trace_id %}/api/ai/ledger/{{ row.ai_trace_id }}{% else %}/risk-center{% endif %}" target="_blank" rel="noopener">
+            <a class="js-link-risk" href="{% if row.ai_trace_id %}/risk-center?trace_id={{ row.ai_trace_id }}{% else %}/risk-center{% endif %}" target="_blank" rel="noopener">
               <i class="ri-shield-check-line"></i> 风险审计
             </a>
             <a class="js-link-evidence {% if st != 'APPROVED' %}is-disabled{% endif %}" href="/invoices_page?tab=ledger&reference_no={{ row.reference_no or row.id }}" target="_blank" rel="noopener">

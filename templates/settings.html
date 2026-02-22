@@ -3,16 +3,16 @@
 {% block title %}系统设置 - 深度审计{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid settings-page">
     <div class="row mb-3">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="d-flex justify-content-between align-items-start mb-2 settings-page-header">
                 <div class="flex-grow-1">
                     <h3 class="text-dark font-weight-bold mb-1">系统配置总览</h3>
                     <p class="text-muted mb-0">管理风控规则、组织权限与通知集成配置，保存后立即生效。</p>
                 </div>
                 <a href="/admin/audit_logs?target_type=system_settings&action_type=SETTINGS_UPDATE" 
-                   class="btn btn-outline-secondary btn-sm rounded-pill px-3" 
+                   class="btn btn-outline-secondary btn-sm rounded-pill px-3 settings-history-btn" 
                    title="查看系统设置与治理动作变更记录">
                     <i class="ri-file-list-3-line mr-1"></i>变更记录
                 </a>
@@ -22,9 +22,9 @@
             <!-- 设置概览条 -->
             <div class="settings-overview-bar card shadow-sm border-0 mb-3">
                 <div class="card-body py-3">
-                    <div class="row align-items-center">
-                        <div class="col-lg-4 col-md-12 mb-2 mb-lg-0">
-                            <div class="d-flex align-items-center">
+                    <div class="row align-items-center settings-overview-row">
+                        <div class="col-lg-4 col-md-12 mb-2 mb-lg-0 settings-overview-col">
+                            <div class="d-flex align-items-center settings-overview-progress">
                                 <span class="text-muted small mr-2">配置进度：</span>
                                 <div class="progress flex-grow-1 mr-2" style="height: 20px;">
                                     <div id="configProgressBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
@@ -32,13 +32,13 @@
                                 <span id="configProgressText" class="text-dark small font-weight-bold">0/3</span>
                             </div>
                         </div>
-                        <div class="col-lg-4 col-md-12 mb-2 mb-lg-0">
-                            <div id="riskWarnings" class="risk-warnings">
+                        <div class="col-lg-4 col-md-12 mb-2 mb-lg-0 settings-overview-col">
+                            <div id="riskWarnings" class="risk-warnings settings-overview-warnings">
                                 <!-- 高风险未配置提示将在这里显示 -->
                             </div>
                         </div>
-                        <div class="col-lg-4 col-md-12 text-lg-right">
-                            <div id="recentChange" class="recent-change text-muted small">
+                        <div class="col-lg-4 col-md-12 text-lg-right settings-overview-col">
+                            <div id="recentChange" class="recent-change text-muted small settings-overview-change">
                                 <!-- 最近变更将在这里显示 -->
                             </div>
                         </div>
@@ -48,16 +48,15 @@
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-12 mb-3">
-            <div class="card shadow-sm border-0 setting-card position-relative">
-                <span id="orgStatusBadge" class="status-badge badge badge-success">已生效</span>
+    <div class="row settings-modules-layout">
+        <div class="col-12 col-xl-6 mb-3 settings-module-item">
+            <div class="card shadow-sm border-0 setting-card">
                 <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div class="flex-grow-1">
+                    <div class="setting-card-header mb-3">
+                        <div class="setting-card-main">
                             <h5 class="font-weight-bold text-dark mb-1">组织与权限</h5>
                             <p class="text-muted mb-2 small">角色权限、审批链路、部门可见范围配置</p>
-                            <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="d-flex align-items-center gap-2 mb-2 setting-meta-row">
                                 <small class="text-secondary">风险级别：</small>
                                 <span id="orgRiskLevel" class="badge badge-secondary">--</span>
                                 <small class="text-secondary ml-2">影响范围：</small>
@@ -65,9 +64,12 @@
                             </div>
                             <small id="orgSummary" class="text-secondary">加载中...</small>
                         </div>
-                        <button class="btn btn-outline-primary btn-sm rounded-pill px-3" data-toggle="modal" data-target="#orgModal">进入配置</button>
+                        <div class="setting-card-actions">
+                            <span id="orgStatusBadge" class="status-badge badge badge-success">已生效</span>
+                            <button class="btn btn-outline-primary btn-sm rounded-pill px-3" data-toggle="modal" data-target="#orgModal">进入配置</button>
+                        </div>
                     </div>
-                    <div class="settings-metrics mt-3 pt-3 border-top">
+                    <div class="settings-metrics mt-3">
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="metric-item clickable-metric" onclick="drillDownToConfig('roles')" title="点击查看角色配置">
@@ -89,7 +91,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="mt-3">
+                    <div class="mt-3 setting-footer-action">
                         <button class="btn btn-link btn-sm p-0 text-primary" onclick="viewAuditLogs('org')">
                             <i class="ri-file-list-3-line mr-1"></i>查看审计记录
                         </button>
@@ -98,15 +100,14 @@
             </div>
         </div>
 
-        <div class="col-md-12 mb-3">
-            <div class="card shadow-sm border-0 setting-card position-relative">
-                <span id="riskStatusBadge" class="status-badge badge badge-success">已生效</span>
+        <div class="col-12 col-xl-6 mb-3 settings-module-item">
+            <div class="card shadow-sm border-0 setting-card">
                 <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div class="flex-grow-1">
+                    <div class="setting-card-header mb-3">
+                        <div class="setting-card-main">
                             <h5 class="font-weight-bold text-dark mb-1">风控策略配置</h5>
                             <p class="text-muted mb-2 small">设置单笔限额、住宿标准、敏感词库及自动拦截策略</p>
-                            <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="d-flex align-items-center gap-2 mb-2 setting-meta-row">
                                 <small class="text-secondary">风险级别：</small>
                                 <span id="riskRiskLevel" class="badge badge-secondary">--</span>
                                 <small class="text-secondary ml-2">影响范围：</small>
@@ -114,11 +115,14 @@
                             </div>
                             <small id="riskSummary" class="text-secondary">加载中...</small>
                         </div>
-                        <button class="btn btn-primary btn-sm rounded-pill px-4" data-toggle="modal" data-target="#riskModal">
-                            <i class="ri-settings-4-line mr-1"></i> 配置规则
-                        </button>
+                        <div class="setting-card-actions">
+                            <span id="riskStatusBadge" class="status-badge badge badge-success">已生效</span>
+                            <button class="btn btn-primary btn-sm rounded-pill px-4" data-toggle="modal" data-target="#riskModal">
+                                <i class="ri-settings-4-line mr-1"></i> 配置规则
+                            </button>
+                        </div>
                     </div>
-                    <div class="settings-metrics mt-3 pt-3 border-top">
+                    <div class="settings-metrics mt-3">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="metric-item clickable-metric" onclick="drillDownToConfig('governance_rules', 'enabled')" title="点击查看已启用的治理规则">
@@ -134,7 +138,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="mt-3">
+                    <div class="mt-3 setting-footer-action">
                         <button class="btn btn-link btn-sm p-0 text-primary" onclick="viewPolicyHistory()">
                             <i class="ri-history-line mr-1"></i>查看策略历史
                         </button>
@@ -143,15 +147,14 @@
             </div>
         </div>
 
-        <div class="col-md-12 mb-3">
-            <div class="card shadow-sm border-0 setting-card position-relative">
-                <span id="integrationStatusBadge" class="status-badge badge badge-success">已生效</span>
+        <div class="col-12 mb-3 settings-module-item settings-module-item-wide">
+            <div class="card shadow-sm border-0 setting-card">
                 <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div class="flex-grow-1">
+                    <div class="setting-card-header mb-3">
+                        <div class="setting-card-main">
                             <h5 class="font-weight-bold text-dark mb-1">通知与集成</h5>
                             <p class="text-muted mb-2 small">邮件/短信策略、企业微信提醒、回调地址配置</p>
-                            <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="d-flex align-items-center gap-2 mb-2 setting-meta-row">
                                 <small class="text-secondary">风险级别：</small>
                                 <span id="integrationRiskLevel" class="badge badge-secondary">--</span>
                                 <small class="text-secondary ml-2">影响范围：</small>
@@ -159,9 +162,12 @@
                             </div>
                             <small id="integrationSummary" class="text-secondary">加载中...</small>
                         </div>
-                        <button class="btn btn-outline-primary btn-sm rounded-pill px-3" data-toggle="modal" data-target="#integrationModal">查看状态</button>
+                        <div class="setting-card-actions">
+                            <span id="integrationStatusBadge" class="status-badge badge badge-success">已生效</span>
+                            <button class="btn btn-outline-primary btn-sm rounded-pill px-3" data-toggle="modal" data-target="#integrationModal">查看状态</button>
+                        </div>
                     </div>
-                    <div class="settings-metrics mt-3 pt-3 border-top">
+                    <div class="settings-metrics mt-3">
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="metric-item clickable-metric" onclick="drillDownToConfig('integration', 'email')" title="点击查看邮件配置">
@@ -189,7 +195,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="mt-3">
+                    <div class="mt-3 setting-footer-action">
                         <button class="btn btn-link btn-sm p-0 text-primary" onclick="testNotification()">
                             <i class="ri-send-plane-line mr-1"></i>测试推送
                         </button>
@@ -926,31 +932,264 @@
 </script>
 
 <style>
-.setting-card { 
-    border-radius: 12px; 
-    transition: box-shadow 0.2s;
+.settings-page {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 72px;
+    padding-bottom: 0.5rem;
 }
+
+.settings-page-header {
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.settings-page-header .flex-grow-1 {
+    min-width: 280px;
+}
+
+.settings-history-btn {
+    white-space: nowrap;
+}
+
+.settings-overview-bar {
+    background: #fff;
+    border: 1px solid #e7ecf3 !important;
+    border-radius: 14px;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04) !important;
+}
+
+.settings-overview-bar .card-body {
+    padding: 0.9rem 1rem !important;
+}
+
+.settings-modules-layout {
+    margin-left: -8px;
+    margin-right: -8px;
+}
+
+.settings-module-item {
+    padding-left: 8px;
+    padding-right: 8px;
+    display: flex;
+}
+
+.settings-module-item .setting-card {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.settings-overview-row {
+    margin-left: -8px;
+    margin-right: -8px;
+}
+
+.settings-overview-row > [class*="col-"] {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.settings-overview-progress .progress {
+    height: 14px !important;
+    border-radius: 999px;
+    background-color: #e8edf4;
+    overflow: hidden;
+}
+
+#configProgressText {
+    min-width: 44px;
+    text-align: right;
+}
+
+.risk-warnings {
+    min-height: 24px;
+    line-height: 1.2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.risk-warnings .badge {
+    margin: 0;
+}
+
+.recent-change {
+    font-size: 0.85rem;
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.2rem;
+}
+
+.setting-card {
+    border: 1px solid #e7ecf3 !important;
+    border-radius: 14px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05) !important;
+}
+
 .setting-card:hover {
-    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.09) !important;
 }
-.modal-rounded { border-radius: 16px; }
-.gap-2 { gap: 0.5rem; }
+
+.setting-card .card-body {
+    padding: 1.25rem 1.4rem !important;
+}
+
+.setting-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.setting-card-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.setting-meta-row {
+    flex-wrap: wrap;
+    row-gap: 0.35rem;
+}
+
+.setting-card-actions {
+    min-width: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.55rem;
+    flex-shrink: 0;
+}
+
+.status-badge {
+    position: static;
+    font-size: 0.75rem;
+    padding: 0.26rem 0.75rem;
+    border-radius: 999px;
+    line-height: 1.2;
+}
+
+.setting-card-actions .btn {
+    white-space: nowrap;
+    min-width: 106px;
+}
+
+.setting-footer-action .btn-link {
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.setting-footer-action .btn-link:hover {
+    text-decoration: none;
+}
+
+.settings-metrics {
+    background-color: #f8fafd;
+    border: 1px solid #e7ecf3;
+    border-radius: 12px;
+    padding: 0.75rem !important;
+}
+
+.settings-metrics .row {
+    margin-left: -6px;
+    margin-right: -6px;
+}
+
+.settings-metrics .row > [class*="col-"] {
+    padding-left: 6px;
+    padding-right: 6px;
+    margin-bottom: 0.75rem;
+    display: flex;
+}
+
+.settings-metrics .row > [class*="col-"]:last-child {
+    margin-bottom: 0;
+}
+
+.metric-item {
+    width: 100%;
+    min-height: 88px;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid #e3e9f2;
+    border-radius: 10px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.metric-label {
+    display: block;
+    font-size: 0.76rem;
+    margin-bottom: 0.35rem;
+    color: #64748b;
+    line-height: 1.25;
+}
+
+.metric-value {
+    font-size: 1.06rem;
+    color: #0f172a;
+    font-weight: 700;
+    line-height: 1.25;
+    word-break: break-word;
+}
+
+.clickable-metric {
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.clickable-metric:hover {
+    background-color: #f4f8ff;
+    border-color: #cadbfd;
+    transform: translateY(-1px);
+}
+
+.clickable-metric .metric-value {
+    color: #2563eb;
+    transition: color 0.18s ease;
+}
+
+.clickable-metric:hover .metric-value {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+.modal-rounded {
+    border-radius: 16px;
+}
+
+.gap-2 {
+    gap: 0.5rem;
+}
+
 .settings-page-modal {
     z-index: 2100;
 }
+
 body.settings-modal-open .modal-backdrop {
     z-index: 2090 !important;
 }
+
 body.settings-modal-open #riskModal,
 body.settings-modal-open #orgModal,
 body.settings-modal-open #integrationModal {
     z-index: 2100 !important;
 }
+
 body.settings-modal-open #riskModal .modal-content,
 body.settings-modal-open #orgModal .modal-content,
 body.settings-modal-open #integrationModal .modal-content {
     pointer-events: auto;
 }
+
 .word-remove-btn {
     border: 0;
     background: transparent;
@@ -960,108 +1199,81 @@ body.settings-modal-open #integrationModal .modal-content {
     line-height: 1;
 }
 
-/* 设置概览条样式 */
-.settings-overview-bar {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 8px;
-}
-
-/* 状态徽标样式 */
-.status-badge {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    font-size: 0.75rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    z-index: 10;
-}
-
-/* 指标行样式 */
-.settings-metrics {
-    background-color: #f8f9fa;
-    border-radius: 6px;
-    padding: 0.75rem !important;
-}
-.metric-item {
-    padding: 0.5rem 0;
-}
-.metric-label {
-    display: block;
-    font-size: 0.75rem;
-    margin-bottom: 0.25rem;
-    color: #6c757d;
-}
-.metric-value {
-    font-size: 1.1rem;
-    color: #212529;
-    font-weight: 600;
-}
-
-/* 可点击指标样式 */
-.clickable-metric {
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border-radius: 4px;
-    padding: 0.5rem;
-    margin: -0.5rem;
-}
-
-.clickable-metric:hover {
-    background-color: #e9ecef;
-    transform: translateY(-1px);
-}
-
-.clickable-metric .metric-value {
-    color: #007bff;
-    transition: color 0.2s ease;
-}
-
-.clickable-metric:hover .metric-value {
-    color: #0056b3;
-    text-decoration: underline;
-}
-
-/* 响应式优化 */
-@media (max-width: 768px) {
-    .settings-overview-bar .row > div {
-        margin-bottom: 0.75rem;
-    }
-    .settings-metrics .row > div {
-        margin-bottom: 0.5rem;
-    }
-    .status-badge {
-        position: relative;
-        top: auto;
-        right: auto;
-        display: inline-block;
-        margin-bottom: 0.5rem;
-    }
-}
-
-/* 进度条样式 */
 .progress {
     border-radius: 10px;
     background-color: #e9ecef;
 }
+
 .progress-bar {
     transition: width 0.6s ease;
     border-radius: 10px;
 }
 
-/* 风险提示样式 */
-.risk-warnings {
-    min-height: 24px;
-    line-height: 1.8;
-}
-.risk-warnings .badge {
-    margin-right: 0.25rem;
-    margin-bottom: 0.25rem;
+@media (min-width: 768px) {
+    .settings-metrics .row > [class*="col-"] {
+        margin-bottom: 0;
+    }
 }
 
-/* 最近变更样式 */
-.recent-change {
-    font-size: 0.875rem;
+@media (min-width: 1200px) {
+    .settings-module-item {
+        margin-bottom: 0.9rem !important;
+    }
+
+    .settings-module-item:not(.settings-module-item-wide) .setting-card {
+        min-height: 100%;
+    }
+}
+
+@media (max-width: 992px) {
+    .setting-card-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .setting-card-actions {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.6rem;
+    }
+
+    .setting-card-actions .btn {
+        margin-left: auto;
+    }
+
+    .recent-change {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 768px) {
+    .settings-page {
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+
+    .settings-overview-row > [class*="col-"] {
+        margin-bottom: 0.75rem;
+    }
+
+    .settings-metrics .row > [class*="col-"] {
+        margin-bottom: 0.55rem;
+    }
+
+    .setting-card .card-body {
+        padding: 1rem !important;
+    }
+
+    .setting-card-actions {
+        flex-wrap: wrap;
+    }
+
+    .setting-card-actions .btn {
+        width: 100%;
+        margin-left: 0;
+    }
 }
 </style>
 {% endblock %}

@@ -14,6 +14,8 @@
     feedback: document.getElementById("usersFeedback"),
     userCountBadge: document.getElementById("userCountBadge"),
     reloadBtn: document.getElementById("reloadUsersBtn"),
+    batchDeleteBtn: document.getElementById("batchDeleteUsersBtn"),
+    selectAllCheckbox: document.getElementById("usersSelectAll"),
     resetFiltersBtn: document.getElementById("resetFiltersBtn"),
     filterDepartment: document.getElementById("filterDepartment"),
     filterRole: document.getElementById("filterRole"),
@@ -60,6 +62,8 @@
     !refs.feedback ||
     !refs.userCountBadge ||
     !refs.reloadBtn ||
+    !refs.batchDeleteBtn ||
+    !refs.selectAllCheckbox ||
     !refs.resetFiltersBtn ||
     !refs.filterDepartment ||
     !refs.filterRole ||
@@ -114,6 +118,7 @@
     USER_POSITION_CHANGE: "设置岗位",
     USER_DEPARTMENT_CHANGE: "改部门",
     USER_OFFBOARD: "离职/停用",
+    DELETE_USER: "删除",
   };
 
   const ACTION_CONFIG = {
@@ -201,6 +206,19 @@
       departmentRequired: false,
       reasonNoteRequired: true,
     },
+    delete_user: {
+      title: "删除用户",
+      submitText: "确认删除",
+      endpoint(userId) {
+        return `/api/admin/users/${encodeURIComponent(userId)}`;
+      },
+      method: "DELETE",
+      actionCode: "DELETE_USER",
+      roleRequired: false,
+      positionRequired: false,
+      departmentRequired: false,
+      reasonNoteRequired: false,
+    },
   };
 
   const state = {
@@ -213,6 +231,7 @@
     latestActionByUser: new Map(),
     trailByUser: new Map(),
     trailOpen: new Set(),
+    selectedUserIds: new Set(),
     filters: {
       department: "",
       roleId: "",
@@ -575,6 +594,54 @@
     return blob.includes(keyword);
   }
 
+  function canSelectForDelete(user) {
+    const userId = Number(user && user.id || 0);
+    if (userId <= 0) return false;
+    if (userId === state.currentUserId) return false;
+    return Boolean(user && user.can_delete === true);
+  }
+
+  function filteredUsers() {
+    return (Array.isArray(state.users) ? state.users : [])
+      .filter((user) => user && typeof user === "object")
+      .filter(matchesFilters)
+      .sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+  }
+
+  function syncSelectedUserIds() {
+    const allowed = new Set(
+      (Array.isArray(state.users) ? state.users : [])
+        .filter((user) => canSelectForDelete(user))
+        .map((user) => Number(user && user.id || 0))
+        .filter((id) => id > 0),
+    );
+    state.selectedUserIds.forEach((id) => {
+      if (!allowed.has(id)) state.selectedUserIds.delete(id);
+    });
+  }
+
+  function updateBatchDeleteControls(rows) {
+    const visibleRows = Array.isArray(rows) ? rows : [];
+    const selectableVisibleIds = visibleRows
+      .filter((user) => canSelectForDelete(user))
+      .map((user) => Number(user && user.id || 0))
+      .filter((id) => id > 0);
+
+    const totalSelected = state.selectedUserIds.size;
+    refs.batchDeleteBtn.disabled = totalSelected <= 0;
+    refs.batchDeleteBtn.textContent = totalSelected > 0 ? `批量删除（${totalSelected}）` : "批量删除";
+
+    const selectedVisibleCount = selectableVisibleIds.reduce(
+      (count, id) => count + (state.selectedUserIds.has(id) ? 1 : 0),
+      0,
+    );
+    refs.selectAllCheckbox.disabled = selectableVisibleIds.length <= 0;
+    refs.selectAllCheckbox.checked =
+      selectableVisibleIds.length > 0 && selectedVisibleCount === selectableVisibleIds.length;
+    refs.selectAllCheckbox.indeterminate =
+      selectedVisibleCount > 0 && selectedVisibleCount < selectableVisibleIds.length;
+  }
+
   function currentRoleId(user) {
     const ids = roleIds(user);
     return ids.length ? String(ids[0]) : "";
@@ -621,8 +688,6 @@
     const deleteTitle = isCurrent ? "不能删除当前登录的账号" : (canDelete ? "删除该用户，删除后不可恢复" : "仅无业务/无审计记录的测试账号可删除，或需要DELETE_ANY_USER权限");
     const deleteDisabled = (!canDelete || isCurrent) ? "disabled" : "";
 
-    const dropdownId = `userActions${userId}`;
-    
     const buttons = [
       `<button type="button" class="btn ${toggleClass} js-open-action" data-action="${toggleAction}" data-user-id="${userId}" ${toggleDisabled ? "disabled" : ""} title="${escapeHtml(toggleTitle)}">${toggleLabel}</button>`,
       `<div class="btn-group">
@@ -646,7 +711,7 @@
           <a class="dropdown-item js-open-action ${offboardDisabled ? 'disabled text-muted' : ''}" href="javascript:void(0)" data-action="offboard" data-user-id="${userId}" title="${escapeHtml(offboardTitle)}">
             <i class="ri-user-unfollow-line" style="margin-right:6px;"></i>离职/停用
           </a>
-          <a class="dropdown-item js-delete-user ${deleteDisabled ? 'disabled text-muted' : 'text-danger'}" href="javascript:void(0)" data-user-id="${userId}" data-username="${escapeHtml(displayText(user && user.username))}" title="${escapeHtml(deleteTitle)}">
+          <a class="dropdown-item js-open-action ${deleteDisabled ? 'disabled text-muted' : 'text-danger'}" href="javascript:void(0)" data-action="delete_user" data-user-id="${userId}" title="${escapeHtml(deleteTitle)}">
             <i class="ri-delete-bin-line" style="margin-right:6px;"></i>删除
           </a>
         </div>
@@ -690,7 +755,7 @@
 
     return `
       <tr class="table-light" data-trail-row-for="${userId}">
-        <td colspan="9">
+        <td colspan="10">
           <div class="trail-card">${contentHtml}</div>
         </td>
       </tr>
@@ -698,21 +763,22 @@
   }
 
   function renderUsers() {
-    const rows = (Array.isArray(state.users) ? state.users : [])
-      .filter((user) => user && typeof user === "object")
-      .filter(matchesFilters)
-      .sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+    syncSelectedUserIds();
+    const rows = filteredUsers();
 
     refs.userCountBadge.textContent = `${rows.length} / ${state.users.length}`;
 
     if (!rows.length) {
-      refs.tableBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4" style="font-size:14px">暂无数据</td></tr>';
+      refs.tableBody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4" style="font-size:14px">暂无数据</td></tr>';
+      updateBatchDeleteControls(rows);
       return;
     }
 
     const html = [];
     rows.forEach((user) => {
       const userId = Number(user.id || 0);
+      const canSelectDelete = canSelectForDelete(user);
+      const selected = state.selectedUserIds.has(userId);
       const username = displayText(user.username);
       const employeeName = displayText(user.employee_name);
       const employeeNo = displayText(user.employee_no);
@@ -720,7 +786,8 @@
 
       const positionName = displayText(user.position_name);
       html.push(
-        "<tr>" +
+        "<tr data-user-id=\"" + userId + "\">" +
+          `<td class="select-cell"><input type="checkbox" class="js-user-select" data-user-id="${userId}" ${selected ? "checked" : ""} ${canSelectDelete ? "" : "disabled"}></td>` +
           `<td><span style="font-weight:500">${escapeHtml(username)}</span></td>` +
           `<td><div style="font-weight:500">${escapeHtml(employeeName)}</div><div class="user-meta-sub">工号：${escapeHtml(employeeNo)}</div></td>` +
           `<td>${escapeHtml(department)}</td>` +
@@ -739,6 +806,7 @@
     });
 
     refs.tableBody.innerHTML = html.join("");
+    updateBatchDeleteControls(rows);
   }
 
   function mergeUser(user) {
@@ -781,6 +849,62 @@
       throw new Error(text(payload.message) || text(payload.msg) || `HTTP ${response.status}`);
     }
     return payload;
+  }
+
+  async function deleteUserById(userId) {
+    const normalizedId = Number(userId || 0);
+    if (normalizedId <= 0) return;
+    await requestJson(`/api/admin/users/${encodeURIComponent(normalizedId)}`, {
+      method: "DELETE",
+      headers: { Accept: "application/json" },
+    });
+    state.users = state.users.filter((u) => Number(u && u.id || 0) !== normalizedId);
+    state.latestActionByUser.delete(normalizedId);
+    state.trailByUser.delete(normalizedId);
+    state.trailOpen.delete(normalizedId);
+    state.selectedUserIds.delete(normalizedId);
+  }
+
+  async function batchDeleteSelectedUsers() {
+    const ids = Array.from(state.selectedUserIds).filter((id) => id > 0);
+    if (!ids.length) {
+      showFeedback("warning", "请先选择要删除的员工");
+      return;
+    }
+    if (!window.confirm(`确定要批量删除选中的 ${ids.length} 名员工吗？删除后不可恢复。`)) {
+      return;
+    }
+
+    refs.batchDeleteBtn.disabled = true;
+    const originalText = refs.batchDeleteBtn.textContent;
+    refs.batchDeleteBtn.textContent = "删除中...";
+
+    let successCount = 0;
+    let failedCount = 0;
+    for (const userId of ids) {
+      const user = state.users.find((item) => Number(item && item.id || 0) === userId);
+      if (!canSelectForDelete(user)) {
+        failedCount += 1;
+        continue;
+      }
+      try {
+        await deleteUserById(userId);
+        successCount += 1;
+      } catch (_) {
+        failedCount += 1;
+      }
+    }
+
+    renderUsers();
+    if (failedCount > 0) {
+      const tone = successCount > 0 ? "warning" : "danger";
+      showFeedback(tone, `批量删除完成：成功 ${successCount} 人，失败 ${failedCount} 人`);
+    } else {
+      showFeedback("success", `批量删除成功：共删除 ${successCount} 人`);
+    }
+
+    refs.batchDeleteBtn.disabled = false;
+    refs.batchDeleteBtn.textContent = originalText || "批量删除";
   }
 
   async function loadUsers() {
@@ -962,7 +1086,7 @@
 
     try {
       const response = await requestJson(config.endpoint(userId), {
-        method: "POST",
+        method: config.method || "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
@@ -973,7 +1097,16 @@
       if (response.user && typeof response.user === "object") {
         mergeUser(response.user);
       }
-      if (response.latest_action && typeof response.latest_action === "object") {
+      if (text(config.actionCode) === "DELETE_USER") {
+        const normalizedId = Number(userId || 0);
+        if (normalizedId > 0) {
+          state.users = state.users.filter((item) => Number(item && item.id || 0) !== normalizedId);
+          state.latestActionByUser.delete(normalizedId);
+          state.trailByUser.delete(normalizedId);
+          state.trailOpen.delete(normalizedId);
+          state.selectedUserIds.delete(normalizedId);
+        }
+      } else if (response.latest_action && typeof response.latest_action === "object") {
         attachLatestAction(userId, response.latest_action);
       } else {
         attachLatestAction(userId, {
@@ -1180,6 +1313,7 @@
   refs.createForm.addEventListener("submit", submitCreateUser);
 
   refs.reloadBtn.addEventListener("click", loadUsers);
+  refs.batchDeleteBtn.addEventListener("click", batchDeleteSelectedUsers);
   refs.resetFiltersBtn.addEventListener("click", resetFilters);
 
   refs.filterDepartment.addEventListener("change", updateFiltersFromUI);
@@ -1188,6 +1322,32 @@
   refs.filterKeyword.addEventListener("input", () => {
     state.filters.keyword = text(refs.filterKeyword.value);
     renderUsers();
+  });
+
+  refs.selectAllCheckbox.addEventListener("change", () => {
+    const rows = filteredUsers();
+    const ids = rows
+      .filter((user) => canSelectForDelete(user))
+      .map((user) => Number(user && user.id || 0))
+      .filter((id) => id > 0);
+    if (refs.selectAllCheckbox.checked) {
+      ids.forEach((id) => state.selectedUserIds.add(id));
+    } else {
+      ids.forEach((id) => state.selectedUserIds.delete(id));
+    }
+    renderUsers();
+  });
+
+  refs.tableBody.addEventListener("change", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+    const checkbox = target.closest(".js-user-select");
+    if (!(checkbox instanceof HTMLInputElement)) return;
+    const userId = Number(checkbox.getAttribute("data-user-id") || 0);
+    if (userId <= 0) return;
+    if (checkbox.checked) state.selectedUserIds.add(userId);
+    else state.selectedUserIds.delete(userId);
+    updateBatchDeleteControls(filteredUsers());
   });
 
   refs.tableBody.addEventListener("click", (event) => {
@@ -1209,29 +1369,6 @@
       return;
     }
 
-    const deleteBtn = target.closest(".js-delete-user");
-    if (deleteBtn && !deleteBtn.classList.contains('disabled')) {
-      const userId = Number(deleteBtn.getAttribute("data-user-id") || 0);
-      const username = deleteBtn.getAttribute("data-username") || "";
-      if (userId <= 0) return;
-      if (!window.confirm(`确定要删除用户「${username || userId}」吗？删除后不可恢复。`)) return;
-      (async () => {
-        try {
-          await requestJson(`/api/admin/users/${encodeURIComponent(userId)}`, {
-            method: "DELETE",
-            headers: { Accept: "application/json" },
-          });
-          state.users = state.users.filter((u) => Number(u && u.id || 0) !== userId);
-          state.latestActionByUser.delete(userId);
-          state.trailByUser.delete(userId);
-          state.trailOpen.delete(userId);
-          renderUsers();
-          showFeedback("success", "用户已删除");
-        } catch (err) {
-          showFeedback("danger", text(err && err.message) || "删除失败");
-        }
-      })();
-    }
   });
 
   refs.actionReasonCode.addEventListener("change", () => {

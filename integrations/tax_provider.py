@@ -202,32 +202,39 @@ class MockTaxProvider(TaxProvider):
                 "raw_payload": request_payload,
             }
 
-        trailing_digit = ""
-        for ch in reversed(number):
-            if ch.isdigit():
-                trailing_digit = ch
-                break
-        if trailing_digit == "":
-            return {
-                "provider": self.provider_name,
-                "request_id": request_id,
-                "status_code": 400,
-                "latency_ms": latency_ms,
-                "result_status": VERIFY_STATUS_FAILED,
-                "result_code": "INVALID_NUMBER",
-                "result_message": "发票号码格式异常，无法完成验真。",
-                "raw_payload": request_payload,
-            }
-
-        is_passed = int(trailing_digit) % 2 == 0
-        if is_passed:
+        # 测试环境：所有包含 TEST 的票据都通过验真
+        if "TEST" in number.upper() or "TEST" in code.upper():
             result_status = VERIFY_STATUS_PASSED
-            result_code = "EVEN_LAST_DIGIT"
-            result_message = "发票验真通过（规则兜底）。"
+            result_code = "TEST_INVOICE_PASS"
+            result_message = "测试票据验真通过（规则兜底）。"
         else:
-            result_status = VERIFY_STATUS_FAILED
-            result_code = "ODD_LAST_DIGIT"
-            result_message = "发票验真未通过：票号校验失败（规则兜底）。"
+            # 生产环境：根据票号最后一位数字判断
+            trailing_digit = ""
+            for ch in reversed(number):
+                if ch.isdigit():
+                    trailing_digit = ch
+                    break
+            if trailing_digit == "":
+                return {
+                    "provider": self.provider_name,
+                    "request_id": request_id,
+                    "status_code": 400,
+                    "latency_ms": latency_ms,
+                    "result_status": VERIFY_STATUS_FAILED,
+                    "result_code": "INVALID_NUMBER",
+                    "result_message": "发票号码格式异常，无法完成验真。",
+                    "raw_payload": request_payload,
+                }
+
+            is_passed = int(trailing_digit) % 2 == 0
+            if is_passed:
+                result_status = VERIFY_STATUS_PASSED
+                result_code = "EVEN_LAST_DIGIT"
+                result_message = "发票验真通过（规则兜底）。"
+            else:
+                result_status = VERIFY_STATUS_FAILED
+                result_code = "ODD_LAST_DIGIT"
+                result_message = "发票验真未通过：票号校验失败（规则兜底）。"
 
         return {
             "provider": self.provider_name,

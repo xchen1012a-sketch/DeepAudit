@@ -26,6 +26,7 @@
 .table .main-link { font-weight: 800; color: #0f172a; }
 .table .main-link:hover { text-decoration: underline; }
 .table .copy-btn { color: #475569; font-size: 12px; padding: 0 6px; }
+.ledger-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 {% if active_tab != 'draft' %}
 /* ===== LEDGER (已入账) Theme ===== */
@@ -395,7 +396,17 @@
 {% set risk_label_map = {"HIGH": "高风险", "MEDIUM": "关注", "LOW": "正常"} %}
 {% set verify_label_map = {"PASS": "通过", "PASSED": "通过", "FAIL": "不通过", "FAILED": "不通过", "PENDING": "未验真", "UNKNOWN": "未验真"} %}
 
-<div id="ledger-enterprise-v2" class="container-fluid pb-3" data-page-limit="{{ page_limit or 20 }}">
+{% set can_return_to_draft = nav_access_level in ['C', 'D', 'E'] %}
+{% set can_supplement_ops = can_supplement_ops if can_supplement_ops is defined else (nav_access_level in ['B', 'C', 'D', 'E']) %}
+{% set can_post_to_ledger = can_supplement_ops %}
+<div
+  id="ledger-enterprise-v2"
+  class="container-fluid pb-3"
+  data-page-limit="{{ page_limit or 20 }}"
+  data-can-return-to-draft="{{ 1 if can_return_to_draft else 0 }}"
+  data-can-supplement-operate="{{ 1 if can_supplement_ops else 0 }}"
+  data-can-post-to-ledger="{{ 1 if can_post_to_ledger else 0 }}"
+>
 
 {% if active_tab == 'draft' %}
   {# ===== DRAFT HERO - Task Queue Style ===== #}
@@ -610,10 +621,22 @@
       </div>
       <div class="d-flex align-items-center" style="gap:10px;">
         <div class="draft-batch-bar">
-          <button type="button" class="btn btn-outline-secondary btn-sm" id="btnBatchSupplement" title="批量为选中单据补录金额/日期">
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm"
+            id="btnBatchSupplement"
+            title="{{ '批量为选中单据补录金额/日期' if can_supplement_ops else '仅财务相关岗位可执行补录操作' }}"
+            {% if not can_supplement_ops %}disabled{% endif %}
+          >
             <i class="ri-edit-2-line mr-1"></i>批量补录
           </button>
-          <button type="button" class="btn btn-outline-danger btn-sm" id="btnBatchReturn" title="批量打回选中单据">
+          <button
+            type="button"
+            class="btn btn-outline-danger btn-sm"
+            id="btnBatchReturn"
+            title="{{ '批量打回选中单据' if can_return_to_draft else '仅经理及以上可执行退回操作' }}"
+            {% if not can_return_to_draft %}disabled{% endif %}
+          >
             <i class="ri-arrow-go-back-line mr-1"></i>批量打回
           </button>
         </div>
@@ -694,15 +717,25 @@
             </td>
             <td class="text-center">
               <div class="draft-action-group">
-                <button class="btn btn-sm btn-draft-edit js-evidence" data-id="{{ row.id }}" title="补录要素信息">
+                <button
+                  class="btn btn-sm btn-draft-edit js-evidence"
+                  data-id="{{ row.id }}"
+                  title="{{ '补录要素信息' if can_supplement_ops else '仅财务相关岗位可执行补录操作' }}"
+                  {% if not can_supplement_ops %}disabled{% endif %}
+                >
                   <i class="ri-edit-line mr-1"></i>补录
                 </button>
-                {% if completeness == 'complete' %}
+                {% set verify_passed = verify_status in ['PASS', 'PASSED'] %}
+                {% if completeness == 'complete' and verify_passed and can_post_to_ledger %}
                 <button class="btn btn-sm btn-draft-post js-action" data-id="{{ row.id }}" data-action="POST_LEDGER" title="确认入账">
                   <i class="ri-check-double-line mr-1"></i>入账
                 </button>
                 {% else %}
-                <button class="btn btn-sm btn-draft-post disabled" disabled title="请先补全金额和日期">
+                <button
+                  class="btn btn-sm btn-draft-post disabled"
+                  disabled
+                  title="{% if not can_post_to_ledger %}仅财务相关岗位可执行补录入账操作{% elif not verify_passed %}请先完成发票验真并通过{% else %}请先补全金额和日期{% endif %}"
+                >
                   <i class="ri-lock-line mr-1"></i>入账
                 </button>
                 {% endif %}
@@ -743,6 +776,15 @@
         <span class="badge badge-light">已入账</span>
       </div>
       <div class="ledger-toolbar">
+        <button
+          type="button"
+          class="btn btn-outline-danger btn-sm"
+          id="btnBatchReturn"
+          title="{{ '批量打回选中单据' if can_return_to_draft else '仅经理及以上可执行退回操作' }}"
+          {% if not can_return_to_draft %}disabled{% endif %}
+        >
+          <i class="ri-arrow-go-back-line mr-1"></i>批量打回
+        </button>
         <label for="ledgerPageSize" class="mb-0 small text-muted">每页显示</label>
         <select id="ledgerPageSize" class="form-control form-control-sm" style="width:90px;">
           {% for size in page_size_options or [10, 20, 50, 100, 200] %}
@@ -755,6 +797,7 @@
       <table class="table table-sm table-hover mb-0" id="ledgerTable">
         <thead>
           <tr>
+            <th style="width:36px;"><input type="checkbox" id="selectAll" title="全选"></th>
             <th style="width:140px;">单据编号</th>
             <th style="width:120px;">入账日期</th>
             <th style="width:120px;">费用类别</th>
@@ -774,6 +817,7 @@
           {% set risk_class = 'high' if risk_level == 'HIGH' else ('medium' if risk_level == 'MEDIUM' else 'low') %}
           {% set verify_class = 'pass' if verify_status in ['PASS','PASSED'] else ('fail' if verify_status in ['FAIL','FAILED'] else 'pending') %}
           <tr data-id="{{ row.id }}" data-state="{{ row.record_state }}">
+            <td><input type="checkbox" class="row-check" value="{{ row.id }}"></td>
             <td class="ledger-key-col">
               <div class="d-flex align-items-center">
                 <a href="javascript:void(0);" class="main-link js-evidence" data-id="{{ row.id }}" title="打开证据中心">{{ row.reference_no or row.id }}</a>
@@ -811,7 +855,7 @@
           {% endfor %}
           {% if not invoices %}
           <tr>
-            <td colspan="10" class="text-center py-4">
+            <td colspan="11" class="text-center py-4">
               {% if filter_by_id is defined and filter_by_id %}
               <p class="text-muted mb-2">无结果：未找到匹配的已入账单据。</p>
               <a href="{{ url_for('ledger.invoices_page', tab='ledger') }}" class="btn btn-sm btn-outline-primary">查看全部 / 清除筛选</a>

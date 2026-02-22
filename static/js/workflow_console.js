@@ -105,6 +105,12 @@
       },
     },
   };
+  const PRESET_LABELS = {
+    standard: "标准配置",
+    strict: "严格审批",
+    loose: "宽松审批",
+    custom: "自定义配置",
+  };
   const ROLE_LABELS = {
     ADMIN: "管理员",
     AI_SENTINEL: "AI哨兵",
@@ -191,6 +197,8 @@
     presetStrict: document.getElementById("wfPresetStrict"),
     presetLoose: document.getElementById("wfPresetLoose"),
     presetReset: document.getElementById("wfPresetReset"),
+    presetCurrentBadge: document.getElementById("wfPresetCurrentBadge"),
+    presetCurrentLabel: document.getElementById("wfPresetCurrentLabel"),
   };
 
   const hasMissingRefs = Object.values(refs).some((node) => !node);
@@ -487,6 +495,80 @@
     };
   }
 
+  function normalizeChain(chain) {
+    const source = Array.isArray(chain) && chain.length ? chain : DEFAULT_CONFIG.chain;
+    return source.map((item) => normalize(item)).filter(Boolean);
+  }
+
+  function normalizeRiskLevels(levels) {
+    return (Array.isArray(levels) ? levels : [])
+      .map((item) => normalize(item))
+      .filter(Boolean)
+      .sort();
+  }
+
+  function normalizeNodeForCompare(node) {
+    const source = node && typeof node === "object" ? node : {};
+    const conditions = source.conditions && typeof source.conditions === "object" ? source.conditions : {};
+    const nextMap = source.next_map && typeof source.next_map === "object" ? source.next_map : {};
+    return {
+      required_role: normalize(source.required_role),
+      conditions: {
+        amount_gte: asNumber(conditions.amount_gte, 0),
+        risk_levels: normalizeRiskLevels(conditions.risk_levels),
+        rule_hit_count_gte: Math.max(0, Math.trunc(asNumber(conditions.rule_hit_count_gte, 0))),
+      },
+      next_map: NEXT_MAP_KEYS.reduce((acc, key) => {
+        acc[key] = normalize(nextMap[key]);
+        return acc;
+      }, {}),
+    };
+  }
+
+  function createConfigSignature(config) {
+    const source = config && typeof config === "object" ? config : {};
+    const nodes = source.nodes && typeof source.nodes === "object" ? source.nodes : {};
+    return JSON.stringify({
+      chain: normalizeChain(source.chain),
+      nodes: STEPS.reduce((acc, step) => {
+        acc[step] = normalizeNodeForCompare(nodes[step]);
+        return acc;
+      }, {}),
+    });
+  }
+
+  const PRESET_SIGNATURES = Object.entries(PRESET_TEMPLATES).reduce((acc, [name, template]) => {
+    acc[name] = createConfigSignature(template);
+    return acc;
+  }, {});
+
+  function detectPresetName(config) {
+    const signature = createConfigSignature(config);
+    return Object.keys(PRESET_SIGNATURES).find((name) => PRESET_SIGNATURES[name] === signature) || "custom";
+  }
+
+  function setPresetButtonActiveState(presetName) {
+    const buttonMap = {
+      standard: refs.presetStandard,
+      strict: refs.presetStrict,
+      loose: refs.presetLoose,
+    };
+    Object.entries(buttonMap).forEach(([name, button]) => {
+      if (!button) return;
+      const isActive = name === presetName;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+  }
+
+  function syncCurrentPresetBadge(config) {
+    const presetName = detectPresetName(config);
+    const label = PRESET_LABELS[presetName] || PRESET_LABELS.custom;
+    setNodeText(refs.presetCurrentLabel, label, PRESET_LABELS.custom);
+    if (refs.presetCurrentBadge) refs.presetCurrentBadge.dataset.preset = presetName;
+    setPresetButtonActiveState(presetName);
+  }
+
   function validateConfig(config) {
     clearConfigValidation();
     let valid = true;
@@ -597,10 +679,12 @@
   }
 
   function renderConfig(config) {
-    const nodes = (config && config.nodes) || {};
+    const source = config && typeof config === "object" ? config : {};
+    const nodes = source.nodes || {};
     STEPS.forEach((step) => renderNodeConfig(step, nodes[step]));
     clearConfigValidation();
     renderRolePreview();
+    syncCurrentPresetBadge(source);
   }
 
   function applyPresetTemplate(templateName) {
@@ -889,6 +973,7 @@
         const errorNode = document.getElementById(`${field.id}Error`);
         if (errorNode) setFieldInvalid(field, errorNode, false, "");
         renderRolePreview();
+        syncCurrentPresetBadge(readConfigFromForm());
       };
       field.addEventListener("change", clearInvalid);
       if (field.tagName === "INPUT") {
@@ -915,4 +1000,3 @@
 
   void init();
 })();
-

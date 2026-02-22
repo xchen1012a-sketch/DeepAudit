@@ -55,6 +55,7 @@ from utils.db import (
 )
 from utils.risk import evaluate_risk
 from utils.security import (
+    apply_data_scope_filter,
     can_manage_workflow,
     current_data_scope,
     current_scope_department,
@@ -351,10 +352,12 @@ def dashboard_metrics():
     try:
         date_from, date_to = _dashboard_range_to_dates(range_key)
         department_scope = current_scope_department()
+        scope_filter = apply_data_scope_filter()
         data = get_risk_metrics(
             department_scope=department_scope,
             date_from=date_from,
             date_to=date_to,
+            data_scope=scope_filter,
         )
     except Exception as exc:
         current_app.logger.exception("dashboard_metrics: %s", exc)
@@ -368,10 +371,12 @@ def dashboard_risk_distribution():
     range_key = request.args.get("range", "7d")
     try:
         date_from, date_to = _dashboard_range_to_dates(range_key)
+        scope_filter = apply_data_scope_filter()
         data = get_risk_distribution(
             department_scope=current_scope_department(),
             date_from=date_from,
             date_to=date_to,
+            data_scope=scope_filter,
         )
     except Exception as exc:
         current_app.logger.exception("dashboard_risk_distribution: %s", exc)
@@ -385,10 +390,12 @@ def dashboard_risk_trends():
     range_key = request.args.get("range", "7d")
     try:
         days, end_date = _dashboard_range_to_trends_params(range_key)
+        scope_filter = apply_data_scope_filter()
         data = get_recent_trends(
             days=days,
             end_date=end_date,
             department_scope=current_scope_department(),
+            data_scope=scope_filter,
         )
     except Exception as exc:
         current_app.logger.exception("dashboard_risk_trends: %s", exc)
@@ -412,7 +419,7 @@ def dashboard_department_risk_rank():
     return jsonify(
         {
             "ok": True,
-            "data": get_department_risk_rank(limit=limit),
+            "data": get_department_risk_rank(limit=limit, data_scope=apply_data_scope_filter()),
         }
     )
 
@@ -700,8 +707,8 @@ def settings_overview_api():
 @bp.get("/upload")
 @login_required
 def upload_page():
-    if not has_permission("VIEW_INVOICES", current_user() or {}):
-        return _forbidden_page(module_name="费用报销受理", required_permissions=["VIEW_INVOICES"])
+    if not _has_any_permission(["VIEW_UPLOAD_PAGE", "VIEW_INVOICES"]):
+        return _forbidden_page(module_name="费用报销受理", required_permissions=["VIEW_UPLOAD_PAGE"])
     return render_template("upload.html")
 
 
@@ -1216,7 +1223,12 @@ def dashboard_debug_scope():
     scope = current_data_scope()
     try:
         date_from, date_to = _dashboard_range_to_dates("7d")
-        data = get_risk_metrics(department_scope=dept, date_from=date_from, date_to=date_to)
+        data = get_risk_metrics(
+            department_scope=dept,
+            date_from=date_from,
+            date_to=date_to,
+            data_scope=apply_data_scope_filter(),
+        )
         metrics = {"total_invoice": data.get("total_invoice"), "risk_case_count": data.get("risk_case_count"), "total_txn": data.get("total_txn")}
     except Exception as e:
         metrics = {"error": str(e)}
@@ -1228,6 +1240,4 @@ def dashboard_debug_scope():
         "scope_department": dept,
         "metrics_7d": metrics,
     })
-
-
 

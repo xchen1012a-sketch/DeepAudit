@@ -100,9 +100,7 @@
     background: #fff;
     border: 1px solid #f0f0f0;
     border-radius: var(--skill-card-radius);
-    cursor: pointer;
     transition: border-color .2s, box-shadow .2s, transform .15s;
-    text-decoration: none;
 }
 .search-result-item:hover {
     border-color: var(--skill-color-secondary);
@@ -131,6 +129,10 @@
 .badge-governance_rule { background: #faf5ff; color: #7c3aed; }
 
 .search-result-body { flex: 1; min-width: 0; }
+.search-result-title-link {
+    display: block;
+    text-decoration: none;
+}
 .search-result-title {
     font-size: 14px;
     font-weight: 600;
@@ -143,15 +145,51 @@
 .search-result-subtitle {
     font-size: 13px;
     color: var(--skill-color-muted);
-    margin: 0;
+    margin: 0 0 6px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+.search-result-locations {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.search-location-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
+}
+.search-location-link {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    font-size: 11px;
+    font-weight: 600;
+    text-decoration: none;
+}
+.search-location-link:hover {
+    background: #dbeafe;
+    color: #1e40af;
 }
 .search-result-arrow {
     flex-shrink: 0;
     color: #cbd5e1;
     transition: color .2s, transform .2s;
+    text-decoration: none;
 }
 .search-result-item:hover .search-result-arrow {
     color: var(--skill-color-secondary);
@@ -302,6 +340,27 @@
 
     const container = document.getElementById('searchResultsContainer');
     const stats = document.getElementById('searchStats');
+    function escapeHtml(v) {
+        return String(v || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+    function normalizeLocations(item) {
+        const fallbackLabel = TYPE_LABEL[item.type] || '结果';
+        const fallbackUrl = String(item.url || '').trim();
+        const rows = Array.isArray(item.locations) ? item.locations : [];
+        const normalized = rows
+            .map((row) => ({
+                label: String((row && row.label) || fallbackLabel).trim(),
+                url: String((row && row.url) || '').trim(),
+            }))
+            .filter((row) => row.url);
+        if (normalized.length) return normalized;
+        return fallbackUrl ? [{ label: fallbackLabel, url: fallbackUrl }] : [];
+    }
 
     fetch('/api/search?q=' + encodeURIComponent(q) + '&limit=20')
         .then(function(r) {
@@ -315,7 +374,7 @@
                 container.innerHTML =
                     '<div class="search-empty">' +
                     '<div class="search-empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>' +
-                    '未找到与「' + q.replace(/</g, '&lt;') + '」相关的结果' +
+                    '未找到与「' + escapeHtml(q) + '」相关的结果' +
                     '<div class="search-hint">尝试更换关键词或缩短搜索词</div></div>';
                 return;
             }
@@ -324,14 +383,20 @@
                 const label = TYPE_LABEL[item.type] || item.type;
                 const icon = TYPE_ICON[item.type] || '';
                 const badgeCls = 'badge-' + item.type;
-                html += '<a class="search-result-item" href="' + item.url + '">'
+                const locations = normalizeLocations(item);
+                const primaryUrl = locations.length ? locations[0].url : '#';
+                const locationHtml = locations
+                    .map((loc) => '<a class="search-location-link" href="' + escapeHtml(loc.url) + '">' + escapeHtml(loc.label) + '</a>')
+                    .join('');
+                html += '<div class="search-result-item">'
                     + '<span class="search-result-badge ' + badgeCls + '">' + icon + ' ' + label + '</span>'
                     + '<div class="search-result-body">'
-                    + '<p class="search-result-title">' + (item.title || '').replace(/</g, '&lt;') + '</p>'
-                    + '<p class="search-result-subtitle">' + (item.subtitle || '').replace(/</g, '&lt;') + '</p>'
+                    + '<a class="search-result-title-link" href="' + escapeHtml(primaryUrl) + '"><p class="search-result-title">' + escapeHtml(item.title || '') + '</p></a>'
+                    + '<p class="search-result-subtitle">' + escapeHtml(item.subtitle || '') + '</p>'
+                    + '<div class="search-result-locations"><span class="search-location-tag">位置</span>' + locationHtml + '</div>'
                     + '</div>'
-                    + '<span class="search-result-arrow">' + ARROW_SVG + '</span>'
-                    + '</a>';
+                    + '<a class="search-result-arrow" href="' + escapeHtml(primaryUrl) + '">' + ARROW_SVG + '</a>'
+                    + '</div>';
             }
             html += '</div>';
             container.innerHTML = html;

@@ -389,6 +389,54 @@ def adjust_case_score(
     return updated or {"id": normalized_case_id}
 
 
+def find_active_case_by_invoice(
+    invoice_id: int,
+    *,
+    department_scope: str | None = None,
+) -> dict[str, Any] | None:
+    normalized_invoice_id = _safe_int(invoice_id, 0)
+    if normalized_invoice_id <= 0:
+        return None
+
+    scoped_department = _normalize_scope_department(department_scope)
+    with get_conn() as conn:
+        if scoped_department:
+            row = conn.execute(
+                """
+                SELECT c.id
+                FROM risk_cases c
+                JOIN risk_events e ON e.id = c.event_id
+                JOIN invoices i ON i.id = e.invoice_id
+                WHERE e.invoice_id = ?
+                  AND i.department = ?
+                  AND UPPER(COALESCE(i.record_state, 'DRAFT')) = 'LEDGER'
+                  AND UPPER(COALESCE(c.status, 'OPEN')) <> 'CLOSED'
+                ORDER BY c.id DESC
+                LIMIT 1
+                """,
+                (normalized_invoice_id, scoped_department),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                """
+                SELECT c.id
+                FROM risk_cases c
+                JOIN risk_events e ON e.id = c.event_id
+                JOIN invoices i ON i.id = e.invoice_id
+                WHERE e.invoice_id = ?
+                  AND UPPER(COALESCE(i.record_state, 'DRAFT')) = 'LEDGER'
+                  AND UPPER(COALESCE(c.status, 'OPEN')) <> 'CLOSED'
+                ORDER BY c.id DESC
+                LIMIT 1
+                """,
+                (normalized_invoice_id,),
+            ).fetchone()
+
+        if not row:
+            return None
+        return _fetch_case(conn, _safe_int(row["id"], 0), department_scope=department_scope)
+
+
 def get_case_detail(case_id: int, department_scope: str | None = None) -> dict[str, Any] | None:
     normalized_case_id = _safe_int(case_id, 0)
     if normalized_case_id <= 0:

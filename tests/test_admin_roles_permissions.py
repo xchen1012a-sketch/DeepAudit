@@ -131,7 +131,7 @@ def test_admin_roles_page_forbidden_returns_cn_html(non_manage_roles_user: int, 
     assert "建议开通权限" in body
 
 
-def test_non_system_admin_role_cannot_grant_manage_system(manage_roles_user: int, make_client):
+def test_non_system_admin_role_can_grant_manage_system(manage_roles_user: int, make_client):
     client, csrf_token = make_client(manage_roles_user)
     roles = list_roles_with_permissions()
     role = next((item for item in roles if str(item.get("role_name") or "").strip() != "系统管理员"), None)
@@ -169,9 +169,15 @@ def test_non_system_admin_role_cannot_grant_manage_system(manage_roles_user: int
         },
     )
     payload = resp.get_json(silent=True) or {}
-    assert resp.status_code == 400
-    assert payload.get("ok") is False
-    assert "仅可授予系统管理员角色" in str(payload.get("message") or "")
+    assert resp.status_code == 200
+    assert payload.get("ok") is True
+    role_payload = payload.get("role") if isinstance(payload.get("role"), dict) else {}
+    saved_permission_ids = {
+        _safe_int(item.get("id"), 0)
+        for item in (role_payload.get("permissions") or [])
+        if _safe_int(item.get("id"), 0) > 0
+    }
+    assert manage_system_id in saved_permission_ids
 
 
 def test_system_admin_role_forced_full_permissions(manage_roles_user: int, make_client):

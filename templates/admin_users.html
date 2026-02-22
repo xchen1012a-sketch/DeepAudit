@@ -76,6 +76,21 @@
   flex-wrap: wrap;
   gap: 5px;
   align-items: center;
+  overflow: visible;
+}
+.user-admin .action-group .btn-group {
+  position: relative;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.user-admin .action-group .dropdown-menu {
+  min-width: 210px;
+  top: calc(100% + 4px);
+  right: 0;
+  left: auto;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.15);
+  z-index: 1080;
 }
 .user-admin .action-group .btn {
   font-size: 12.5px;
@@ -132,6 +147,9 @@
   font-size: 13px;
   padding: 4px 10px;
 }
+.user-admin .select-cell {
+  text-align: center;
+}
 </style>
 {% endblock %}
 
@@ -152,6 +170,7 @@
           <a href="/admin/positions" class="btn btn-outline-info" style="font-size: 14px; padding: 6px 18px;" title="管理岗位/职位信息">
             <i class="ri-briefcase-line" style="margin-right: 4px; font-size: 15px; vertical-align: -2px;"></i>岗位管理
           </a>
+          <button type="button" id="batchDeleteUsersBtn" class="btn btn-outline-danger" style="font-size: 14px; padding: 6px 14px;" disabled>批量删除</button>
           <button type="button" id="reloadUsersBtn" class="btn btn-outline-secondary" style="font-size: 14px; padding: 6px 14px;">刷新</button>
         </div>
       </div>
@@ -189,6 +208,7 @@
       <table class="table table-hover mb-0">
         <thead>
           <tr>
+            <th class="select-cell" style="width: 42px;"><input type="checkbox" id="usersSelectAll" title="全选"></th>
             <th style="min-width: 120px;">用户名</th>
             <th style="min-width: 150px;">姓名 / 工号</th>
             <th style="min-width: 100px;">部门</th>
@@ -202,7 +222,7 @@
         </thead>
         <tbody id="usersTableBody">
           <tr>
-            <td colspan="9" class="text-center text-muted py-4">加载中...</td>
+            <td colspan="10" class="text-center text-muted py-4">加载中...</td>
           </tr>
         </tbody>
       </table>

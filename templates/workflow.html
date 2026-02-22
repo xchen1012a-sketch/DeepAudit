@@ -239,6 +239,46 @@
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+.workflow-console .preset-current-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--wf-border);
+  background: #f8fafc;
+  color: var(--wf-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.workflow-console .preset-current-badge strong {
+  font-weight: 600;
+  color: var(--wf-text);
+}
+.workflow-console .preset-current-badge[data-preset="standard"] {
+  background: rgba(14, 165, 233, 0.12);
+  border-color: rgba(14, 165, 233, 0.35);
+  color: #0369a1;
+}
+.workflow-console .preset-current-badge[data-preset="strict"] {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #92400e;
+}
+.workflow-console .preset-current-badge[data-preset="loose"] {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.35);
+  color: #166534;
+}
+.workflow-console .preset-current-badge[data-preset="custom"] {
+  background: rgba(100, 116, 139, 0.1);
+  border-color: rgba(100, 116, 139, 0.3);
+  color: #475569;
+}
+.workflow-console .preset-templates .btn-group .btn.active {
+  box-shadow: 0 0 0 0.15rem rgba(59, 130, 246, 0.18);
+}
 .workflow-console .form-group {
   margin-bottom: 16px;
 }
@@ -376,6 +416,13 @@
   .workflow-console .step-card {
     min-width: 100%;
   }
+  .workflow-console .preset-templates .d-flex {
+    align-items: flex-start !important;
+  }
+  .workflow-console .preset-current-badge {
+    margin-top: 8px;
+    margin-left: 0 !important;
+  }
 }
 </style>
 {% endblock %}
@@ -423,6 +470,9 @@
               <i class="ri-refresh-line"></i> 重置
             </button>
           </div>
+          <span id="wfPresetCurrentBadge" class="preset-current-badge ml-2" data-preset="custom">
+            当前配置：<strong id="wfPresetCurrentLabel">自定义配置</strong>
+          </span>
         </div>
       </div>
       

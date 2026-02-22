@@ -13,6 +13,14 @@
     return s || fallback;
   }
 
+  const pageRoot = document.getElementById("ledger-enterprise-v2");
+  const canReturnToDraft = String(pageRoot?.getAttribute("data-can-return-to-draft") || "0") === "1";
+  const canSupplementOperate = String(pageRoot?.getAttribute("data-can-supplement-operate") || "0") === "1";
+  const canPostToLedger = String(pageRoot?.getAttribute("data-can-post-to-ledger") || "0") === "1";
+  const RETURN_PERMISSION_HINT = "仅经理及以上可执行退回操作。";
+  const SUPPLEMENT_PERMISSION_HINT = "仅财务相关岗位可执行补录操作。";
+  const POST_LEDGER_PERMISSION_HINT = "仅财务相关岗位可执行补录入账操作。";
+
   function escapeHtml(value) {
     return String(value ?? "")
       .replace(/&/g, "&amp;")
@@ -128,7 +136,7 @@
       label = i18n.toCnVerifyStatus(upper, label);
     }
     let tone = "neutral";
-    if (["APPROVED", "LEDGER", "SUCCESS", "VALID", "PASS"].includes(upper)) tone = "success";
+    if (["APPROVED", "LEDGER", "SUCCESS", "VALID", "PASS", "PASSED"].includes(upper)) tone = "success";
     else if (["PENDING", "IN_PROGRESS", "PROCESSING"].includes(upper)) tone = "warning";
     else if (["REJECTED", "FAILED", "DRAFT", "INVALID"].includes(upper)) tone = "danger";
     else if (upper) tone = "info";
@@ -189,7 +197,12 @@
     const update = () => {
       const hasValue = !!getSelectValue(select);
       markSelectInvalid(select, hint, !hasValue);
-      if (submit) submit.disabled = !hasValue;
+      if (submit) {
+        submit.disabled = !hasValue;
+        if (submit.id === "evStructuredSave" && !canSupplementOperate) submit.disabled = true;
+        if (submit.id === "batchSupplementSubmit" && !canSupplementOperate) submit.disabled = true;
+        if (submit.id === "batchPostSubmit" && !canPostToLedger) submit.disabled = true;
+      }
     };
 
     select.addEventListener("change", update);
@@ -242,6 +255,36 @@
         toast.parentNode.removeChild(toast);
       }
     }, 2600);
+  }
+
+  function hasReturnPermission(notify = false) {
+    if (canReturnToDraft) {
+      return true;
+    }
+    if (notify) {
+      showMsg("warning", RETURN_PERMISSION_HINT);
+    }
+    return false;
+  }
+
+  function hasSupplementPermission(notify = false) {
+    if (canSupplementOperate) {
+      return true;
+    }
+    if (notify) {
+      showMsg("warning", SUPPLEMENT_PERMISSION_HINT);
+    }
+    return false;
+  }
+
+  function hasPostLedgerPermission(notify = false) {
+    if (canPostToLedger) {
+      return true;
+    }
+    if (notify) {
+      showMsg("warning", POST_LEDGER_PERMISSION_HINT);
+    }
+    return false;
   }
 
   async function apiJson(url, options = {}) {
@@ -456,7 +499,13 @@
     markSelectInvalid(actionReason, document.getElementById("ledgerActionReasonHint"), true);
     if (typeof refreshActionReasonState === "function") refreshActionReasonState();
     actionComment.value = "";
-    actionHint.textContent = action === "RETURN_TO_DRAFT" ? "打回补录必须填写补充说明。" : "请选择变更原因并确认提交。";
+    if (action === "RETURN_TO_DRAFT") {
+      actionHint.textContent = "打回补录必须填写补充说明。";
+    } else if (action === "POST_LEDGER") {
+      actionHint.textContent = "仅验真通过且金额/日期齐全的单据可入账。";
+    } else {
+      actionHint.textContent = "请选择变更原因并确认提交。";
+    }
 
     // Avoid modal stacking conflict:
     // evidence modal sits later in DOM than action modal and can cover it.
@@ -482,6 +531,12 @@
     const comment = text(actionComment?.value, "");
 
     if (!id || !action) return;
+    if (action === "RETURN_TO_DRAFT" && !hasReturnPermission(true)) {
+      return;
+    }
+    if (action === "POST_LEDGER" && !hasPostLedgerPermission(true)) {
+      return;
+    }
     if (!changeReasonCode) {
       markSelectInvalid(actionReason, document.getElementById("ledgerActionReasonHint"), true);
       showMsg("warning", "请选择变更原因。");
@@ -556,6 +611,8 @@
       const id = Number(actionBtn.getAttribute("data-id") || 0);
       const action = text(actionBtn.getAttribute("data-action"), "").toUpperCase();
       if (!id || !action) return;
+      if (action === "RETURN_TO_DRAFT" && !hasReturnPermission(true)) return;
+      if (action === "POST_LEDGER" && !hasPostLedgerPermission(true)) return;
       openActionModal(id, action, "table");
     });
 
@@ -565,6 +622,9 @@
   }
 
   async function submitBatchReturn() {
+    if (!hasReturnPermission(true)) {
+      return;
+    }
     const ids = selectedIds();
     if (!ids.length) {
       showMsg("warning", "请先勾选记录。");
@@ -614,10 +674,34 @@
     }
   }
 
+  function syncBatchReturnButtonState(button) {
+    if (!button) return;
+    button.disabled = !canReturnToDraft;
+    if (!canReturnToDraft) {
+      button.setAttribute("title", RETURN_PERMISSION_HINT);
+      return;
+    }
+    button.setAttribute("title", "批量打回选中单据");
+  }
+
+  function syncBatchSupplementButtonState(button) {
+    if (!button) return;
+    button.disabled = !canSupplementOperate;
+    if (!canSupplementOperate) {
+      button.setAttribute("title", SUPPLEMENT_PERMISSION_HINT);
+      return;
+    }
+    button.setAttribute("title", "批量为选中单据补录金额/日期");
+  }
+
   function bindBatchButtons() {
     const btnBatchReturn = document.getElementById("btnBatchReturn");
     if (btnBatchReturn) {
+      syncBatchReturnButtonState(btnBatchReturn);
       btnBatchReturn.addEventListener("click", () => {
+        if (!hasReturnPermission(true)) {
+          return;
+        }
         const ids = selectedIds();
         if (!ids.length) {
           showMsg("warning", "请先勾选记录。");
@@ -643,7 +727,11 @@
 
     const btnBatchSupplement = document.getElementById("btnBatchSupplement");
     if (btnBatchSupplement) {
+      syncBatchSupplementButtonState(btnBatchSupplement);
       btnBatchSupplement.addEventListener("click", () => {
+        if (!hasSupplementPermission(true)) {
+          return;
+        }
         const ids = selectedIds();
         if (!ids.length) {
           showMsg("warning", "请先勾选记录。");
@@ -655,9 +743,48 @@
       });
     }
 
+    const btnBatchPost = document.getElementById("btnBatchPost");
+    if (btnBatchPost) {
+      btnBatchPost.addEventListener("click", () => {
+        if (!hasPostLedgerPermission(true)) {
+          return;
+        }
+        const ids = selectedIds();
+        if (!ids.length) {
+          showMsg("warning", "请先勾选记录。");
+          return;
+        }
+        const hint = document.getElementById("batchPostHint");
+        if (hint) {
+          hint.textContent = `已选择 ${ids.length} 条单据，确认后将统一入账并写入审计日志。`;
+        }
+        const reason = document.getElementById("batchPostReason");
+        const comment = document.getElementById("batchPostComment");
+        if (reason) {
+          setSelectValue(reason, "DATA_COMPLETION");
+          markSelectInvalid(reason, document.getElementById("batchPostReasonHint"), false);
+          if (typeof refreshBatchPostReasonState === "function") refreshBatchPostReasonState();
+        }
+        if (comment) comment.value = "";
+        if (window.jQuery) {
+          window.jQuery("#batchPostModal").modal("show");
+        }
+      });
+    }
+
+    const batchSupplementPostLedger = document.getElementById("batchSupplementPostLedger");
+    if (batchSupplementPostLedger && !canPostToLedger) {
+      batchSupplementPostLedger.checked = false;
+      batchSupplementPostLedger.disabled = true;
+      batchSupplementPostLedger.setAttribute("title", POST_LEDGER_PERMISSION_HINT);
+    }
+
     const batchSupplementSubmit = document.getElementById("batchSupplementSubmit");
     if (batchSupplementSubmit) {
       batchSupplementSubmit.addEventListener("click", async () => {
+        if (!hasSupplementPermission(true)) {
+          return;
+        }
         const ids = selectedIds();
         if (!ids.length) {
           showMsg("warning", "请先勾选记录。");
@@ -670,6 +797,9 @@
         const reason = text(reasonSelect?.value, "").toUpperCase();
         const comment = text(document.getElementById("batchSupplementComment")?.value, "");
         const postLedger = !!document.getElementById("batchSupplementPostLedger")?.checked;
+        if (postLedger && !hasPostLedgerPermission(true)) {
+          return;
+        }
 
         if (!reason) {
           markSelectInvalid(reasonSelect, document.getElementById("batchSupplementReasonHint"), true);
@@ -719,6 +849,58 @@
     const batchReturnSubmit = document.getElementById("batchReturnSubmit");
     if (batchReturnSubmit) {
       batchReturnSubmit.addEventListener("click", submitBatchReturn);
+    }
+
+    const batchPostSubmit = document.getElementById("batchPostSubmit");
+    if (batchPostSubmit) {
+      batchPostSubmit.addEventListener("click", async () => {
+        if (!hasPostLedgerPermission(true)) {
+          return;
+        }
+        const ids = selectedIds();
+        if (!ids.length) {
+          showMsg("warning", "请先勾选记录。");
+          return;
+        }
+
+        const reasonSelect = document.getElementById("batchPostReason");
+        const reason = text(reasonSelect?.value, "").toUpperCase();
+        const comment = text(document.getElementById("batchPostComment")?.value, "");
+
+        if (!reason) {
+          markSelectInvalid(reasonSelect, document.getElementById("batchPostReasonHint"), true);
+          showMsg("warning", "批量入账必须选择变更原因。");
+          return;
+        }
+        markSelectInvalid(reasonSelect, document.getElementById("batchPostReasonHint"), false);
+
+        batchPostSubmit.disabled = true;
+        try {
+          const result = await apiJson("/api/ledger/batch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "POST_LEDGER",
+              ids,
+              change_reason_code: reason,
+              comment,
+            }),
+          });
+          showMsg("success", `批量入账完成：成功 ${result.success_count} 条，失败 ${result.failed_count} 条`);
+          if (window.jQuery) {
+            window.jQuery("#batchPostModal").modal("hide");
+          }
+          window.setTimeout(() => window.location.reload(), 280);
+        } catch (error) {
+          if (isApiNotWired(error)) {
+            openSandboxNotice("BATCH_POST_LEDGER", 0, error.message);
+          } else {
+            showMsg("danger", `批量入账失败：${error.message}`);
+          }
+        } finally {
+          batchPostSubmit.disabled = false;
+        }
+      });
     }
   }
 
@@ -924,7 +1106,7 @@
     if (badge) {
       const statusCode = text(meta.verify_status || raw.verify_status, "").toUpperCase();
       let tone = "neutral";
-      if (["VALID", "SUCCESS", "PASS"].includes(statusCode)) tone = "success";
+      if (["VALID", "SUCCESS", "PASS", "PASSED"].includes(statusCode)) tone = "success";
       else if (["INVALID", "FAIL", "FAILED"].includes(statusCode)) tone = "danger";
       else if (["PENDING", "PROCESSING"].includes(statusCode)) tone = "warning";
       badge.className = badgePalette[tone] || badgePalette.neutral;
@@ -1009,6 +1191,33 @@
     setNodeText("evInvoiceDateKpi", formatDate(st.invoice_date));
     setNodeText("evApplicantKpi", st.applicant, "-");
     setNodeText("evDepartmentKpi", st.department, "-");
+    const evidenceInvoiceId = Number(st.invoice_id || payload.invoice_id || 0);
+    const recordState = text(st.record_state || payload.record_state, "").toUpperCase();
+    const returnBtn = document.getElementById("evReturnToDraft");
+    if (returnBtn) {
+      const canOperate = canReturnToDraft && evidenceInvoiceId > 0 && recordState === "LEDGER";
+      returnBtn.disabled = !canOperate;
+      returnBtn.setAttribute("data-id", evidenceInvoiceId > 0 ? String(evidenceInvoiceId) : "");
+      if (!canReturnToDraft) {
+        returnBtn.setAttribute("title", "仅经理及以上可执行退回");
+      } else if (recordState !== "LEDGER") {
+        returnBtn.setAttribute("title", "仅已入账单据可退回");
+      } else {
+        returnBtn.setAttribute("title", "退回后将转为待补录并记录日志");
+      }
+    }
+    const verifyBtn = document.getElementById("evVerifyInvoice");
+    if (verifyBtn) {
+      const canVerify = evidenceInvoiceId > 0;
+      verifyBtn.disabled = !canVerify;
+      verifyBtn.setAttribute("data-id", canVerify ? String(evidenceInvoiceId) : "");
+      verifyBtn.setAttribute("title", canVerify ? "执行发票验真并刷新结果" : "未找到当前单据");
+    }
+    const structuredSaveBtn = document.getElementById("evStructuredSave");
+    if (structuredSaveBtn && !canSupplementOperate) {
+      structuredSaveBtn.disabled = true;
+      structuredSaveBtn.setAttribute("title", SUPPLEMENT_PERMISSION_HINT);
+    }
     const gotoBtn = document.getElementById("evGotoApproval");
     if (gotoBtn) {
       const ref = text(st.reference_no, "");
@@ -1118,10 +1327,64 @@
   }
 
   function bindEvidenceActions() {
+    const evReturnToDraft = document.getElementById("evReturnToDraft");
+    if (evReturnToDraft) {
+      evReturnToDraft.addEventListener("click", () => {
+        if (!hasReturnPermission(true)) {
+          return;
+        }
+        const invoiceId = Number(
+          document.getElementById("evidenceInvoiceId")?.value || evReturnToDraft.getAttribute("data-id") || 0
+        );
+        if (!invoiceId) {
+          showMsg("warning", "未找到当前单据。请重新打开证据中心。");
+          return;
+        }
+        openActionModal(invoiceId, "RETURN_TO_DRAFT", "evidence");
+      });
+    }
+
+    const evVerifyInvoice = document.getElementById("evVerifyInvoice");
+    if (evVerifyInvoice) {
+      evVerifyInvoice.addEventListener("click", async () => {
+        const invoiceId = Number(
+          document.getElementById("evidenceInvoiceId")?.value || evVerifyInvoice.getAttribute("data-id") || 0
+        );
+        if (!invoiceId) {
+          showMsg("warning", "未找到当前单据。请重新打开证据中心。");
+          return;
+        }
+        const oldHtml = evVerifyInvoice.innerHTML;
+        evVerifyInvoice.disabled = true;
+        evVerifyInvoice.textContent = "验真中...";
+        try {
+          const result = await apiJson(`/api/invoices/${encodeURIComponent(invoiceId)}/verify`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idempotency_key: `ledger-evidence-${invoiceId}-${Date.now()}` }),
+          });
+          showMsg("success", `发票验真完成：${text(result.verify_status_cn || result.verify_status, "已完成")}`);
+          await openEvidence(invoiceId);
+        } catch (error) {
+          if (isApiNotWired(error)) {
+            openSandboxNotice("VERIFY_INVOICE", invoiceId, error.message);
+          } else {
+            showMsg("danger", `发票验真失败：${error.message}`);
+          }
+        } finally {
+          evVerifyInvoice.innerHTML = oldHtml;
+          evVerifyInvoice.disabled = false;
+        }
+      });
+    }
+
     const evStructuredSave = document.getElementById("evStructuredSave");
     if (!evStructuredSave) return;
 
     evStructuredSave.addEventListener("click", async () => {
+      if (!hasSupplementPermission(true)) {
+        return;
+      }
       const invoiceId = Number(document.getElementById("evidenceInvoiceId")?.value || 0);
       if (!invoiceId) {
         showMsg("warning", "未找到当前单据。请重新打开证据中心。");
@@ -1174,6 +1437,7 @@
   const refreshActionReasonState = setupRequiredSelect("ledgerActionReason", "ledgerActionReasonHint", "ledgerActionSubmit");
   const refreshBatchSupplementReasonState = setupRequiredSelect("batchSupplementReason", "batchSupplementReasonHint", "batchSupplementSubmit");
   const refreshBatchReturnReasonState = setupRequiredSelect("batchReturnReason", "batchReturnReasonHint", "batchReturnSubmit");
+  const refreshBatchPostReasonState = setupRequiredSelect("batchPostReason", "batchPostReasonHint", "batchPostSubmit");
   const refreshStructuredReasonState = setupRequiredSelect("evStructuredReason", "evStructuredReasonHint", "evStructuredSave");
 
   function bindDateShortcuts() {

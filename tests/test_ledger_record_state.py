@@ -74,6 +74,34 @@ def created_ids():
     placeholders = ",".join(["?"] * len(ids))
     id_texts = [str(int(i)) for i in ids]
     with get_conn() as conn:
+        event_rows = conn.execute(
+            f"SELECT id FROM risk_events WHERE invoice_id IN ({placeholders})",
+            tuple(ids),
+        ).fetchall()
+        event_ids = [int(row["id"]) for row in event_rows if int(row["id"]) > 0]
+
+        if event_ids:
+            event_placeholders = ",".join(["?"] * len(event_ids))
+            case_rows = conn.execute(
+                f"SELECT id FROM risk_cases WHERE event_id IN ({event_placeholders})",
+                tuple(event_ids),
+            ).fetchall()
+            case_ids = [int(row["id"]) for row in case_rows if int(row["id"]) > 0]
+            if case_ids:
+                case_placeholders = ",".join(["?"] * len(case_ids))
+                conn.execute(
+                    f"DELETE FROM case_actions WHERE case_id IN ({case_placeholders})",
+                    tuple(case_ids),
+                )
+            conn.execute(
+                f"DELETE FROM risk_cases WHERE event_id IN ({event_placeholders})",
+                tuple(event_ids),
+            )
+            conn.execute(
+                f"DELETE FROM risk_events WHERE id IN ({event_placeholders})",
+                tuple(event_ids),
+            )
+
         conn.execute(
             f"DELETE FROM audit_log WHERE target_type = 'invoice' AND target_id IN ({placeholders})",
             tuple(id_texts),
@@ -174,3 +202,85 @@ def test_submit_review_rejects_draft(viewer_user_id: int, make_client, created_i
         headers={"Accept": "application/json", "X-CSRF-Token": csrf},
     )
     assert resp.status_code == 409
+
+
+def test_rerun_ai_auto_links_risk_case(app_instance, created_ids, monkeypatch):
+    invoice_id = _insert_invoice(record_state="LEDGER", amount="888.00", invoice_date="2026-02-01")
+    created_ids.append(invoice_id)
+
+    from routes import invoices as invoices_route
+
+    def _fake_ai_protocol_payload(*, invoice_id: int, invoice: dict, tax_result: dict) -> dict:
+        return {
+            "status": "success",
+            "data": {
+                "risk_level": "HIGH",
+                "risk_score": 91,
+                "summary": "pytest_auto_case",
+                "trace_id": f"pytest-trace-{invoice_id}",
+                "model": "pytest",
+            },
+        }
+
+    monkeypatch.setattr(invoices_route, "_build_ai_protocol_payload", _fake_ai_protocol_payload)
+
+    with app_instance.test_request_context("/pytest_rerun_ai_auto_links_risk_case"):
+        payload, _, status_code = invoices_route.run_invoice_ai_internal(
+            invoice_id,
+            publish_events=False,
+            create_risk_event=True,
+            tax_result_override={"ok": True, "status": "pass", "provider": "pytest"},
+        )
+    assert status_code == 200
+    assert payload.get("status") == "success"
+
+    with get_conn() as conn:
+        event_rows = conn.execute(
+            "SELECT id FROM risk_events WHERE invoice_id = ? ORDER BY id ASC",
+            (int(invoice_id),),
+        ).fetchall()
+        assert len(event_rows) == 1
+        event_id = int(event_rows[0]["id"])
+
+        case_rows = conn.execute(
+            """
+            SELECT c.id
+            FROM risk_cases c
+            JOIN risk_events e ON e.id = c.event_id
+            WHERE e.invoice_id = ?
+            ORDER BY c.id ASC
+            """,
+            (int(invoice_id),),
+        ).fetchall()
+        assert len(case_rows) == 1
+
+    # Re-run should not create an additional in-flight risk case for the same invoice.
+    with app_instance.test_request_context("/pytest_rerun_ai_auto_links_risk_case"):
+        payload, _, status_code = invoices_route.run_invoice_ai_internal(
+            invoice_id,
+            publish_events=False,
+            create_risk_event=True,
+            tax_result_override={"ok": True, "status": "pass", "provider": "pytest"},
+        )
+    assert status_code == 200
+    assert payload.get("status") == "success"
+
+    with get_conn() as conn:
+        newer_event_rows = conn.execute(
+            "SELECT id FROM risk_events WHERE invoice_id = ? ORDER BY id ASC",
+            (int(invoice_id),),
+        ).fetchall()
+        assert len(newer_event_rows) == 2
+        assert int(newer_event_rows[-1]["id"]) > event_id
+
+        case_rows = conn.execute(
+            """
+            SELECT c.id
+            FROM risk_cases c
+            JOIN risk_events e ON e.id = c.event_id
+            WHERE e.invoice_id = ? AND UPPER(COALESCE(c.status, 'OPEN')) <> 'CLOSED'
+            ORDER BY c.id ASC
+            """,
+            (int(invoice_id),),
+        ).fetchall()
+        assert len(case_rows) == 1

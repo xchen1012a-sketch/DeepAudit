@@ -374,7 +374,7 @@ def approval_action_api(approval_id: int):
                     updates["queue_owner_id"] = l2_owner
                 elif current_stage == "L2":
                     if _identity_matches(row.get("first_approver_id"), user):
-                        return jsonify({"ok": False, "msg": "reviewer must differ from first approver"}), 400
+                        return jsonify({"ok": False, "msg": "复核人不能与初审人相同"}), 400
                     if not comment:
                         return jsonify({"ok": False, "msg": "L2 approval requires comment"}), 400
                     updates["second_approver_id"] = actor

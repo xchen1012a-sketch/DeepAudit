@@ -128,6 +128,7 @@ APPROVAL_PERMISSION_KEYS = {
 LEGACY_ROLE_PERMISSION_FALLBACK: dict[str, set[str]] = {
     "admin": {
         "VIEW_DASHBOARD",
+        "VIEW_UPLOAD_PAGE",
         "VIEW_BANK_STATS",
         "VIEW_INVOICES",
         "CREATE_CASE",
@@ -145,6 +146,7 @@ LEGACY_ROLE_PERMISSION_FALLBACK: dict[str, set[str]] = {
     },
     "finance_manager": {
         "VIEW_DASHBOARD",
+        "VIEW_UPLOAD_PAGE",
         "VIEW_BANK_STATS",
         "VIEW_INVOICES",
         "CREATE_CASE",
@@ -154,8 +156,15 @@ LEGACY_ROLE_PERMISSION_FALLBACK: dict[str, set[str]] = {
     },
     "finance": {
         "VIEW_DASHBOARD",
+        "VIEW_UPLOAD_PAGE",
         "VIEW_BANK_STATS",
         "VIEW_INVOICES",
+    },
+    "employee": {
+        "VIEW_UPLOAD_PAGE",
+    },
+    "staff": {
+        "VIEW_UPLOAD_PAGE",
     },
     "governance_admin": {
         "MANAGE_RULES",
@@ -687,13 +696,19 @@ def can_access_approval_console(user: dict[str, Any] | None = None) -> bool:
 def can_manage_workflow(user: dict[str, Any] | None = None) -> bool:
     if is_system_admin(user):
         return True
-    return has_governance_admin_role(user)
+    if has_governance_admin_role(user):
+        return True
+    permissions = current_user_permissions(user)
+    return bool(permissions & {"MANAGE_SETTINGS", "MANAGE_SYSTEM", "MANAGE_RULES"})
 
 
 def can_governance(user: dict[str, Any] | None = None) -> bool:
     if is_system_admin(user):
         return True
-    return has_governance_admin_role(user)
+    if has_governance_admin_role(user):
+        return True
+    permissions = current_user_permissions(user)
+    return bool(permissions & GOVERNANCE_PERMISSION_KEYS)
 
 
 def approval_allowed_workflow_roles(user: dict[str, Any] | None = None) -> set[str]:
@@ -705,27 +720,26 @@ def approval_allowed_workflow_roles(user: dict[str, Any] | None = None) -> set[s
         allowed.add('MANAGER')
     if ROLE_KEY_CFO in role_keys:
         allowed.add('CFO')
+    if allowed:
+        return allowed
+
+    # Keep role-based behavior for built-in risk specialist roles.
+    if ROLE_KEY_RISK_SPECIALIST in role_keys:
+        return allowed
+
+    # Fallback for custom roles: explicit permission grants should be usable.
+    permissions = current_user_permissions(user)
+    if permissions & APPROVAL_PERMISSION_KEYS:
+        allowed.add("MANAGER")
+    if (permissions & APPROVAL_PERMISSION_KEYS) and (permissions & GOVERNANCE_PERMISSION_KEYS):
+        allowed.add("CFO")
     return allowed
 
 
 def _permission_blocked_by_access_level(permission_key: str, user: dict[str, Any]) -> bool:
-    key = _safe_text(permission_key).upper()
-    if not key:
-        return False
-
-    role_keys = current_user_role_keys(user)
-    if ROLE_KEY_SYSTEM_ADMIN in role_keys:
-        return False
-    if key in GOVERNANCE_PERMISSION_KEYS and not (role_keys & GOVERNANCE_ROLE_KEYS):
-        return True
-
-    if key in APPROVAL_PERMISSION_KEYS:
-        if ROLE_KEY_RISK_SPECIALIST in role_keys:
-            return False
-        if role_keys & APPROVAL_ROLE_KEYS:
-            return False
-        return True
-
+    # Explicit permissions in DB are the source of truth. Avoid role-name-based
+    # secondary denials for custom roles.
+    _ = permission_key, user
     return False
 
 
@@ -739,9 +753,6 @@ def has_permission(permission_key: str, user: dict[str, Any] | None = None) -> b
         return False
     if is_system_admin(target):
         return True
-    # System-level capability cannot be inferred for non-system-admin roles.
-    if normalized_key == "MANAGE_SYSTEM":
-        return False
 
     expanded_keys = _expand_permission_keys({normalized_key})
     if any(_permission_blocked_by_access_level(key, target) for key in expanded_keys):
@@ -986,5 +997,3 @@ def require_permission(permission_key: str) -> Callable[[F], F]:
         return cast(F, wrapper)
 
     return decorator
-
-

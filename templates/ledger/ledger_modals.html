@@ -54,6 +54,10 @@
       </div>
       <div class="modal-body">
         <p class="text-muted small mb-3">为选中的待补录单据统一填写金额或开票日期，可选补录后自动入账。</p>
+        <div class="alert alert-info small mb-3">
+          <i class="ri-information-line mr-1"></i>
+          <strong>提示：</strong>自动入账需满足验真通过且金额/日期齐全，且仅财务相关岗位可执行。
+        </div>
         <div class="form-row">
           <div class="form-group col-md-6">
             <label>金额</label>
@@ -80,14 +84,61 @@
         </div>
         <div class="form-group mb-0">
           <div class="custom-control custom-checkbox">
-            <input type="checkbox" class="custom-control-input" id="batchSupplementPostLedger" checked>
-            <label class="custom-control-label" for="batchSupplementPostLedger">补录后自动入账</label>
+            <input
+              type="checkbox"
+              class="custom-control-input"
+              id="batchSupplementPostLedger"
+              {{ 'checked' if can_supplement_ops else '' }}
+              {% if not can_supplement_ops %}disabled{% endif %}
+            >
+            <label
+              class="custom-control-label"
+              for="batchSupplementPostLedger"
+              title="{{ '补录后自动入账' if can_supplement_ops else '仅财务相关岗位可执行补录入账操作' }}"
+            >补录后自动入账</label>
           </div>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-dismiss="modal">取消</button>
         <button type="button" class="btn btn-primary" id="batchSupplementSubmit">确认补录</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 批量入账 -->
+<div class="modal fade" id="batchPostModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">批量入账</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <p id="batchPostHint" class="text-muted small mb-3">已选择 0 条单据，确认后将统一入账并写入审计日志。</p>
+        <div class="alert alert-info small mb-3">
+          <i class="ri-information-line mr-1"></i>
+          <strong>提示：</strong>仅会对已补全金额和开票日期的单据执行入账操作，信息不完整的单据将被跳过。
+        </div>
+        <div class="form-group">
+          <label>变更原因（必选）</label>
+          <select id="batchPostReason" class="form-control ledger-native-select">
+            <option value="">请选择</option>
+            {% for code, label in change_reasons %}
+            <option value="{{ code }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div id="batchPostReasonHint" class="invalid-feedback d-block small" style="display:none;">请选择变更原因</div>
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <textarea id="batchPostComment" class="form-control" rows="2" placeholder="可选填写入账说明"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-success" id="batchPostSubmit">确认入账</button>
       </div>
     </div>
   </div>

@@ -450,7 +450,9 @@
     const unmatchedNode = document.getElementById("bankUnmatchedCount");
     const matchedNode = document.getElementById("bankMatchedCount");
     const totalNode = document.getElementById("bankTotalCount");
-    if (!summaryNode || !listNode) return;
+    const hasRealtimeNodes = Boolean(summaryNode && listNode);
+    const hasBankStatsNodes = Boolean(unmatchedNode || matchedNode || totalNode);
+    if (!hasRealtimeNodes && !hasBankStatsNodes) return;
 
     const eventLogs = [];
     const MAX_EVENT_LOGS = 20;
@@ -492,6 +494,7 @@
     }
 
     function renderEventLogs() {
+        if (!hasRealtimeNodes) return;
         if (!eventLogs.length) {
             listNode.innerHTML = "";
             summaryNode.textContent = "暂无新增流水事件";
@@ -525,6 +528,7 @@
     }
 
     function appendEventLog(summary, options = {}) {
+        if (!hasRealtimeNodes) return;
         const item = {
             time: options.time || nowTimeText(),
             summary: String(summary || "-"),
@@ -692,6 +696,7 @@
     }
 
     async function loadBankStats() {
+        if (!hasBankStatsNodes) return;
         try {
             const response = await fetch("/api/bank/stats", {
                 cache: "no-store",
@@ -713,6 +718,7 @@
     }
 
     async function pollEvents() {
+        if (!hasRealtimeNodes) return;
         try {
             const response = await fetch(`/api/events/poll?cursor=${encodeURIComponent(cursor)}`, {
                 cache: "no-store",
@@ -763,7 +769,7 @@
                     details: stageDetails(item.stage, item.eventItem),
                 });
             }
-            if (shouldRefreshStats) {
+            if (shouldRefreshStats && hasBankStatsNodes) {
                 loadBankStats();
             }
             if (hasRiskStageEvent) {
@@ -774,9 +780,14 @@
         }
     }
 
-    loadBankStats();
-    pollEvents();
-    window.setInterval(pollEvents, 2000);
+    if (hasBankStatsNodes) {
+        loadBankStats();
+        window.setInterval(loadBankStats, 15000);
+    }
+    if (hasRealtimeNodes) {
+        pollEvents();
+        window.setInterval(pollEvents, 2000);
+    }
 })();
 </script>
 {% endblock %}

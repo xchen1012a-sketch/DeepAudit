@@ -3512,8 +3512,9 @@ body.evidence-modal-open #aiModal .modal-content {
 }
 
 .kpi-money-card .kpi-value {
-    text-align: right;
+    text-align: left;
     font-size: 26px;
+    font-variant-numeric: tabular-nums;
 }
 
 .metrics-mini-grid {

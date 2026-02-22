@@ -7,6 +7,7 @@
 {% endblock %}
 
 {% block content %}
+{% set _can_ledger_center = nav_has_permission('VIEW_INVOICES') if nav_has_permission is defined else True %}
 <div class="content-header">
   <div class="container-fluid">
     <div class="row">
@@ -232,9 +233,11 @@
                   <div class="aigc-microcopy">已接入智能分析引擎，支持多语种发票自动折算。</div>
                 </div>
                 <div class="secondary-actions">
+                  {% if _can_ledger_center %}
                   <a href="/invoices_page" class="btn btn-outline-secondary mr-2">
                     <i class="ri-file-list-3-line mr-1"></i> 查看凭证台账
                   </a>
+                  {% endif %}
                   <a href="/dashboard" class="btn btn-light">
                     <i class="ri-dashboard-line mr-1"></i> 返回管理总览
                   </a>
@@ -462,7 +465,9 @@
         <div class="card mb-3 workbench-card sidebar-mydocs-card">
           <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title mb-0"><i class="ri-file-list-3-line mr-1"></i>我的单据</h3>
+            {% if _can_ledger_center %}
             <a href="/invoices_page" class="btn btn-xs btn-outline-primary">查看全部</a>
+            {% endif %}
           </div>
           <div class="card-body p-0">
             <div id="draftList" class="sidebar-doc-list">
@@ -546,7 +551,9 @@
             <div id="accBodyQuick" class="collapse" aria-labelledby="accHeadQuick" data-parent="#sidebarAccordion">
               <div class="card-body">
                 <div class="quick-entry-grid">
+                  {% if _can_ledger_center %}
                   <a href="/invoices_page" class="btn btn-light btn-block mb-2"><i class="ri-book-read-line mr-1"></i>凭证台账</a>
+                  {% endif %}
                   <a href="/export" class="btn btn-light btn-block mb-2"><i class="ri-file-download-line mr-1"></i>导出报表</a>
                   <a href="/dashboard" class="btn btn-light btn-block"><i class="ri-dashboard-line mr-1"></i>管理总览</a>
                 </div>

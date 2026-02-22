@@ -18,6 +18,7 @@ from utils.db import (
     create_user_account,
     data_scope_preview_user_count_and_sample,
     delete_department,
+    delete_position,
     delete_user_account,
     disable_department,
     disable_position,
@@ -37,6 +38,7 @@ from utils.db import (
     list_users_admin,
     offboard_user_account,
     reset_user_password,
+    resolve_role_default_template,
     set_role_data_scope,
     set_role_data_scope_policy,
     set_role_permissions,
@@ -445,11 +447,32 @@ def _extract_role_audit_summary(
 
 def _role_page_payload() -> dict[str, Any]:
     roles = list_roles_with_permissions()
+    permission_rows = enrich_permission_rows(list_permissions())
+    permission_id_by_key = {
+        _safe_text(item.get("permission_key")).upper(): _safe_int(item.get("id"), 0)
+        for item in permission_rows
+        if _safe_int(item.get("id"), 0) > 0 and _safe_text(item.get("permission_key"))
+    }
     for r in roles:
         r["user_bound_count"] = count_users_by_role_id(_safe_int(r.get("id"), 0))
+        default_template = resolve_role_default_template(r.get("role_name"))
+        default_permission_keys = [
+            _safe_text(key).upper()
+            for key in (default_template.get("permission_keys") or [])
+            if _safe_text(key)
+        ]
+        r["default_data_scope"] = _safe_text(default_template.get("data_scope"), "DEPT").upper() or "DEPT"
+        r["default_permission_keys"] = default_permission_keys
+        r["default_permission_ids"] = [
+            permission_id_by_key.get(key, 0)
+            for key in default_permission_keys
+            if permission_id_by_key.get(key, 0) > 0
+        ]
+        r["default_source_role_name"] = _safe_text(default_template.get("source_role_name"), _safe_text(r.get("role_name"), "-"))
+        r["default_is_builtin"] = bool(default_template.get("is_builtin"))
     return {
         "roles": roles,
-        "permissions": enrich_permission_rows(list_permissions()),
+        "permissions": permission_rows,
         "permission_groups": permission_groups(),
         "menu_rules": menu_visibility_rules(),
         "action_rules": action_permission_rules(),
@@ -590,7 +613,11 @@ def admin_create_user_api():
 @require_permission("MANAGE_USERS")
 def admin_positions_page():
     positions = list_positions(include_disabled=True, limit=2000)
-    return render_template("admin_positions.html", positions=positions)
+    return render_template(
+        "admin_positions.html",
+        positions=positions,
+        reason_options=role_change_reason_options(),
+    )
 
 
 @bp.get("/api/admin/positions")
@@ -654,6 +681,123 @@ def admin_enable_position_api(position_id: int):
         detail=f"name={updated.get('name', '')}; id={position_id}",
     )
     return jsonify({"ok": True, "position": updated})
+
+
+@bp.delete("/api/admin/positions/<int:position_id>")
+@login_required
+@require_permission("MANAGE_USERS")
+def admin_delete_position_api(position_id: int):
+    payload, err = _parse_json_object()
+    if err is not None:
+        return err
+
+    reason_code, reason_err = _require_user_change_reason_code(payload, strict=True)
+    if reason_err is not None:
+        return reason_err
+    reason_note = _safe_text(payload.get("change_reason_note"))
+
+    target_position = None
+    for row in list_positions(include_disabled=True, limit=5000):
+        if _safe_int(row.get("id"), 0) == int(position_id):
+            target_position = row
+            break
+    if target_position is None:
+        return jsonify({"ok": False, "message": "岗位不存在"}), 404
+
+    active_user_count = _safe_int(target_position.get("active_user_count"), 0)
+    if active_user_count > 0:
+        return jsonify({"ok": False, "message": "该岗位仍有在职人员，无法删除"}), 400
+
+    success = delete_position(position_id)
+    if not success:
+        return jsonify({"ok": False, "message": "删除失败，请刷新后重试"}), 500
+
+    _record_admin_log(
+        action_type="POSITION_DELETE",
+        target_type="position",
+        target_id=int(position_id),
+        detail=(
+            f"name={_safe_text(target_position.get('name'))}; id={int(position_id)}; reason_code={reason_code}; reason_note={reason_note or '-'}"
+        ),
+    )
+    return jsonify({"ok": True, "position_id": int(position_id), "message": "岗位已删除"})
+
+
+@bp.post("/api/admin/positions/batch-delete")
+@login_required
+@require_permission("MANAGE_USERS")
+def admin_batch_delete_positions_api():
+    payload, err = _parse_json_object()
+    if err is not None:
+        return err
+
+    raw_ids = payload.get("ids")
+    if not isinstance(raw_ids, list):
+        return jsonify({"ok": False, "message": "ids must be a list"}), 400
+
+    normalized_ids: list[int] = []
+    seen_ids: set[int] = set()
+    for raw_id in raw_ids:
+        position_id = _safe_int(raw_id, 0)
+        if position_id <= 0 or position_id in seen_ids:
+            continue
+        seen_ids.add(position_id)
+        normalized_ids.append(position_id)
+    if not normalized_ids:
+        return jsonify({"ok": False, "message": "请至少选择一个有效岗位"}), 400
+
+    position_map: dict[int, dict[str, Any]] = {
+        _safe_int(item.get("id"), 0): item
+        for item in list_positions(include_disabled=True, limit=5000)
+        if _safe_int(item.get("id"), 0) > 0
+    }
+
+    deleted_ids: list[int] = []
+    failed: list[dict[str, Any]] = []
+    for position_id in normalized_ids:
+        position_row = position_map.get(position_id)
+        if position_row is None:
+            failed.append({"id": int(position_id), "reason": "NOT_FOUND", "message": "岗位不存在"})
+            continue
+
+        active_user_count = _safe_int(position_row.get("active_user_count"), 0)
+        if active_user_count > 0:
+            failed.append(
+                {
+                    "id": int(position_id),
+                    "name": _safe_text(position_row.get("name"), "-"),
+                    "reason": "IN_USE",
+                    "message": "该岗位仍有在职人员，无法删除",
+                    "active_user_count": active_user_count,
+                }
+            )
+            continue
+
+        success = delete_position(position_id)
+        if not success:
+            failed.append({"id": int(position_id), "reason": "DELETE_FAILED", "message": "删除失败，请稍后重试"})
+            continue
+
+        deleted_ids.append(int(position_id))
+        _record_admin_log(
+            action_type="POSITION_DELETE",
+            target_type="position",
+            target_id=int(position_id),
+            detail=f"name={_safe_text(position_row.get('name'))}; id={int(position_id)}",
+        )
+
+    failed_count = len(failed)
+    deleted_count = len(deleted_ids)
+    return jsonify(
+        {
+            "ok": True,
+            "deleted_ids": deleted_ids,
+            "deleted_count": deleted_count,
+            "failed": failed,
+            "failed_count": failed_count,
+            "message": f"批量删除完成：成功 {deleted_count} 条，失败 {failed_count} 条",
+        }
+    )
 
 
 @bp.post("/api/admin/users/<int:user_id>/disable")
@@ -834,6 +978,12 @@ def admin_delete_user_api(user_id: int):
     me_id = _safe_int(me.get("id"), 0)
     has_delete_any_permission = has_permission("DELETE_ANY_USER", me)
     
+    payload = _parse_optional_json_object()
+    reason_code, reason_err = _require_user_change_reason_code(payload, strict=False)
+    if reason_err is not None:
+        return reason_err
+    reason_note = _safe_text(payload.get("change_reason_note"))
+
     # 不允许删除自己
     if me_id > 0 and me_id == int(user_id):
         return jsonify({"ok": False, "message": "不能删除当前登录的账号"}), 400
@@ -854,11 +1004,27 @@ def admin_delete_user_api(user_id: int):
     ok = delete_user_account(user_id, force=has_delete_any_permission)
     if not ok:
         return jsonify({"ok": False, "message": "delete failed"}), 500
+    detail = (
+        f"user_id={int(user_id)}; "
+        f"username={_safe_text(before_user.get('username'))}; "
+        f"force={has_delete_any_permission}; "
+        f"change_reason_code={reason_code}; "
+        f"change_reason_note={reason_note or '-'}"
+    )
     _record_admin_log(
         action_type="DELETE_USER",
         target_type="user",
         target_id=int(user_id),
-        detail=f"user_id={int(user_id)}; username={_safe_text(before_user.get('username'))}; force={has_delete_any_permission}",
+        detail=detail,
+    )
+    _write_user_audit_log(
+        action="USER_DELETE",
+        user_id=int(user_id),
+        before_user=before_user,
+        after_user=None,
+        change_reason_code=reason_code,
+        change_reason_note=reason_note,
+        action_note=reason_note,
     )
     return jsonify({"ok": True, "user_id": int(user_id), "message": "用户已删除"})
 
@@ -1449,7 +1615,11 @@ def admin_delete_role_api(role_id: int):
 @login_required
 @require_permission("MANAGE_USERS")
 def admin_departments_page():
-    return render_template("admin_departments.html", departments=list_departments(limit=2000, include_disabled=True))
+    return render_template(
+        "admin_departments.html",
+        departments=list_departments(limit=2000, include_disabled=True),
+        reason_options=role_change_reason_options(),
+    )
 
 
 @bp.get("/api/admin/departments")
@@ -1547,23 +1717,117 @@ def admin_enable_department_api(department_id: int):
     return jsonify({"ok": True, "department": updated})
 
 
+@bp.post("/api/admin/departments/bulk-delete")
+@login_required
+@require_permission("MANAGE_USERS")
+def admin_bulk_delete_departments_api():
+    payload, err = _parse_json_object()
+    if err is not None:
+        return err
+
+    reason_code, reason_err = _require_user_change_reason_code(payload, strict=True)
+    if reason_err is not None:
+        return reason_err
+    reason_note = _safe_text(payload.get("change_reason_note"))
+
+    raw_ids = payload.get("ids")
+    if not isinstance(raw_ids, list):
+        return jsonify({"ok": False, "message": "ids must be a list"}), 400
+
+    normalized_ids: list[int] = []
+    seen_ids: set[int] = set()
+    for raw_id in raw_ids:
+        department_id = _safe_int(raw_id, 0)
+        if department_id <= 0 or department_id in seen_ids:
+            continue
+        seen_ids.add(department_id)
+        normalized_ids.append(department_id)
+    if not normalized_ids:
+        return jsonify({"ok": False, "message": "请至少选择一个有效部门"}), 400
+
+    department_map: dict[int, dict[str, Any]] = {
+        _safe_int(item.get("id"), 0): item
+        for item in list_departments(limit=5000, include_disabled=True)
+        if _safe_int(item.get("id"), 0) > 0
+    }
+
+    deleted_ids: list[int] = []
+    failed: list[dict[str, Any]] = []
+    for department_id in normalized_ids:
+        department_row = department_map.get(department_id)
+        if department_row is None:
+            failed.append({"id": int(department_id), "reason": "NOT_FOUND", "message": "部门不存在"})
+            continue
+
+        active_user_count = _safe_int(department_row.get("active_user_count"), 0)
+        if active_user_count > 0:
+            failed.append(
+                {
+                    "id": int(department_id),
+                    "name": _safe_text(department_row.get("name"), "-"),
+                    "reason": "IN_USE",
+                    "message": "该部门仍有在职人员，无法删除",
+                    "active_user_count": active_user_count,
+                }
+            )
+            continue
+
+        success = delete_department(department_id)
+        if not success:
+            failed.append({"id": int(department_id), "reason": "DELETE_FAILED", "message": "删除失败，请稍后重试"})
+            continue
+
+        deleted_ids.append(int(department_id))
+        _record_admin_log(
+            action_type="DELETE_DEPARTMENT",
+            target_type="department",
+            target_id=int(department_id),
+            detail=(
+                f"department_id={int(department_id)}; "
+                f"name={_safe_text(department_row.get('name'))}; "
+                f"reason_code={reason_code}; reason_note={reason_note or '-'}"
+            ),
+        )
+
+    failed_count = len(failed)
+    deleted_count = len(deleted_ids)
+    return jsonify(
+        {
+            "ok": True,
+            "deleted_ids": deleted_ids,
+            "deleted_count": deleted_count,
+            "failed": failed,
+            "failed_count": failed_count,
+            "message": f"批量删除完成：成功 {deleted_count} 条，失败 {failed_count} 条",
+        }
+    )
+
+
 @bp.delete("/api/admin/departments/<int:department_id>")
 @login_required
 @require_permission("MANAGE_USERS")
 def admin_delete_department_api(department_id: int):
-    # 先检查部门是否存在以及是否有在职人员
+    payload, err = _parse_json_object()
+    if err is not None:
+        return err
+
+    reason_code, reason_err = _require_user_change_reason_code(payload, strict=True)
+    if reason_err is not None:
+        return reason_err
+    reason_note = _safe_text(payload.get("change_reason_note"))
+
     departments = list_departments(limit=5000, include_disabled=True)
     target_dept = None
     for dept in departments:
         if int(dept.get("id", 0)) == int(department_id):
             target_dept = dept
             break
-    
+
     if target_dept is None:
-        return jsonify({"ok": False, "message": "部门不存在"}), 404
-    
+        return jsonify({"ok": False, "message": "未找到部门"}), 404
+
     if int(target_dept.get("active_user_count", 0)) > 0:
-        return jsonify({"ok": False, "message": "该部门有在职人员，无法删除"}), 400
+        return jsonify({"ok": False, "message": "部门仍有在职人员，无法删除"}), 400
 
     success = delete_department(department_id)
     if not success:
@@ -1573,9 +1837,12 @@ def admin_delete_department_api(department_id: int):
         action_type="DELETE_DEPARTMENT",
         target_type="department",
         target_id=int(department_id),
-        detail=f"department_id={int(department_id)}; name={_safe_text(target_dept.get('name'))}",
+        detail=(
+            f"department_id={int(department_id)}; name={_safe_text(target_dept.get('name'))}; reason_code={reason_code}; reason_note={reason_note or '-'}"
+        ),
     )
     return jsonify({"ok": True, "message": "部门已删除"})
+
 
 
 @bp.get("/admin/data_scope")
@@ -1930,4 +2197,3 @@ def admin_audit_logs_api():
     raw_logs = list_audit_logs(limit=limit, target_type=target_type, target_id=target_id, action_type=action_type)
     logs = [_enrich_audit_row(row) for row in raw_logs]
     return jsonify({"ok": True, "logs": logs})
-
