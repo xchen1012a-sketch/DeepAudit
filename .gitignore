@@ -29,6 +29,7 @@ env/
 # IDE
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
@@ -61,11 +62,16 @@ instance/
 .env
 .env.local
 .env.production
+.secrets/
 
 # Test
 .pytest_cache/
 .coverage
 htmlcov/
+artifacts/*.html
+artifacts/*.png
+artifacts/*snapshot*.md
+artifacts/*snapshot*.json
 
 # Temporary files
 *.tmp

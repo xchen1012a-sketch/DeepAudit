@@ -1,92 +1,80 @@
 # DeepAudit Pro
 
-企业级智能审计与费用风控系统，覆盖发票采集、OCR识别、风控评估、审批流转、台账管理、权限治理与审计留痕。
+DeepAudit Pro 是一个面向企业财务审计与费用风控场景的智能审计系统，聚焦发票识别、单据核验、风险识别、审批流转、审计留痕与台账管理。项目当前以 Flask 为核心，提供可运行的 Web 原型，适合继续扩展为内部审计、财务合规和税务风险预警平台。
 
-仓库地址：`https://github.com/xchen1012a-sketch/DeepAudit_Pro.git`  
-最后更新：`2026-02-22`
+## 项目定位
 
-## 1. 核心能力
+传统财务审计依赖大量人工核对：发票、合同、付款记录、凭证、账表之间要反复比对，既耗时又容易漏掉异常。DeepAudit Pro 的目标是把这类高频、规则明确但仍需要综合判断的工作自动化，帮助审计人员把更多精力放在复核和决策上。
 
-- 发票采集与识别：支持图片/PDF上传，自动提取关键字段
-- 风险识别与分级：规则引擎 + 风险指标聚合
-- 审批中心：支持多级审批、退回、转派和批量处理
-- 台账中心：按状态流转管理单据，支持检索与导出
-- 权限与数据域：角色、权限、数据范围（ALL/DEPT/SELF 等）
-- 审计追踪：关键操作全链路日志与审计记录
-- 集成能力：税务/银行/ERP/OA 的 mock 与 real provider 架构
+## 核心能力
 
-## 2. 技术栈
+- 发票采集与 OCR 识别，支持图片和 PDF 上传
+- 发票验真与税务校验，支持 mock / provider 模式切换
+- 风险规则识别与分级，覆盖重复报销、异常付款、字段不一致等场景
+- 审批中心与审计工作台，支持状态流转和多角色处理
+- 审计链路与日志留痕，便于追溯关键操作
+- 权限、角色、数据范围治理，支持后台 IAM 管理
+- 风险案例、监控看板、知识中心等扩展模块
 
-- 后端：Python + Flask
-- 数据层：SQLAlchemy + SQLite（可通过 `DATABASE_URL` 切换）
-- 前端：Jinja2 + Bootstrap + JavaScript
-- 任务与扩展：Scheduler、Provider Registry、可插拔服务层
-- 测试：pytest
+## 系统结构
 
-## 3. 项目结构
+项目采用较清晰的分层结构：
 
-```text
-DeepAudit_pro/
-|- app.py
-|- core/                 # 应用工厂、配置、日志、扩展初始化
-|- routes/               # 各业务模块路由
-|- services/             # 业务服务层
-|- utils/                # 数据访问、安全、审计、通用能力
-|- integrations/         # 外部系统接入实现
-|- providers/            # Provider 抽象与注册
-|- templates/            # 页面模板
-|- static/               # 静态资源（JS/CSS）
-|- scripts/              # 初始化、自检、修复、数据脚本
-|- tests/                # 自动化测试
-|- docs/                 # 项目文档
-|- artifacts/            # 演示与快照资源
-```
+- `core/`：应用工厂、配置、扩展初始化、日志
+- `routes/`：页面与 API 路由
+- `services/`：业务逻辑，包括审批、台账、风险、集成服务
+- `integrations/`：税务、银行、ERP、OA 等外部集成适配
+- `providers/`：Provider 抽象与 mock 实现
+- `templates/`：Jinja2 页面模板
+- `static/`：前端静态资源
+- `scripts/`：初始化、诊断、数据填充、自检脚本
+- `tests/`：核心权限、审批、台账、治理能力测试
 
-## 4. 快速启动
+## 技术栈
 
-### 4.1 环境要求
+- Python 3.10+
+- Flask
+- SQLAlchemy
+- SQLite（默认，可通过环境变量切换）
+- Jinja2 + Bootstrap
+- pytest
 
-- Python `3.10+`（建议）
-- pip 可用
+## 快速开始
 
-### 4.2 安装依赖
+### 1. 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4.3 配置环境变量
-
-推荐以 `.env.example` 为模板：
+### 2. 配置环境变量
 
 ```bash
 copy .env.example .env
 ```
 
-必须至少配置：
+至少需要配置：
 
 - `SECRET_KEY`
 
-常用配置：
+常用配置项：
 
-- `DATABASE_URL`（默认 `sqlite:///database.db`）
-- `DATA_PROVIDER`（`mock` 或 `real`）
+- `DATABASE_URL`
+- `DATA_PROVIDER`
 - `ENABLE_CSRF_PROTECTION`
 - `DASHSCOPE_API_KEY`
 - `LLM_MODEL_NAME`
+- `FLASK_HOST`
+- `FLASK_PORT`
+- `FLASK_DEBUG`
 
-### 4.4 初始化数据库
+### 3. 初始化数据库
 
 ```bash
 python scripts/init_db_keep_admin01.py --yes
 ```
 
-说明：
-
-- 脚本会清理业务数据并保留 `admin01` 账号结构
-- 若未设置 `ADMIN_INIT_PASSWORD`，系统可能生成一次性初始密码（以控制台日志为准）
-
-### 4.5 启动系统
+### 4. 启动应用
 
 ```bash
 python app.py
@@ -94,50 +82,36 @@ python app.py
 
 默认访问地址：
 
-- `http://127.0.0.1:5000`
+```text
+http://127.0.0.1:5000
+```
 
-Windows 也可直接使用脚本：
+## 测试
 
-- `一键启动.bat`
-- `快速启动.bat`
-
-## 5. 测试与质量
-
-运行全部测试：
+运行项目测试：
 
 ```bash
 pytest -q
 ```
 
-建议优先关注：
+建议优先关注以下回归测试：
 
-- 审批与权限相关测试：`tests/test_admin_roles_permissions.py`
-- 台账状态守卫测试：`tests/test_ledger_record_state.py`
-- 权限生效回归：`tests/test_permission_grant_effective.py`
+- `tests/test_admin_roles_permissions.py`
+- `tests/test_approval_role_guardrails.py`
+- `tests/test_ledger_record_state.py`
+- `tests/test_governance_rules.py`
 
-## 6. 生产部署建议
+## 部署说明
 
-- 使用 `gunicorn_config.py` 配置 WSGI 进程
-- 结合 `nginx.conf` 反向代理
-- 生产环境务必设置：
-  - 强随机 `SECRET_KEY`
-  - 独立数据库与最小权限账户
-  - 关闭 `DEV_ALLOW_INSECURE`
-  - 轮换 API 密钥（如 `DASHSCOPE_API_KEY`）
+- 开发环境默认使用 SQLite，本地即可快速启动
+- 生产环境建议切换独立数据库并使用更强的 `SECRET_KEY`
+- 可结合 `gunicorn_config.py` 与 `nginx.conf` 部署
+- 所有真实密钥请通过环境变量注入，不要写入仓库
 
-## 7. 常用脚本
+## 仓库说明
 
-- `scripts/init_db_keep_admin01.py`：数据库重置并保留管理员账号
-- `scripts/seed_demo.py`：演示数据初始化
-- `scripts/selfcheck_providers.py`：Provider 自检
-- `scripts/verify_init.py`：初始化验证
-- `scripts/db_smoke.py`：数据库冒烟检查
+本仓库仅保留项目运行与开发所需文件，不包含本地数据库、日志、上传文件、环境密钥及个人工具配置。推送公开仓库前，应确保 `.env`、`.secrets/`、数据库文件和临时产物未被纳入版本控制。
 
-## 8. 许可证
+## License
 
-本项目使用 `MIT` 许可证，详见 `LICENSE`。
-
-## 9. 本次仓库同步说明（2026-02-22）
-
-- 同步了当前工作目录下的最新代码与资源（遵循 `.gitignore`）
-- 更新了 `README.md`，与当前项目结构和启动流程对齐
+MIT
