@@ -68,10 +68,8 @@ instance/
 .pytest_cache/
 .coverage
 htmlcov/
-artifacts/*.html
-artifacts/*.png
-artifacts/*snapshot*.md
-artifacts/*snapshot*.json
+artifacts/
+!artifacts/.gitkeep
 
 # Temporary files
 *.tmp

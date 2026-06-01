@@ -1,53 +1,54 @@
-# DeepAudit Pro
+# DeepAudit
 
-DeepAudit Pro 是一个面向企业财务审计与费用风控场景的智能审计系统，聚焦发票识别、单据核验、风险识别、审批流转、审计留痕与台账管理。项目当前以 Flask 为核心，提供可运行的 Web 原型，适合继续扩展为内部审计、财务合规和税务风险预警平台。
+DeepAudit 是一个面向企业财务审计、费用风控和票据核验场景的智能审计系统。项目基于 Flask 构建，提供发票上传识别、单据核验、风险规则识别、审批流转、审计留痕、台账管理和后台权限治理等能力，适合作为内部审计、财务合规和税务风险预警平台的原型。
 
-## 项目定位
+## 功能特性
 
-传统财务审计依赖大量人工核对：发票、合同、付款记录、凭证、账表之间要反复比对，既耗时又容易漏掉异常。DeepAudit Pro 的目标是把这类高频、规则明确但仍需要综合判断的工作自动化，帮助审计人员把更多精力放在复核和决策上。
-
-## 核心能力
-
-- 发票采集与 OCR 识别，支持图片和 PDF 上传
-- 发票验真与税务校验，支持 mock / provider 模式切换
-- 风险规则识别与分级，覆盖重复报销、异常付款、字段不一致等场景
-- 审批中心与审计工作台，支持状态流转和多角色处理
-- 审计链路与日志留痕，便于追溯关键操作
-- 权限、角色、数据范围治理，支持后台 IAM 管理
-- 风险案例、监控看板、知识中心等扩展模块
-
-## 系统结构
-
-项目采用较清晰的分层结构：
-
-- `core/`：应用工厂、配置、扩展初始化、日志
-- `routes/`：页面与 API 路由
-- `services/`：业务逻辑，包括审批、台账、风险、集成服务
-- `integrations/`：税务、银行、ERP、OA 等外部集成适配
-- `providers/`：Provider 抽象与 mock 实现
-- `templates/`：Jinja2 页面模板
-- `static/`：前端静态资源
-- `scripts/`：初始化、诊断、数据填充、自检脚本
-- `tests/`：核心权限、审批、台账、治理能力测试
+- 发票图片和 PDF 上传、OCR 识别与结构化处理
+- 发票验真、税务核验和 mock / real provider 模式切换
+- 重复报销、异常付款、字段不一致等风险规则识别
+- 审批中心、审计工作台、状态流转和多角色处理
+- 审计链路、操作日志和关键动作追踪
+- 用户、角色、权限、数据范围等 IAM 管理
+- 风险案例、监控看板、知识中心和企业集成扩展模块
 
 ## 技术栈
 
 - Python 3.10+
 - Flask
-- SQLAlchemy
-- SQLite（默认，可通过环境变量切换）
+- SQLAlchemy / Flask-SQLAlchemy
+- SQLite 默认本地数据库，可通过 `DATABASE_URL` 切换
 - Jinja2 + Bootstrap
 - pytest
 
+## 项目结构
+
+```text
+core/              应用工厂、扩展初始化、配置和日志
+routes/            页面路由和 API 路由
+services/          审批、台账、风控、集成等业务服务
+integrations/      税务、银行、ERP、OA 等外部集成适配
+providers/         数据 provider 抽象和 mock 实现
+models/            数据模型
+templates/         Jinja2 页面模板
+static/            前端静态资源
+scripts/           初始化、诊断、造数和自检脚本
+tests/             回归测试和关键业务测试
+data/              mock 数据
+docs/              补充文档
+```
+
 ## 快速开始
 
-### 1. 安装依赖
+1. 创建虚拟环境并安装依赖：
 
 ```bash
+python -m venv .venv
+.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. 配置环境变量
+2. 创建本地环境配置：
 
 ```bash
 copy .env.example .env
@@ -55,26 +56,19 @@ copy .env.example .env
 
 至少需要配置：
 
-- `SECRET_KEY`
+```env
+SECRET_KEY=replace-with-a-random-secret-key
+```
 
-常用配置项：
+本地开发可以保持 `DATA_PROVIDER=mock`。如果需要调用真实 OCR、LLM 或税务服务，请在 `.env` 中配置相应 API Key 和 provider 参数。
 
-- `DATABASE_URL`
-- `DATA_PROVIDER`
-- `ENABLE_CSRF_PROTECTION`
-- `DASHSCOPE_API_KEY`
-- `LLM_MODEL_NAME`
-- `FLASK_HOST`
-- `FLASK_PORT`
-- `FLASK_DEBUG`
-
-### 3. 初始化数据库
+3. 初始化数据库：
 
 ```bash
 python scripts/init_db_keep_admin01.py --yes
 ```
 
-### 4. 启动应用
+4. 启动应用：
 
 ```bash
 python app.py
@@ -86,31 +80,53 @@ python app.py
 http://127.0.0.1:5000
 ```
 
-## 测试
-
-运行项目测试：
+## 常用命令
 
 ```bash
+# 运行测试
 pytest -q
+
+# 检查环境变量和运行配置
+python check_env.py
+
+# 数据库写入烟测
+python scripts/db_smoke.py
 ```
 
-建议优先关注以下回归测试：
+## 配置说明
 
-- `tests/test_admin_roles_permissions.py`
-- `tests/test_approval_role_guardrails.py`
-- `tests/test_ledger_record_state.py`
-- `tests/test_governance_rules.py`
+主要环境变量：
 
-## 部署说明
+- `SECRET_KEY`：Flask 会话密钥，生产环境必须使用强随机值
+- `DATABASE_URL`：数据库连接，默认 `sqlite:///database.db`
+- `DATA_PROVIDER`：数据源模式，支持 `mock` / `real`
+- `ENABLE_CSRF_PROTECTION`：是否启用 CSRF 防护
+- `DASHSCOPE_API_KEY`：DashScope / Qwen 相关能力的 API Key
+- `LLM_MODEL_NAME`：LLM 模型名称，默认 `qwen-turbo`
+- `FLASK_HOST`、`FLASK_PORT`、`FLASK_DEBUG`：本地服务配置
 
-- 开发环境默认使用 SQLite，本地即可快速启动
-- 生产环境建议切换独立数据库并使用更强的 `SECRET_KEY`
-- 可结合 `gunicorn_config.py` 与 `nginx.conf` 部署
-- 所有真实密钥请通过环境变量注入，不要写入仓库
+## 上传到 GitHub 前的注意事项
 
-## 仓库说明
+仓库已配置 `.gitignore`，默认不会提交以下本地文件：
 
-本仓库仅保留项目运行与开发所需文件，不包含本地数据库、日志、上传文件、环境密钥及个人工具配置。推送公开仓库前，应确保 `.env`、`.secrets/`、数据库文件和临时产物未被纳入版本控制。
+- `.env`、`.env.production`、`.secrets/`
+- `.venv/`、`venv/` 等虚拟环境
+- `database.db`、`*.sqlite3` 等本地数据库
+- `uploads/` 中的上传文件，保留 `uploads/.gitkeep`
+- `instance/`、日志、缓存、测试截图和 HTML 产物
+
+推送前建议检查：
+
+```bash
+git status --short
+git remote -v
+```
+
+目标仓库：
+
+```text
+https://github.com/xchen1012a-sketch/DeepAudit
+```
 
 ## License
 
