@@ -1,0 +1,6 @@
+# {{PROJECT_NAME}} AI engineering instructions
+
+Read `{{AI_SPEC_PATH}}/AI-START.md` before proposing or implementing repository changes. Apply its startup protocol, project-stage workflow, security baseline, context routing, verification, and delivery requirements.
+
+Treat this file as an automatic-discovery adapter. The authoritative rules remain under `{{AI_SPEC_PATH}}/`.
+

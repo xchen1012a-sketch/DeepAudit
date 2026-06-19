@@ -1,0 +1,9 @@
+---
+description: Load the universal AI engineering specification before project work
+alwaysApply: true
+---
+
+Read `{{AI_SPEC_PATH}}/AI-START.md` before changing project files. Follow its project-stage detection, context routing, security baseline, scope controls, verification requirements, and delivery protocol.
+
+This rule is an adapter only. Do not copy or reinterpret the specification into this file.
+

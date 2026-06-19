@@ -1,0 +1,8 @@
+# {{PROJECT_NAME}} · AI 协作入口
+
+开始任何任务前，先读取 `{{AI_SPEC_PATH}}/AI-START.md` 并执行其中的启动协议、上下文路由和安全底线。
+
+项目画像位于 `{{AI_SPEC_PATH}}/ai-spec.yaml`。不存在时只生成识别报告和配置草案，不把推断写成事实。
+
+规则正文以 `{{AI_SPEC_PATH}}/` 为准。本文件只负责 Claude Code 自动发现，不复制规范正文。复杂产品规划使用 `product-architect`，代码实施和 Bug 修复使用 `dev-implementation`。
+

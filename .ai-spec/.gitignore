@@ -1,0 +1,28 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Local AI tool artifacts (project-local, not template)
+.claude/settings.local.json
+.env
+.env.local
+
+# Multi-AI coordination sessions (runtime, not versioned)
+.ai-spec/sessions/
+
+# Build / temp
+node_modules/
+__pycache__/
+*.pyc
+dist/
+build/

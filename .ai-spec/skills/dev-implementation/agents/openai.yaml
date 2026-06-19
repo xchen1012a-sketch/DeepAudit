@@ -1,0 +1,4 @@
+interface:
+  display_name: "通用开发实施"
+  short_description: "按项目原生规范实施、验证并提供可回滚交付"
+  default_prompt: "使用 $dev-implementation 在已批准范围内实施这项变更，执行真实验证并报告回滚方式。"

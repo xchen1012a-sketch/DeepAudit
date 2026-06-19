@@ -1,0 +1,60 @@
+specVersion: 2
+
+spec:
+  multiProjectId: null       # 多项目共享 ID（UUID v4；单项目为 null）
+  templateVersion: 2         # 生成此实例的模板版本
+
+project:
+  name: example-project
+  description: Replace with the real project description
+  stage: new # new | existing | in-progress
+  type: generic # backend | frontend | fullstack | mobile | library-sdk | cli | data-platform | ai-llm | generic
+  criticality: medium # low | medium | high | critical
+
+stack:
+  languages: []
+  frameworks: []
+  databases: []
+  packageManagers: []
+
+commands:
+  build: null
+  test: null
+  lint: null
+  typecheck: null
+  run: null
+
+workflow:
+  branchModel: project-defined
+  mainBranch: null
+  integrationBranch: null
+  requirePlanForComplexTasks: true
+  requireContractForCrossBoundaryChanges: true
+
+quality:
+  coverageTarget: project-defined
+  securityGate: project-defined
+  fullTestSuiteOnEveryChange: false
+
+context:
+  projectSize: auto # auto | tiny | small | medium | large | enterprise
+  mode: auto # auto | L0 | L1 | L2 | L3 | L4
+  dailyEntry: business/quick-ref.md
+  quickRefStatus: TEMPLATE_PLACEHOLDER # TEMPLATE_PLACEHOLDER | GENERATED
+  quickRefMaxLines: 40
+  preferLiteCore: true
+  dynamicRouting: true
+  allowFullScanByDefault: false
+  requireContextUsageReport: true
+  projectSizeSignals:
+    fileCount: 0
+    buildFileCount: 0
+    hasDatabase: false
+    hasApi: false
+    hasAuth: false
+    hasCi: false
+    multiProject: false
+
+ai:
+  tools: [generic]
+  specPath: .ai-spec

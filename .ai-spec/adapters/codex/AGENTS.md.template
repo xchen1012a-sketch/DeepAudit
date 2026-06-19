@@ -1,0 +1,8 @@
+# {{PROJECT_NAME}} · AI 协作入口
+
+Before any task, read `{{AI_SPEC_PATH}}/AI-START.md` and follow its startup protocol, context routing, security baseline, and delivery protocol.
+
+Use `{{AI_SPEC_PATH}}/ai-spec.yaml` as the project profile when present. Do not convert inferred information into project facts without confirmation.
+
+This file exists only for Codex instruction discovery. The specification source of truth remains under `{{AI_SPEC_PATH}}/`. Use the shared `product-architect` and `dev-implementation` skills when applicable.
+
